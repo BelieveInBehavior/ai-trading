@@ -1,0 +1,17 @@
+{
+  "agent_name": "price_market_agent",
+  "trigger_time": "2026-08-07 16:00:00",
+  "source_list": [
+    "data_source.price_market_akshare.PriceMarketAkshare"
+  ],
+  "bias_goal": "",
+  "context_string": "Batch 1 Documents:\n<doc id=1> Title: 20260806:市场宏观数据汇总\nPublish Time: 2026-08-07 16:00:00\nContent: LLM分析失败</doc>\n",
+  "references": [],
+  "batch_summaries": [
+    {
+      "batch_id": 1,
+      "summary": "<doc id=1> Title: 20260806:市场宏观数据汇总\nPublish Time: 2026-08-07 16:00:00\nContent: LLM分析失败</doc>\n",
+      "references": []
+    }
+  ]
+}
