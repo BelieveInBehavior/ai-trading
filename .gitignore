@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+*.pkl
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Node / frontend
+node_modules/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+
+# Runtime caches & generated data
+contest_trade_refactor/utils/akshare_cache/
+contest_trade_refactor/tools/stock_summary_akshare_cache/
+contest_trade_refactor/agents_workspace/results/
+contest_trade_refactor/agents_workspace/reports/
+contest_trade_refactor/agents_workspace/factors/
+contest_trade_refactor/agents_workspace/factor_store/
+contest_trade_refactor/agents_workspace/performance/
+
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo

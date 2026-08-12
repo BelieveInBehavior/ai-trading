@@ -1,0 +1,575 @@
+"""
+Web Application for AI Trading System
+FastAPI + SSE for real-time agent status updates
+"""
+
+import asyncio
+import json
+import uuid
+from datetime import datetime
+from typing import Optional
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+
+from main_loop import SimpleTradeCompany
+
+app = FastAPI(title="AI Trading System API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# session_id -> asyncio.Queue
+streams: dict[str, asyncio.Queue] = {}
+company: Optional["SseTradeCompany"] = None
+
+
+class SseTradeCompany(SimpleTradeCompany):
+    async def _emit(self, queue: asyncio.Queue, event_type: str, data: dict):
+        await queue.put({
+            "type": event_type,
+            "timestamp": datetime.now().isoformat(),
+            "data": data,
+        })
+
+    async def run_with_queue(self, queue: asyncio.Queue, trigger_time: str):
+        await self._emit(queue, "system", {"message": f"Starting analysis at {trigger_time}", "stage": "init"})
+
+        await self._emit(queue, "stage", {
+            "message": "Stage 1: Running Data Agents...",
+            "stage": "data_agents",
+            "total": len(self.data_agents),
+        })
+        data_factors = await self._run_data_agents_sse(queue, trigger_time)
+        await self._emit(queue, "stage_complete", {
+            "message": f"Data Agents completed: {len(data_factors)} factors",
+            "stage": "data_agents",
+            "count": len(data_factors),
+        })
+
+        market_context = self._build_market_context(data_factors)
+
+        require_min_buys, max_rounds = self._get_signal_selection_settings()
+        await self._emit(queue, "stage", {
+            "message": (
+                f"Stage 2+3: Research + strict buy selection "
+                f"(require_min_buys={require_min_buys}, max_rounds={max_rounds})..."
+            ),
+            "stage": "research_selection",
+            "require_min_buys": require_min_buys,
+            "max_research_rounds": max_rounds,
+        })
+
+        async def research_runner(trigger_time_arg: str, data_factors_arg: list):
+            return await self._run_research_agents_sse(queue, trigger_time_arg, data_factors_arg)
+
+        async def on_round_start(round_num: int, max_rounds_arg: int):
+            await self._emit(queue, "stage", {
+                "message": f"Research round {round_num}/{max_rounds_arg}...",
+                "stage": "research_agents",
+                "round": round_num,
+                "max_rounds": max_rounds_arg,
+                "total": len(self.research_agents),
+            })
+
+        async def on_round_complete(round_num: int, stats: dict):
+            await self._emit(queue, "stage_complete", {
+                "message": (
+                    f"Round {round_num}: {stats['buy_count']} buys, "
+                    f"{stats['watchlist_count']} watchlist, "
+                    f"{stats['total_signals']} total signals"
+                ),
+                "stage": "research_agents",
+                "round": round_num,
+                **stats,
+            })
+
+        selection = await self._run_research_and_select_until_min_buys(
+            trigger_time=trigger_time,
+            data_factors=data_factors,
+            market_context=market_context,
+            research_runner=research_runner,
+            on_round_start=on_round_start,
+            on_round_complete=on_round_complete,
+        )
+        research_signals = selection["research_signals"]
+        buy_signals = selection["buy_signals"]
+        watchlist = selection["watchlist"]
+
+        await self._emit(queue, "stage_complete", {
+            "message": (
+                f"Signal selection completed after {selection['research_rounds']} round(s): "
+                f"{len(buy_signals)} buys, {len(watchlist)} watchlist"
+            ),
+            "stage": "selection",
+            "count": len(buy_signals),
+            "watchlist_count": len(watchlist),
+            "research_rounds": selection["research_rounds"],
+            "require_min_buys_met": selection["require_min_buys_met"],
+        })
+
+        result = {
+            "trigger_time": trigger_time,
+            "data_factors": data_factors,
+            "research_signals": research_signals,
+            "buy_signals": buy_signals,
+            "watchlist": watchlist,
+            "best_signals": buy_signals,
+            "market_context": market_context,
+            "system_health": self.system_health,
+            "research_rounds": selection["research_rounds"],
+            "require_min_buys": selection["require_min_buys"],
+            "require_min_buys_met": selection["require_min_buys_met"],
+        }
+        await self._emit(queue, "complete", {
+            "message": "Analysis Complete",
+            "data_factors_count": len(data_factors),
+            "research_signals_count": len(research_signals),
+            "buy_signals_count": len(buy_signals),
+            "watchlist_count": len(watchlist),
+            "best_signals_count": len(buy_signals),
+            "research_rounds": selection["research_rounds"],
+            "require_min_buys_met": selection["require_min_buys_met"],
+        })
+        await self._emit(queue, "result", {"result": result})
+        await self._emit(queue, "stream_end", {"message": "Stream complete"})
+        await queue.put(None)  # sentinel
+
+    async def _run_data_agents_sse(self, queue: asyncio.Queue, trigger_time: str) -> list:
+        tasks = []
+
+        async def run_one(agent_id, pipeline):
+            async def emit_source_result(result):
+                await self._emit(queue, "agent_result", {
+                    "agent_type": "data",
+                    "agent_id": agent_id,
+                    "agent_name": pipeline.agent_name,
+                    "message": f"{pipeline.agent_name} produced a result",
+                    "result": {**result, "agent_id": agent_id},
+                })
+
+            try:
+                result = await pipeline.run(trigger_time, on_result=emit_source_result)
+                return agent_id, pipeline, result, None
+            except Exception as exc:
+                return agent_id, pipeline, None, exc
+
+        for agent_id, pipeline in self.data_agents.items():
+            await self._emit(queue, "agent_start", {
+                "agent_type": "data",
+                "agent_id": agent_id,
+                "agent_name": pipeline.agent_name,
+                "message": f"Running {pipeline.agent_name}...",
+            })
+            tasks.append(asyncio.create_task(run_one(agent_id, pipeline)))
+
+        results = []
+        # Consume tasks in actual completion order so a fast agent is never
+        # hidden behind an earlier, slower task.
+        for completed in asyncio.as_completed(tasks):
+            agent_id, pipeline, result, error = await completed
+            if error is not None:
+                await self._emit(queue, "agent_error", {
+                    "agent_type": "data",
+                    "agent_id": agent_id,
+                    "agent_name": pipeline.agent_name,
+                    "message": f"{pipeline.agent_name} failed: {str(error)}",
+                })
+                continue
+
+            if result and result.get("context_string"):
+                results.append(result)
+                await self._emit(queue, "agent_complete", {
+                    "agent_type": "data",
+                    "agent_id": agent_id,
+                    "agent_name": pipeline.agent_name,
+                    "message": f"{pipeline.agent_name} completed",
+                    "result": {
+                        "agent_id": agent_id,
+                        "agent_name": result.get("agent_name", pipeline.agent_name),
+                        "trigger_time": result.get("trigger_time", trigger_time),
+                        "context_string": result.get("context_string", ""),
+                    },
+                })
+        return results
+
+    async def _run_research_agents_sse(self, queue: asyncio.Queue, trigger_time: str, data_factors: list) -> list:
+        from agents.research_agent_loop import ResearchAgentInput
+
+        tasks = []
+
+        async def run_one(agent_id, agent, input_data):
+            try:
+                return agent_id, agent, await agent.run(input_data), None
+            except Exception as exc:
+                return agent_id, agent, None, exc
+
+        for agent_id, agent in self.research_agents.items():
+            await self._emit(queue, "agent_start", {
+                "agent_type": "research",
+                "agent_id": agent_id,
+                "agent_name": agent.config.agent_name,
+                "belief": agent.config.belief,
+                "message": f"Running {agent.config.agent_name}...",
+            })
+            background = agent.build_background_information(trigger_time, agent.config.belief, data_factors)
+            input_data = ResearchAgentInput(trigger_time=trigger_time, background_information=background)
+            tasks.append(asyncio.create_task(run_one(agent_id, agent, input_data)))
+
+        all_signals = []
+        for completed in asyncio.as_completed(tasks):
+            agent_id, agent, result, error = await completed
+            if error is not None:
+                await self._emit(queue, "agent_error", {
+                    "agent_type": "research",
+                    "agent_id": agent_id,
+                    "agent_name": agent.config.agent_name,
+                    "message": f"{agent.config.agent_name} failed: {str(error)}",
+                })
+                continue
+
+            if result and result.final_result:
+                signals = self._parse_signals(result)
+                agent_signals = signals[:5]
+                for i, signal in enumerate(agent_signals):
+                    signal["agent_id"] = agent_id
+                    signal["agent_name"] = agent.config.agent_name
+                    signal["signal_index"] = i + 1
+                    all_signals.append(signal)
+                await self._emit(queue, "agent_complete", {
+                    "agent_type": "research",
+                    "agent_id": agent_id,
+                    "agent_name": agent.config.agent_name,
+                    "message": f"{agent.config.agent_name} completed",
+                    "signals_count": len(agent_signals),
+                    "result": {"signals": agent_signals},
+                })
+        return all_signals
+
+
+@app.on_event("startup")
+async def startup_event():
+    global company
+    company = SseTradeCompany()
+
+
+class StartRequest(BaseModel):
+    trigger_time: str = ""
+
+
+@app.post("/api/start")
+async def start_analysis(body: StartRequest):
+    session_id = str(uuid.uuid4())
+    queue: asyncio.Queue = asyncio.Queue()
+    streams[session_id] = queue
+    trigger_time = body.trigger_time or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    asyncio.create_task(company.run_with_queue(queue, trigger_time))
+    return {"session_id": session_id}
+
+
+@app.get("/api/stream/{session_id}")
+async def stream_events(session_id: str):
+    async def generate():
+        queue = streams.get(session_id)
+        if not queue:
+            yield f"data: {json.dumps({'type': 'error', 'data': {'message': 'Session not found'}})}\n\n"
+            return
+        stream_completed = False
+        try:
+            while True:
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=10.0)
+                    if event is None:
+                        stream_completed = True
+                        break
+                    yield f"data: {json.dumps(event)}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+        finally:
+            # A browser/proxy connection can be reset while agents are still
+            # running. Preserve the queue so EventSource can reconnect and
+            # continue consuming this session instead of losing all results.
+            if stream_completed:
+                streams.pop(session_id, None)
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.get("/api/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "agents": {
+            "data_agents": len(company.data_agents) if company else 0,
+            "research_agents": len(company.research_agents) if company else 0,
+        },
+    }
+
+
+@app.get("/api/status")
+async def get_status():
+    return {
+        "server": "AI Trading System",
+        "version": "2.0.0",
+        "timestamp": datetime.now().isoformat(),
+        "active_sessions": len(streams),
+    }
+
+
+# ===== Factor Store & Backtest APIs =====
+
+@app.get("/api/factors/summary")
+async def get_factor_summary():
+    """获取所有因子存储的摘要"""
+    from utils.factor_store import get_all_stores
+    stores = get_all_stores()
+    result = {}
+    for name, store in stores.items():
+        stats = store.get_stats()
+        result[name] = stats
+    return result
+
+
+@app.get("/api/factors/{factor_name}/data")
+async def get_factor_data(factor_name: str, start_date: str = "", end_date: str = ""):
+    """获取某个因子的历史数据"""
+    from utils.factor_store import get_all_stores
+    stores = get_all_stores()
+    if factor_name not in stores:
+        return {"error": f"Factor '{factor_name}' not found"}
+
+    store = stores[factor_name]
+    if start_date and end_date:
+        df = store.load_range(start_date, end_date)
+    else:
+        df = store.load_all()
+
+    if df.empty:
+        return {"data": [], "count": 0}
+
+    records = df.to_dict(orient="records")
+    return {"data": records, "count": len(records)}
+
+
+@app.get("/api/factors/{factor_name}/dates")
+async def get_factor_dates(factor_name: str):
+    """获取某个因子的可用日期列表"""
+    from utils.factor_store import get_all_stores
+    stores = get_all_stores()
+    if factor_name not in stores:
+        return {"error": f"Factor '{factor_name}' not found"}
+    return {"dates": stores[factor_name].get_available_dates()}
+
+
+@app.post("/api/backtest/run")
+async def run_backtest(factor_name: str = "all"):
+    """运行因子回测"""
+    from utils.factor_store import get_all_stores
+    from tools.factor_backtest import FactorBacktester, FactorRecord
+
+    stores = get_all_stores()
+    backtester = FactorBacktester(horizons=[1, 3, 5])
+    results = {}
+
+    targets = stores.items() if factor_name == "all" else [(factor_name, stores.get(factor_name))]
+
+    for name, store in targets:
+        if store is None:
+            results[name] = {"error": f"Factor '{name}' not found"}
+            continue
+
+        all_data = store.load_all()
+        if all_data.empty:
+            results[name] = {"error": "No data available", "total_signals": 0}
+            continue
+
+        records = []
+        for _, row in all_data.iterrows():
+            code = str(row.get("symbol_code", ""))
+            if not code.isdigit() or len(code) != 6:
+                continue
+            records.append(FactorRecord(
+                symbol_code=code,
+                symbol_name=str(row.get("symbol_name", "")),
+                factor_date=str(row.get("factor_date", "")),
+                factor_name=name,
+                factor_value=float(row.get("factor_value", 0)),
+            ))
+
+        if not records:
+            results[name] = {"error": "No valid factor records", "total_signals": 0}
+            continue
+
+        result = backtester.run(records, name)
+        results[name] = {
+            "factor_name": result.factor_name,
+            "total_signals": result.total_signals,
+            "evaluated_signals": result.evaluated_signals,
+            "horizons": result.horizons,
+            "quintile_returns": result.quintile_returns,
+            "ic_values": result.ic_values,
+            "walk_forward": result.walk_forward,
+        }
+
+    return results
+
+
+@app.get("/api/backtest/results")
+async def get_backtest_results():
+    """获取已有的回测结果"""
+    from config.config import PROJECT_ROOT
+    import json as json_mod
+
+    results_dir = PROJECT_ROOT / "agents_workspace" / "backtest_results"
+    if not results_dir.exists():
+        return {"results": {}}
+
+    all_results = {}
+    for factor_dir in results_dir.iterdir():
+        if not factor_dir.is_dir():
+            continue
+        summaries = sorted(factor_dir.glob("summary_*.json"), reverse=True)
+        if summaries:
+            with open(summaries[0], "r", encoding="utf-8") as f:
+                all_results[factor_dir.name] = json_mod.load(f)
+
+    return {"results": all_results}
+
+
+@app.get("/api/performance/history")
+async def get_performance_history():
+    """获取信号绩效历史"""
+    from config.config import PROJECT_ROOT
+    import json as json_mod
+
+    history_file = PROJECT_ROOT / "agents_workspace" / "performance" / "performance_history.json"
+    pending_file = PROJECT_ROOT / "agents_workspace" / "performance" / "pending_signals.json"
+
+    history = []
+    pending = []
+    if history_file.exists():
+        with open(history_file, "r", encoding="utf-8") as f:
+            history = json_mod.load(f)
+    if pending_file.exists():
+        with open(pending_file, "r", encoding="utf-8") as f:
+            pending = json_mod.load(f)
+
+    # Compute summary stats
+    total = len(history)
+    hits = sum(1 for r in history if r.get("hit"))
+    win_rate = (hits / total * 100) if total > 0 else 0
+    avg_return = sum(r.get("actual_return_pct", 0) for r in history) / total if total > 0 else 0
+
+    return {
+        "history": history,
+        "pending": pending,
+        "stats": {
+            "total": total,
+            "hits": hits,
+            "win_rate": round(win_rate, 1),
+            "avg_return": round(avg_return, 2),
+            "pending_count": len(pending),
+        },
+    }
+
+
+# ===== Threshold Management APIs =====
+
+@app.get("/api/thresholds")
+async def get_thresholds():
+    """获取所有阈值配置"""
+    from utils.threshold_manager import THRESHOLD_MANAGER, THRESHOLD_METADATA
+    return {
+        "thresholds": THRESHOLD_MANAGER.get_all(),
+        "metadata": THRESHOLD_METADATA,
+    }
+
+
+@app.post("/api/thresholds/{factor_name}")
+async def update_thresholds(factor_name: str, body: dict):
+    """更新某个因子的阈值"""
+    from utils.threshold_manager import THRESHOLD_MANAGER
+    updates = body.get("updates", {})
+    if not updates:
+        return {"error": "No updates provided"}
+    THRESHOLD_MANAGER.update(factor_name, updates)
+    return {"status": "ok", "thresholds": THRESHOLD_MANAGER.get(factor_name)}
+
+
+@app.post("/api/thresholds/{factor_name}/reset")
+async def reset_thresholds(factor_name: str):
+    """重置某个因子的阈值到默认值"""
+    from utils.threshold_manager import THRESHOLD_MANAGER
+    THRESHOLD_MANAGER.reset(factor_name)
+    return {"status": "ok", "thresholds": THRESHOLD_MANAGER.get(factor_name)}
+
+
+@app.post("/api/thresholds/calibrate")
+async def calibrate_thresholds():
+    """基于回测结果自动校准所有因子阈值"""
+    from utils.threshold_manager import THRESHOLD_MANAGER
+    from utils.factor_store import get_all_stores
+    from tools.factor_backtest import FactorBacktester, FactorRecord
+
+    stores = get_all_stores()
+    backtester = FactorBacktester(horizons=[1, 3, 5])
+    calibration_results = {}
+
+    for name, store in stores.items():
+        all_data = store.load_all()
+        if all_data.empty:
+            calibration_results[name] = {"status": "no_data"}
+            continue
+
+        records = []
+        for _, row in all_data.iterrows():
+            code = str(row.get("symbol_code", ""))
+            if not code.isdigit() or len(code) != 6:
+                continue
+            records.append(FactorRecord(
+                symbol_code=code,
+                symbol_name=str(row.get("symbol_name", "")),
+                factor_date=str(row.get("factor_date", "")),
+                factor_name=name,
+                factor_value=float(row.get("factor_value", 0)),
+            ))
+
+        if len(records) < 10:
+            calibration_results[name] = {"status": "insufficient_data", "count": len(records)}
+            continue
+
+        result = backtester.run(records, name)
+        backtest_data = {
+            "ic_values": result.ic_values,
+            "horizons": result.horizons,
+            "walk_forward": result.walk_forward,
+        }
+        cal_result = THRESHOLD_MANAGER.auto_calibrate(name, backtest_data)
+        calibration_results[name] = cal_result
+
+    return {
+        "status": "ok",
+        "calibration": calibration_results,
+        "new_thresholds": THRESHOLD_MANAGER.get_all(),
+    }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

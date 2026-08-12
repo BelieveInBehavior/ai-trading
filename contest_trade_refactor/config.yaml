@@ -1,0 +1,184 @@
+#YOUR_TUSHARE_KEY
+tushare_key: "f7b3b7003636d8f26e95b3890543c9f742d843a3dc961e54db075b57"
+
+#YOUR_BOCHA_KEY
+bocha_key: "" 
+
+#YOUR_SERP_KEY
+serp_key: "" 
+
+#YOUR_FMP_KEY
+fmp_key: "" 
+
+#YOUR_FINNHUB_KEY
+finnhub_key: "" 
+
+# ==================================================
+# LLM 配置说明 / LLM Configuration
+# ==================================================
+# 支持的 provider 选项 / Supported provider options:
+#   - "openai"  : OpenAI官方API或兼容接口
+#   - "gemini"  : Google Gemini API
+#   - "ollama"  : 本地Ollama服务
+#
+# 配置示例 / Configuration examples:
+#
+# OpenAI:
+#   provider: "openai"
+#   base_url: "https://api.openai.com/v1"
+#   api_key: "your_openai_api_key"
+#   model_name: "gpt-4"
+#
+# DeepSeek (OpenAI compatible):
+#   provider: "openai"
+#   base_url: "https://api.deepseek.com"
+#   api_key: "your_deepseek_api_key"
+#   model_name: "deepseek-chat"
+#
+# 阶跃星辰 (OpenAI compatible):
+#   provider: "openai"
+#   base_url: "https://models-proxy.stepfun-inc.com/v1"
+#   api_key: "your_stepfun_api_key"
+#   model_name: "step-1o-turbo-vision"
+#
+# Google Gemini:
+#   provider: "gemini"
+#   base_url: "https://generativelanguage.googleapis.com/v1beta"
+#   api_key: "your_gemini_api_key"
+#   model_name: "gemini-2.0-flash"
+#
+# Local Ollama:
+#   provider: "ollama"
+#   base_url: "http://localhost:11434"
+#   api_key: ""  # Ollama usually doesn't require an API key
+#   model_name: "llama3.2:1b"
+# ==================================================
+
+llm:
+  provider: "openai"
+  base_url: "https://api.siliconflow.cn/v1"
+  api_key: "${SILICONFLOW_API_KEY}"
+  model_name: "Pro/moonshotai/Kimi-K2.6"
+llm_thinking:
+  provider: "openai"
+  base_url: "https://api.siliconflow.cn/v1"
+  api_key: "${SILICONFLOW_API_KEY}"
+  model_name: "Pro/moonshotai/Kimi-K2.6"
+vlm:
+  provider: "openai"
+  base_url: "https://api.siliconflow.cn/v1"
+  api_key: "${SILICONFLOW_API_KEY}"
+  model_name: "Pro/moonshotai/Kimi-K2.6"
+data_agents_config:
+  - agent_name: "sina_summary_agent"
+    data_source_list: 
+      - "data_source.sina_news_crawl.SinaNewsCrawl"
+  - agent_name: "thx_summary_agent"
+    data_source_list: 
+      - "data_source.thx_news_crawl.ThxNewsCrawl"
+  - agent_name: "price_market_agent"
+    data_source_list: 
+      - "data_source.price_market_akshare.PriceMarketAkshare"
+  - agent_name: "hot_money_agent"
+    data_source_list:
+      - "data_source.hot_money_akshare.HotMoneyAkshare"
+  - agent_name: "northbound_flow_agent"
+    data_source_list:
+      - "data_source.northbound_flow_akshare.NorthboundFlowAkshare"
+  - agent_name: "technical_indicators_agent"
+    data_source_list:
+      - "data_source.technical_indicators_akshare.TechnicalIndicatorsAkshare"
+  - agent_name: "individual_fund_flow_agent"
+    data_source_list:
+      - "data_source.individual_fund_flow_akshare.IndividualFundFlowAkshare"
+  - agent_name: "margin_trading_agent"
+    data_source_list:
+      - "data_source.margin_trading_akshare.MarginTradingAkshare"
+  - agent_name: "block_trade_agent"
+    data_source_list:
+      - "data_source.block_trade_akshare.BlockTradeAkshare"
+  - agent_name: "sector_fund_flow_trend_agent"
+    data_source_list:
+      - "data_source.sector_fund_flow_trend_akshare.SectorFundFlowTrendAkshare"
+  - agent_name: "zt_seal_strength_agent"
+    data_source_list:
+      - "data_source.zt_seal_strength_akshare.ZtSealStrengthAkshare"
+
+research_agent_config:
+  belief_list_path: "config/belief_list.json"
+  max_react_step: 10
+  output_language: "中文"
+  tools:
+    - "tools.stock_symbol_search_akshare.stock_symbol_search"
+    - "tools.stock_selector_akshare.stock_selector"
+    - "tools.corp_info_akshare.company_financial_info"
+    - "tools.price_info_akshare.price_info"
+    - "tools.search_web.search_web"
+    - "tools.stock_summary_akshare.stock_summary"
+    - "tools.final_report.final_report"
+
+market_config_file: "config/market_config.yaml"
+
+# Tushare配套配置如下，请自行设置
+# The configuration for Tushare is as follows, please set it up yourself.
+
+# data_agents_config:
+#   - agent_name: "thx_summary_agent"
+#     data_source_list: 
+#       - "data_source.thx_news_crawl.ThxNewsCrawl"
+#   - agent_name: "sina_summary_agent"
+#     data_source_list: 
+#       - "data_source.sina_news_crawl.SinaNewsCrawl"
+#   - agent_name: "price_market_agent"
+#     data_source_list: 
+#       - "data_source.price_market.PriceMarket"
+#   - agent_name: "hot_money_agent"
+#     data_source_list: 
+#       - "data_source.hot_money.HotMoney"
+
+# research_agent_config:
+#   belief_list_path: "config/belief_list.json"
+#   max_react_step: 10
+#   output_language: "中文"
+#   tools:
+#     - "tools.stock_symbol_search.stock_symbol_search"
+#     - "tools.stock_selector.stock_selector"
+#     - "tools.corp_info.company_financial_info"
+#     - "tools.price_info.price_info"
+#     - "tools.search_web.search_web"
+#     - "tools.stock_summary.stock_summary"
+#     - "tools.final_report.final_report"
+
+system_language: "中文"
+
+researcher_contest_config:
+  contest_mode: False
+  judger_config: llm
+  num_judgers: 3
+  window_m: 3
+  window_n: 3
+
+# 信号筛选：严格门控不变，研究阶段重复运行直到满足最少买入数
+signal_selection_config:
+  require_min_buys: 1          # 至少 N 只通过门控的买入才停止；0 = 只跑一轮（旧行为）
+  max_research_rounds: 10      # 上限轮次，防止无限重试
+  reject_future_evidence: true  # 拒绝分析时点之后的证据，避免回测/选股偷看未来
+  risk_veto_enabled: true      # 开启不可交易、硬风险和数据质量 veto
+  consensus_enabled: true      # 启用多研究 Agent 的确定性共识
+  consensus_method: weighted_majority
+  consensus_require_majority: true
+  multi_timeframe_enabled: true       # 周线定方向 + 相对强度选股 + 日线找买点
+  relative_strength_benchmark: sh000300 # 个股相对沪深300的超额收益基准
+  min_weekly_trend_score: 55           # 周线趋势最低分
+  min_relative_strength_score: 50      # 相对强度最低分
+  min_relative_strength_20d_pct: 0     # 20日跑赢基准至少 0 个百分点
+  min_daily_entry_score: 50            # 日线入场触发最低分
+  quantitative_screen_enabled: true    # 先从全市场股票池做量化预筛选
+  quantitative_screen_fail_open: false # 量化预筛失败时不允许研究 Agent 绕过筛选
+  quantitative_screen_max_symbols: 0   # 0 = 扫描全部股票
+  quantitative_screen_top_k: 80        # 交给 Research Agent 的候选上限
+  quantitative_screen_concurrency: 8   # 历史行情并发请求数
+  quantitative_screen_history_days: 260
+  quantitative_screen_min_amount: 0    # 0 = 不按成交额预先截断
+  require_data_quality: true           # OHLCV、日期和未来数据校验必须通过
+  require_weinstein_stage2: true      # 只把温斯坦第二阶段候选交给研究 Agent
