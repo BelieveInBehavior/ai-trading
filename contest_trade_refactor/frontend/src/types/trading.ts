@@ -1,5 +1,18 @@
 export type AgentType = "data" | "research";
 
+export type StrategyId = "swing" | "momentum";
+
+export interface StrategyInfo {
+  id: StrategyId;
+  name: string;
+  short_name?: string;
+  description?: string;
+  horizon?: string;
+  style?: string;
+  risk_note?: string;
+  tags?: string[];
+}
+
 export type MessageKind =
   | "system"
   | "stage"
@@ -19,6 +32,19 @@ export interface SseEvent {
   data: Record<string, unknown>;
 }
 
+export interface EvidenceRecord {
+  description?: string;
+  time?: string;
+  from_source?: string;
+  [key: string]: unknown;
+}
+
+export interface NextDayGateReport {
+  passed?: boolean;
+  failed_reasons?: string[];
+  [key: string]: unknown;
+}
+
 export interface Signal {
   symbol_name?: string;
   symbol_code?: string;
@@ -27,24 +53,43 @@ export interface Signal {
   buy_score?: number;
   probability_value?: number;
   expected_return_t1_pct?: number;
-  next_day_gate_report?: {
-    passed?: boolean;
-    failed_reasons?: string[];
-  };
+  next_day_gate_report?: NextDayGateReport;
   probability?: string | number;
-  evidence_list?: unknown[];
+  evidence_list?: EvidenceRecord[] | unknown[];
+  risk_flags?: string[];
+  limitations?: string[];
   agent_id?: number;
   agent_name?: string;
   signal_index?: number;
+  [key: string]: unknown;
+}
+
+export interface MarketContext {
+  risk_sentiment?: string;
+  has_sector_flow_data?: boolean;
+  [key: string]: unknown;
+}
+
+export interface SystemHealth {
+  tool_error_count?: number;
+  agent_error_count?: number;
+  warnings?: string[];
+  [key: string]: unknown;
 }
 
 export interface AnalysisResult {
   trigger_time: string;
+  strategy?: StrategyInfo;
   data_factors: DataFactor[];
   research_signals: Signal[];
   buy_signals?: Signal[];
   watchlist?: Signal[];
   best_signals: Signal[];
+  market_context?: MarketContext;
+  system_health?: SystemHealth;
+  research_rounds?: number;
+  require_min_buys?: number;
+  require_min_buys_met?: boolean;
 }
 
 export interface DataFactor {

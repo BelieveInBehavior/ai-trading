@@ -1,10 +1,11 @@
 "use client";
+import { useState } from "react";
 
 import Header from "@/components/Header";
 import ChatPanel from "@/components/ChatPanel";
 import ResultsPanel from "@/components/ResultsPanel";
 import { useTrading } from "@/hooks/useTrading";
-import type { HealthStatus, SystemStatus } from "@/types/trading";
+import type { HealthStatus, StrategyId, SystemStatus } from "@/types/trading";
 
 interface TradingDashboardProps {
   initialHealth: HealthStatus | null;
@@ -14,7 +15,8 @@ interface TradingDashboardProps {
 export default function TradingDashboard({
   initialHealth,
 }: TradingDashboardProps) {
-  const { connected, running, messages, result, stepResults, startAnalysis } = useTrading();
+  const { connected, running, messages, result, analysisHistory, stepResults, startAnalysis, strategies } = useTrading();
+  const [strategy, setStrategy] = useState<StrategyId>("momentum");
 
   const agentCounts = initialHealth
     ? {
@@ -45,8 +47,20 @@ export default function TradingDashboard({
           minHeight: 0,
         }}
       >
-        <ChatPanel messages={messages} running={running} onStart={startAnalysis} />
-        <ResultsPanel result={result} stepResults={stepResults} running={running} />
+        <ChatPanel
+          messages={messages}
+          running={running}
+          strategy={strategy}
+          strategies={strategies}
+          onStrategyChange={setStrategy}
+          onStart={startAnalysis}
+        />
+        <ResultsPanel
+          result={result}
+          analysisHistory={analysisHistory}
+          stepResults={stepResults}
+          running={running}
+        />
       </div>
     </div>
   );

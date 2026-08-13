@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ChatMessage } from "@/types/trading";
+import type { ChatMessage, StrategyId, StrategyInfo } from "@/types/trading";
 
 interface ChatPanelProps {
   messages: ChatMessage[];
   running: boolean;
-  onStart: (triggerTime?: string) => void;
+  strategy: StrategyId;
+  strategies: StrategyInfo[];
+  onStrategyChange: (strategy: StrategyId) => void;
+  onStart: (triggerTime?: string, strategy?: StrategyId) => void;
 }
 
 const agentBadge: Record<string, { bg: string; color: string; label: string }> = {
@@ -133,7 +136,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
   );
 }
 
-export default function ChatPanel({ messages, running, onStart }: ChatPanelProps) {
+export default function ChatPanel({ messages, running, strategy, strategies, onStrategyChange, onStart }: ChatPanelProps) {
   const [triggerTime, setTriggerTime] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -141,7 +144,14 @@ export default function ChatPanel({ messages, running, onStart }: ChatPanelProps
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleStart = () => onStart(triggerTime || undefined);
+  const handleStart = () => onStart(triggerTime || undefined, strategy);
+
+  const strategyOptions = strategies.length
+    ? strategies.map((opt) => ({ id: opt.id as StrategyId, label: opt.name || opt.id }))
+    : [
+        { id: "swing" as StrategyId, label: "中长线/趋势" },
+        { id: "momentum" as StrategyId, label: "短期收益" },
+      ];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "white" }}>
@@ -184,6 +194,45 @@ export default function ChatPanel({ messages, running, onStart }: ChatPanelProps
           background: "white",
         }}
       >
+        <div style={{ display: "flex", gap: "0.45rem", marginBottom: "0.6rem", flexWrap: "wrap" }}>
+          {strategyOptions.map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => onStrategyChange(opt.id)}
+              disabled={running}
+              style={{
+                flex: 1,
+                padding: "0.45rem 0.5rem",
+                borderRadius: "0.5rem",
+                border: strategy === opt.id ? "1px solid #2563eb" : "1px solid #e2e8f0",
+                background: strategy === opt.id ? "#eff6ff" : "#ffffff",
+                color: strategy === opt.id ? "#1e40af" : "#475569",
+                fontWeight: strategy === opt.id ? 700 : 500,
+                fontSize: "0.78rem",
+                cursor: running ? "not-allowed" : "pointer",
+              }}
+            >
+              <span style={{ display: "block" }}>{opt.label}</span>
+              {(() => {
+                const info = strategies.find((x) => x.id === opt.id);
+                if (!info) return null;
+                return (
+                  <span style={{ display: "block", fontWeight: 400, fontSize: "0.68rem", marginTop: "0.15rem", opacity: 0.85 }}>
+                    {info.horizon ?? info.style ?? ""}
+                  </span>
+                );
+              })()}
+            </button>
+          ))}
+          {strategies.length > 0 && (
+            <div style={{ width: "100%", fontSize: "0.7rem", color: "#64748b", marginTop: "-0.15rem", lineHeight: 1.5 }}>
+              <strong>{strategies.find((x) => x.id === strategy)?.risk_note ?? ""}</strong>
+              <span style={{ marginLeft: "0.4rem" }}>
+                {(strategies.find((x) => x.id === strategy)?.tags ?? []).join(" · ")}
+              </span>
+            </div>
+          )}
+        </div>
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <input
             type="text"

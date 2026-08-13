@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import type { ChatMessage, AnalysisResult, SseEvent, StepResult } from "@/types/trading";
+import { useState, useCallback, useRef, useEffect } from "react";
+import type { ChatMessage, AnalysisResult, SseEvent, StepResult, StrategyId, StrategyInfo } from "@/types/trading";
 
 let seq = 0;
 const uid = () => String(++seq);
@@ -17,6 +17,7 @@ function buildAgentKey(agentType: string, agentId: unknown): string {
 export function useTrading() {
   const [connected, setConnected] = useState(false);
   const [running, setRunning] = useState(false);
+  const [strategies, setStrategies] = useState<StrategyInfo[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: uid(),
@@ -25,7 +26,20 @@ export function useTrading() {
       timestamp: new Date(),
     },
   ]);
+
+  // Load available strategies from the backend once on mount.
+  useEffect(() => {
+    fetch("/api/strategies")
+      .then((r) => r.json())
+      .then((json: { strategies?: StrategyInfo[] }) => {
+        if (Array.isArray(json.strategies) && json.strategies.length) {
+          setStrategies(json.strategies);
+        }
+      })
+      .catch(() => {});
+  }, []);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [analysisHistory, setAnalysisHistory] = useState<AnalysisResult[]>([]);
   const [stepResults, setStepResults] = useState<StepResult[]>([]);
   const esRef = useRef<EventSource | null>(null);
   const streamFinishedRef = useRef(false);
@@ -81,19 +95,19 @@ export function useTrading() {
   }, []);
 
   const startAnalysis = useCallback(
-    async (triggerTime?: string) => {
+    async (triggerTime?: string, strategy: StrategyId = "momentum") => {
       if (running) return;
       setRunning(true);
       setResult(null);
       setStepResults([]);
       streamFinishedRef.current = false;
 
-      push({ role: "user", text: `Start analysis at ${triggerTime || "now"}` });
+      push({ role: "user", text: `[${strategy}] Start analysis at ${triggerTime || "now"}` });
 
       const res = await fetch("/api/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trigger_time: triggerTime ?? "" }),
+        body: JSON.stringify({ trigger_time: triggerTime ?? "", strategy }),
       });
 
       if (!res.ok) {
@@ -155,13 +169,46 @@ export function useTrading() {
           case "complete":
             push({ role: "system", text: String(data.message ?? "") });
             upsertStepResult({
-              key: "analysis:complete",
-              title: "Analysis workflow completed",
-              detail: `${String(data.data_factors_count ?? 0)} data factors · ${String(data.research_signals_count ?? 0)} research signals · ${String(data.buy_signals_count ?? data.best_signals_count ?? 0)} buys · ${String(data.watchlist_count ?? 0)} watchlist`,
+              key: "pipeline:complete",
+              title: "Pipeline complete",
+              detail: String(data.message ?? "Analysis complete"),
               status: "complete",
               timestamp,
             });
             break;
+
+          case "agent_result": {
+            const agentResult = data.result as AnalysisResult["data_factors"][number] | undefined;
+            if (agentResult) {
+              upsertStepResult({
+                key: `source:${agentResult.agent_id ?? "unknown"}:${agentResult.source_name ?? "source"}`,
+                title: `${agentResult.agent_name ?? "Data Agent"} · ${agentResult.source_name ?? "Data source"}`,
+                detail: agentResult.context_string || "Content received",
+                status: "complete",
+                timestamp,
+              });
+
+              setResult((current) => {
+                const next: AnalysisResult = current ?? {
+                  trigger_time: triggerTime || new Date().toLocaleString(),
+                  data_factors: [],
+                  research_signals: [],
+                  buy_signals: [],
+                  watchlist: [],
+                  best_signals: [],
+                };
+                const resultKey = `${agentResult.agent_id ?? "unknown"}:${agentResult.source_name ?? "source"}`;
+                const existingIndex = next.data_factors.findIndex(
+                  (factor) => `${factor.agent_id ?? "unknown"}:${factor.source_name ?? "source"}` === resultKey
+                );
+                const dataFactors = [...next.data_factors];
+                if (existingIndex >= 0) dataFactors[existingIndex] = agentResult;
+                else dataFactors.push(agentResult);
+                return { ...next, data_factors: dataFactors };
+              });
+            }
+            break;
+          }
 
           case "agent_start": {
             const agentType = data.agent_type as "data" | "research";
@@ -169,7 +216,7 @@ export function useTrading() {
             const agentKey = buildAgentKey(agentType, data.agent_id);
             upsertAgentMessage(agentKey, {
               role: "system",
-              text: `${agentName} 开始工作`,
+              text: `${agentName} 开始执行`,
               agentType,
               agentName,
               agentStatus: "start",
@@ -177,42 +224,11 @@ export function useTrading() {
             upsertStepResult({
               key: `agent:${agentKey}`,
               title: agentName,
-              detail: "Agent is working",
+              detail: agentType === "research" && data.belief
+                ? String(data.belief)
+                : "Running...",
               status: "running",
               timestamp,
-            });
-            break;
-          }
-
-          case "agent_result": {
-            const agentResult = data.result as AnalysisResult["data_factors"][number] | undefined;
-            if (!agentResult) break;
-
-            upsertStepResult({
-              key: `source:${agentResult.agent_id ?? "unknown"}:${agentResult.source_name ?? "source"}`,
-              title: `${agentResult.agent_name ?? "Data Agent"} · ${agentResult.source_name ?? "Data source"}`,
-              detail: agentResult.context_string || "Content received",
-              status: "complete",
-              timestamp,
-            });
-
-            setResult((current) => {
-              const next: AnalysisResult = current ?? {
-                trigger_time: triggerTime || new Date().toLocaleString(),
-                data_factors: [],
-                research_signals: [],
-                buy_signals: [],
-                watchlist: [],
-                best_signals: [],
-              };
-              const resultKey = `${agentResult.agent_id ?? "unknown"}:${agentResult.source_name ?? "source"}`;
-              const existingIndex = next.data_factors.findIndex(
-                (factor) => `${factor.agent_id ?? "unknown"}:${factor.source_name ?? "source"}` === resultKey
-              );
-              const dataFactors = [...next.data_factors];
-              if (existingIndex >= 0) dataFactors[existingIndex] = agentResult;
-              else dataFactors.push(agentResult);
-              return { ...next, data_factors: dataFactors };
             });
             break;
           }
@@ -259,7 +275,7 @@ export function useTrading() {
                     ...next.data_factors.filter(
                       (factor) => factor.agent_id !== completedAgentId
                     ),
-                    agentResult,
+                    agentResult as AnalysisResult["data_factors"][number],
                   ],
                 };
               }
@@ -310,6 +326,7 @@ export function useTrading() {
               timestamp,
             });
             setResult(finalResult);
+            setAnalysisHistory((prev) => [...prev, finalResult]);
             push({ role: "system", text: "分析完成，结果已更新。" });
             closeStream(true);
             break;
@@ -340,5 +357,5 @@ export function useTrading() {
     [running, push, upsertAgentMessage, upsertStepResult, closeStream]
   );
 
-  return { connected, running, messages, result, stepResults, startAnalysis };
+  return { connected, running, messages, result, analysisHistory, stepResults, startAnalysis, strategies };
 }
