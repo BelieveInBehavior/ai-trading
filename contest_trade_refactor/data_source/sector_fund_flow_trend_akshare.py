@@ -35,6 +35,12 @@ class SectorFundFlowTrendAkshare(DataSourceBase):
             logger.info(f"获取 {trade_date} 的板块资金流向趋势数据")
 
             report = self._build_sector_flow_report(trade_date)
+            report = await self.maybe_web_search_supplement(
+                report,
+                query=f"A股板块资金流向{trade_date}",
+                trigger_time=trigger_time,
+                section_title="板块资金流联网补充",
+            )
 
             data = [{
                 "title": f"{trade_date}:板块资金流向趋势分析",
@@ -54,7 +60,18 @@ class SectorFundFlowTrendAkshare(DataSourceBase):
         except Exception as e:
             traceback.print_exc()
             logger.error(f"获取板块资金流向数据失败: {e}")
-            return pd.DataFrame()
+            trade_date = get_latest_completed_trading_date(trigger_time)
+            return await self.akshare_web_search_fallback(
+                title=f"{trade_date}:板块资金流向趋势分析",
+                query=f"A股板块资金流向{trade_date}",
+                trigger_time=trigger_time,
+                section_title="板块资金流联网补充",
+                market_relevance_score=8,
+                market_relevance_label="high",
+                signal_event_type="sector_flow",
+                signal_direction="neutral",
+                signal_confidence=0.7,
+            )
 
     def _build_sector_flow_report(self, trade_date: str) -> str:
         """构建板块资金流向趋势报告"""

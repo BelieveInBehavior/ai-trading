@@ -10,6 +10,7 @@ import traceback
 from datetime import datetime
 from data_source.data_source_base import DataSourceBase
 from utils.akshare_utils import akshare_cached
+from utils.cn_price_provider import get_index_daily, get_stock_zh_a_hist
 from utils.data_quality import normalize_market_frame
 from loguru import logger
 from utils.date_utils import get_latest_completed_trading_date, get_trading_date_range
@@ -289,15 +290,21 @@ def _compute_relative_strength_factor(
 
     if benchmark_frame is None:
         try:
-            benchmark_raw = akshare_cached.run(
-                func_name="stock_zh_index_daily",
-                func_kwargs={"symbol": benchmark_symbol},
+            if not stock_frame.empty:
+                start_date = stock_frame["date"].min().strftime("%Y%m%d")
+                end_date = stock_frame["date"].max().strftime("%Y%m%d")
+            else:
+                start_date = end_date = None
+            benchmark_raw = get_index_daily(
+                benchmark_symbol,
+                start_date=start_date,
+                end_date=end_date,
                 verbose=False,
             )
             benchmark_frame = _prepare_price_frame(
                 benchmark_raw,
-                date_columns=("date", "日期"),
-                close_columns=("close", "收盘"),
+                date_columns=("date",),
+                close_columns=("close",),
             )
         except Exception as exc:
             logger.warning("获取相对强度基准 {} 失败: {}", benchmark_symbol, exc)
@@ -351,6 +358,30 @@ def _compute_relative_strength_factor(
         }
     )
     return result
+
+
+
+def _compute_long_term_factors(closes: pd.Series, latest_close: float) -> dict:
+    """MA50/MA200 偏离与 52 周高位距离，用于长期质量评估。"""
+    ma = {}
+    for period in (50, 200):
+        if len(closes) >= period:
+            avg = float(closes.rolling(period).mean().iloc[-1])
+            if avg > 0:
+                ma[f"ma{period}_deviation_pct"] = round((latest_close / avg - 1.0) * 100.0, 2)
+            else:
+                ma[f"ma{period}_deviation_pct"] = None
+        else:
+            ma[f"ma{period}_deviation_pct"] = None
+    high52 = float(closes.tail(252).max()) if len(closes) > 0 else latest_close
+    ma["distance_to_52w_high_pct"] = round((latest_close / high52 - 1.0) * 100.0, 2) if high52 > 0 else None
+    ma["ma50_slope_pct"] = None
+    if len(closes) >= 55:
+        base = float(closes.rolling(50).mean().iloc[-6])
+        latest50 = float(closes.rolling(50).mean().iloc[-1])
+        if base > 0:
+            ma["ma50_slope_pct"] = round((latest50 / base - 1.0) * 100.0, 2)
+    return ma
 
 
 def compute_stock_technical_factor_from_history(
@@ -451,6 +482,9 @@ def compute_stock_technical_factor_from_history(
         daily_entry_score -= 4.0
     daily_entry_score = max(0.0, min(100.0, daily_entry_score))
 
+    # Long-term structure factors (MA50/MA200/52w, used by long_score)
+    long_factors = _compute_long_term_factors(closes, current_close)
+
     factor = {
         "symbol_code": code,
         "symbol_name": symbol_name,
@@ -463,6 +497,7 @@ def compute_stock_technical_factor_from_history(
         "volume_ratio": None if np.isnan(volume_ratio) else round(float(volume_ratio), 2),
         "bollinger": boll_pos,
         "daily_entry_score": round(daily_entry_score, 2),
+        "long_term_structure": long_factors,
         "data_quality_valid": quality_report.valid,
         "data_quality_status": quality_report.status,
         "data_quality_errors": quality_report.errors,
@@ -500,15 +535,11 @@ def compute_stock_technical_factor(
             include_end=True,
         )
 
-    hist_df = akshare_cached.run(
-        func_name="stock_zh_a_hist",
-        func_kwargs={
-            "symbol": code,
-            "period": "daily",
-            "start_date": start_date,
-            "end_date": end_date,
-            "adjust": adjust,
-        },
+    hist_df = get_stock_zh_a_hist(
+        symbol=code,
+        start_date=start_date,
+        end_date=end_date,
+        adjust=adjust,
         verbose=False,
     )
 
@@ -563,6 +594,12 @@ class TechnicalIndicatorsAkshare(DataSourceBase):
             report += index_report
             report += "\n\n"
             report += stock_report
+            report = await self.maybe_web_search_supplement(
+                report,
+                query=f"A股技术面{trade_date}",
+                trigger_time=trigger_time,
+                section_title="技术指标联网补充",
+            )
 
             data = [{
                 "title": f"{trade_date}:技术指标分析报告",
@@ -577,7 +614,13 @@ class TechnicalIndicatorsAkshare(DataSourceBase):
         except Exception as e:
             traceback.print_exc()
             logger.error(f"获取技术指标数据失败: {e}")
-            return pd.DataFrame()
+            trade_date = get_latest_completed_trading_date(trigger_time)
+            return await self.akshare_web_search_fallback(
+                title=f"{trade_date}:技术指标分析报告",
+                query=f"A股技术面{trade_date}",
+                trigger_time=trigger_time,
+                section_title="技术指标联网补充",
+            )
 
     @staticmethod
     def _has_failed_active_stock_data(df: pd.DataFrame) -> bool:

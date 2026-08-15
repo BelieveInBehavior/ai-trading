@@ -1,0 +1,1086 @@
+Loading config from: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/config.yaml (Market: CN-Stock)
+[sina_summary_agent] Loaded: data_source.sina_news_crawl.SinaNewsCrawl
+[thx_summary_agent] Loaded: data_source.thx_news_crawl.ThxNewsCrawl
+[price_market_agent] Loaded: data_source.price_market_akshare.PriceMarketAkshare
+[hot_money_agent] Loaded: data_source.hot_money_akshare.HotMoneyAkshare
+[northbound_flow_agent] Loaded: data_source.northbound_flow_akshare.NorthboundFlowAkshare
+[technical_indicators_agent] Loaded: data_source.technical_indicators_akshare.TechnicalIndicatorsAkshare
+2026-08-12 21:44:25.710 | INFO     | utils.threshold_manager:load:125 - 阈值已从 /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/factor_thresholds.yaml 加载
+[individual_fund_flow_agent] Loaded: data_source.individual_fund_flow_akshare.IndividualFundFlowAkshare
+[margin_trading_agent] Loaded: data_source.margin_trading_akshare.MarginTradingAkshare
+[block_trade_agent] Loaded: data_source.block_trade_akshare.BlockTradeAkshare
+[sector_fund_flow_trend_agent] Loaded: data_source.sector_fund_flow_trend_akshare.SectorFundFlowTrendAkshare
+[zt_seal_strength_agent] Loaded: data_source.zt_seal_strength_akshare.ZtSealStrengthAkshare
+[web_search_market_supplement_agent] Loaded: data_source.web_search_market_supplement.WebSearchMarketSupplement
+pipeline_start trigger_time=2026-08-12 15:54:46 quantitative_screen=on max_symbols=0 concurrency=4
+🚀 Starting Trade Company Analysis at 2026-08-12 15:54:46
+================================================================================
+
+🔎 Stage 0: Full-market quantitative screening...
+Stage 0 progress: 1/5004 scanned
+2026-08-12 21:44:25.799 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 301717.SZ 技术因子: insufficient_rows<20
+2026-08-12 21:44:26.175 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 001232.SZ 技术因子: insufficient_rows<20
+2026-08-12 21:44:26.555 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 688828.SH 技术因子: insufficient_rows<20
+Stage 0 progress: 200/5004 scanned
+2026-08-12 21:44:26.833 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 301707.SZ 技术因子: insufficient_rows<20
+Stage 0 progress: 400/5004 scanned
+2026-08-12 21:44:27.861 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 301677.SZ 技术因子: insufficient_rows<20
+2026-08-12 21:44:28.367 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 688825.SH 技术因子: insufficient_rows<20
+Stage 0 progress: 600/5004 scanned
+Stage 0 progress: 800/5004 scanned
+Stage 0 progress: 1000/5004 scanned
+Stage 0 progress: 1200/5004 scanned
+2026-08-12 21:44:32.019 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 688806.SH 技术因子: insufficient_rows<20
+2026-08-12 21:44:32.111 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 603468.SH 技术因子: insufficient_rows<20
+Stage 0 progress: 1400/5004 scanned
+Stage 0 progress: 1600/5004 scanned
+Stage 0 progress: 1800/5004 scanned
+Stage 0 progress: 2000/5004 scanned
+Stage 0 progress: 2200/5004 scanned
+Stage 0 progress: 2400/5004 scanned
+Stage 0 progress: 2600/5004 scanned
+Stage 0 progress: 2800/5004 scanned
+Stage 0 progress: 3000/5004 scanned
+Stage 0 progress: 3200/5004 scanned
+Stage 0 progress: 3400/5004 scanned
+Stage 0 progress: 3600/5004 scanned
+Stage 0 progress: 3800/5004 scanned
+Stage 0 progress: 4000/5004 scanned
+Stage 0 progress: 4200/5004 scanned
+Stage 0 progress: 4400/5004 scanned
+Stage 0 progress: 4600/5004 scanned
+Stage 0 progress: 4800/5004 scanned
+Stage 0 progress: 5000/5004 scanned
+Stage 0 progress: 5004/5004 scanned
+✅ Quantitative screen: universe=5004, scanned=4996, passed=275, research_candidates=80
+
+📊 Stage 1: Running Data Agents...
+[sina_summary_agent] Starting analysis for 2026-08-12 15:54:46
+[sina_summary_agent] Using cached result
+[thx_summary_agent] Starting analysis for 2026-08-12 15:54:46
+[thx_summary_agent] Using cached result
+[price_market_agent] Starting analysis for 2026-08-12 15:54:46
+[price_market_agent] Using cached result
+[hot_money_agent] Starting analysis for 2026-08-12 15:54:46
+[hot_money_agent] Using cached result
+[northbound_flow_agent] Starting analysis for 2026-08-12 15:54:46
+[northbound_flow_agent] Using cached result
+[technical_indicators_agent] Starting analysis for 2026-08-12 15:54:46
+[technical_indicators_agent] Using cached result
+[individual_fund_flow_agent] Starting analysis for 2026-08-12 15:54:46
+[individual_fund_flow_agent] Using cached result
+[margin_trading_agent] Starting analysis for 2026-08-12 15:54:46
+[margin_trading_agent] Using cached result
+[block_trade_agent] Starting analysis for 2026-08-12 15:54:46
+[block_trade_agent] Using cached result
+[sector_fund_flow_trend_agent] Starting analysis for 2026-08-12 15:54:46
+[sector_fund_flow_trend_agent] Using cached result
+[zt_seal_strength_agent] Starting analysis for 2026-08-12 15:54:46
+[zt_seal_strength_agent] Using cached result
+[web_search_market_supplement_agent] Starting analysis for 2026-08-12 15:54:46
+[web_search_market_supplement_agent] Using cached result
+
+============================================================
+✅ [sina_summary_agent] Data Factor Ready
+============================================================
+# 市场信息综合摘要（2026年8月11日-12日）
+
+**报告时间：2026年8月12日 15:54:46**
+
+
+## 一、宏观政策与货币政策
+
+美国7月CPI数据将于北京时间今晚20:30公布，成为美联储9月利率决策的关键依据。当前市场对加息预期呈现明显分歧，多位美联储官员在CPI公布前密集发声：波士顿联储主席柯林斯表示，美伊战争加剧了美国人的生活成本压力，低收入群体正难以维持收支平衡，若通胀不降则支持9月加息[22][332]；芝加哥联储主席古尔斯比表示更担心通胀过高，但尚不清楚是否转化为对加息的支持[284]。高盛首席经济学家则持相反观点，认为CPI将温和、就业已降温、加息不必要[3
+...
+============================================================
+
+
+============================================================
+✅ [thx_summary_agent] Data Factor Ready
+============================================================
+# 市场信息综合要览（2026年8月11-12日）
+
+
+## 一、A股市场表现与资金动态
+
+### 1.1 指数表现
+
+2026年8月12日，A股三大指数集体上涨。截至收盘，上证指数涨0.32%，深证成指涨1.09%，创业板指涨1.49%，北证50涨0.23%，科创50指数涨1.61%。全市场成交额21672亿元，较上日缩量1684亿元，超4100只个股上涨。[34] 早盘阶段，三大指数集体低开（上证低开0.01%、深证成指低开0.04%、创业板指低开0.2%），贵金属、通信服务、算力租赁板块高开。[13][5]
+
+### 1.2 板块表现
+
+**涨幅居前板块**：房地产、光纤概念、CPO、通
+...
+============================================================
+
+
+============================================================
+✅ [price_market_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260812:市场宏观数据汇总
+Publish Time: 2026-08-12 15:54:46
+Relevance Score: 
+Relevance Label: 
+Event Type: 
+Direction: 
+Signal Confidence: 
+Content: ## 2026年8月12日A股市场宏观分析报告
+
+**一、三大指数收盘情况**
+
+今日A股市场分化显著。上证指数收报3934.09点，下跌32.50点（-0.82%），盘中最高触及3966.39点，最低下探3930.64点，呈高开低走态势。创
+...
+============================================================
+
+
+============================================================
+✅ [hot_money_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260812:热钱市场数据汇总
+Publish Time: 2026-08-12 15:54:46
+Relevance Score: 
+Relevance Label: 
+Event Type: 
+Direction: 
+Signal Confidence: 
+Content: ## 20260812 热钱市场分析报告
+
+**一、涨跌停与市场情绪**
+
+当日涨停92只，连板梯队呈“1板为主、高位稀疏”结构：7板1只、4板1只、3板7只、2板7只、1板76只。连板高度有限，市场缺乏明确总龙头，热钱以首板套利和低位接力为
+...
+============================================================
+
+
+============================================================
+✅ [northbound_flow_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260812:北向资金数据汇总
+Publish Time: 2026-08-12 15:54:46
+Relevance Score: 
+Relevance Label: 
+Event Type: 
+Direction: 
+Signal Confidence: 
+Content: ## 20260812 北向资金数据汇总
+
+### 一、当日北向资金汇总
+- **沪股通** (2026-08-12): 成交净买额0.00元, 资金净流入0.00元, 上涨1101/下跌491, 上证指数 +0.32%（盘中/数据源暂未披露
+...
+============================================================
+
+
+============================================================
+✅ [technical_indicators_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260812:技术指标分析报告
+Publish Time: 2026-08-12 15:54:46
+Relevance Score: 
+Relevance Label: 
+Event Type: 
+Direction: 
+Signal Confidence: 
+Content: <!-- cache_version:technical_indicators_akshare_v4 -->
+
+## 技术指标分析报告 (20260812)
+
+### 大盘指数技术面
+上证指数: 收盘3934.09, MA5=3923.90(
+...
+============================================================
+
+
+============================================================
+✅ [individual_fund_flow_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260812:个股主力资金流分析
+Publish Time: 2026-08-12 15:54:46
+Relevance Score: 8
+Relevance Label: high
+Event Type: capital_flow
+Direction: neutral
+Signal Confidence: 0.7
+Content: ## 20260812 个股主力资金流分析
+
+### 一、主力吸筹信号（主力大幅净流入 + 涨幅偏低）
+逻辑：主力资金大量流入但股价未明显上涨，可能在吸筹阶段
+
+- 兆易创新(60398
+...
+============================================================
+
+
+============================================================
+✅ [margin_trading_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260812:融资融券异动分析
+Publish Time: 2026-08-12 15:54:46
+Relevance Score: 7
+Relevance Label: high
+Event Type: margin_trading
+Direction: neutral
+Signal Confidence: 0.65
+Content: 融资融券数据获取失败
+
+### 融资融券联网补充
+来源：豆包搜索联网补充
+
+<search_result id=1>
+<title>融资融券汇总数据</title>
+<time>20
+...
+============================================================
+
+
+============================================================
+✅ [block_trade_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260812:大宗交易折溢价分析
+Publish Time: 2026-08-12 15:54:46
+Relevance Score: 7
+Relevance Label: high
+Event Type: block_trade
+Direction: neutral
+Signal Confidence: 0.6
+Content: ## 20260812 大宗交易折溢价分析
+
+
+### 六、大宗交易市场统计
+- 当日大宗交易笔数: 1
+- 当日大宗交易总额: 0.00亿
+- 溢价成交笔数: 0
+- 深度折价成交笔数:
+...
+============================================================
+
+
+============================================================
+✅ [sector_fund_flow_trend_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260812:板块资金流向趋势分析
+Publish Time: 2026-08-12 15:54:46
+Relevance Score: 8
+Relevance Label: high
+Event Type: sector_flow
+Direction: neutral
+Signal Confidence: 0.7
+Content: ## 20260812 板块资金流向趋势分析
+
+### 一、行业板块资金净流入 TOP15
+逻辑：行业板块整体资金持续流入，板块内标的有轮动补涨机会
+
+- 通信设备: 涨跌幅+3.06%
+...
+============================================================
+
+
+============================================================
+✅ [zt_seal_strength_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260812:涨停封单强度分析
+Publish Time: 2026-08-12 15:54:46
+Relevance Score: 9
+Relevance Label: high
+Event Type: limit_up
+Direction: bullish
+Signal Confidence: 0.7
+Content: ## 20260812 涨停封单强度分析
+
+
+### 三、连板股封单情况
+逻辑：连板股封单强度决定是否能继续打板
+
+- 百花医药(600721): 封单强度0.00%, 封单额0.00亿, 连板7
+...
+============================================================
+
+
+============================================================
+✅ [web_search_market_supplement_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260812:联网搜索市场数据补充
+Publish Time: 2026-08-12 15:54:46
+Relevance Score: 6
+Relevance Label: medium
+Event Type: web_search_supplement
+Direction: neutral
+Signal Confidence: 0.55
+Content: ## 20260812 联网搜索市场数据补充
+
+
+### 龙虎榜与游资席位
+来源：豆包搜索联网补充
+
+<search_result id=1>
+<title>市
+...
+============================================================
+
+✅ Data Agents completed: 12 factors generated
+
+🎯 Stage 2+3: Research and buy selection (strict gates)...
+
+🔍 Stage 2 (round 1/10): Running Research Agents...
+[agent_0] Plan created:
+1. 使用stock_selector工具，筛选出通信设备行业中市值超过500亿且今日主力资金净流入为正的股票，获取候选标的基本信息
+2. 使用stock_selector工具，筛选出半导体行业中市值超过500亿且今日主力资金净流入为正的股票，获取候选标的基本信息
+3. 使用stock_selector工具，筛选出存储芯片概念中市值在50-300亿之间且今日涨幅超过3%的股票，获取风险偏好型候选标...
+[agent_0] Iteration 1/10
+[agent_3] Plan created:
+1. 使用stock_symbol_search工具，在CN-Stock市场中搜索查询"中际旭创"、"新易盛"、"生益科技"、"兆易创新"、"东山精密"等光通信和半导体板块核心标的的股票代码，确认交易符号。
+2. 使用price_info工具，分别查询上述确认的股票代码（如中际旭创、新易盛、生益科技、兆易创新、东山精密）的最新价格和交易数据，获取短期价格走势信息。
+3. 使用stock_summa...
+[agent_3] Iteration 1/10
+[agent_2] Plan created:
+1. 使用stock_selector工具筛选通信设备行业中主力资金净流入居前且技术面多头排列的强势个股，如中际旭创、新易盛等，获取其最新价格与资金流数据
+2. 使用stock_selector工具筛选半导体行业中主力资金持续流入且RSI未超买（<70）的个股，如兆易创新、长鑫科技等，确认趋势延续信号
+3. 使用stock_selector工具筛选存储芯片概念中主力净流入且量比放大的个股，如德明利...
+[agent_2] Iteration 1/10
+[agent_1] Plan created:
+1. 使用stock_symbol_search工具，分别查询"中际旭创"、"新易盛"、"兆易创新"、"长鑫科技"、"天孚通信"、"生益科技"、"东山精密"、"胜宏科技"的股票代码，确认其可用性。
+2. 使用stock_selector工具，查询"通信设备行业市值前5的股票"和"半导体行业市值前5的股票"，获取行业龙头标的列表。
+3. 使用stock_summary工具，逐一获取中际旭创(3003...
+[agent_1] Iteration 1/10
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "通信设备行业市值超过500亿且今日主力资金净流入为正的股票",
+        "limit": 20
+    }
+}
+</Output>
+[agent_0] Selected tool: stock_selector
+[agent_0] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '通信设备行业市值超过500亿且今日主力资金净流入为正的股票', 'limit': 20, 'trigger_time': '2026-08-12 15:54:46'}
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "通信设备行业主力资金净流入居前且涨幅超过3%的股票",
+        "limit": 10
+    }
+}
+</Output>
+[agent_2] Selected tool: stock_selector
+[agent_2] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '通信设备行业主力资金净流入居前且涨幅超过3%的股票', 'limit': 10, 'trigger_time': '2026-08-12 15:54:46'}
+llm_response <Output>
+{
+    "tool_name": "stock_symbol_search",
+    "properties": {
+        "market": "CN-Stock",
+        "queries": ["中际旭创", "新易盛", "生益科技", "兆易创新", "东山精密", "天孚通信", "胜宏科技", "亨通光电"],
+        "limit_per_query": 3,
+        "match_mode": "best"
+    }
+}
+</Output>
+[agent_3] Selected tool: stock_symbol_search
+[agent_3] Executing tool: stock_symbol_search
+call tool stock_symbol_search {'market': 'CN-Stock', 'queries': ['中际旭创', '新易盛', '生益科技', '兆易创新', '东山精密', '天孚通信', '胜宏科技', '亨通光电'], 'limit_per_query': 3, 'match_mode': 'best', 'trigger_time': '2026-08-12 15:54:46'}
+Loaded 5543 stocks for search
+[agent_3] Tool result: {'success': True, 'data': '{\n  "results": {\n    "中际旭创": [\n      {\n        "ts_code": "300308",\n        "name": "中际旭创",\n        "market": "CN-Stock",\n        "match_type": "exact",\n        "mat...
+[agent_3] Iteration 2/10
+llm_response <Output>
+{
+    "tool_name": "stock_symbol_search",
+    "properties": {
+        "market": "CN-Stock",
+        "queries": ["中际旭创", "新易盛", "兆易创新", "长鑫科技", "天孚通信", "生益科技", "东山精密", "胜宏科技", "工业富联", "太极实业"],
+        "match_mode": "best",
+        "limit_per_query": 3
+    }
+}
+</Output>
+[agent_1] Selected tool: stock_symbol_search
+[agent_1] Executing tool: stock_symbol_search
+call tool stock_symbol_search {'market': 'CN-Stock', 'queries': ['中际旭创', '新易盛', '兆易创新', '长鑫科技', '天孚通信', '生益科技', '东山精密', '胜宏科技', '工业富联', '太极实业'], 'match_mode': 'best', 'limit_per_query': 3, 'trigger_time': '2026-08-12 15:54:46'}
+Loaded 5543 stocks for search
+[agent_1] Tool result: {'success': True, 'data': '{\n  "results": {\n    "中际旭创": [\n      {\n        "ts_code": "300308",\n        "name": "中际旭创",\n        "market": "CN-Stock",\n        "match_type": "exact",\n        "mat...
+[agent_1] Iteration 2/10
+[agent_2] Tool result: {'success': True, 'data': '[{"ts_code": "920138", "turnover_rate": 82.44, "volume_ratio": 0.0, "circ_mv": 0.0018440000000000002, "name": "N杰理", "pe_ttm": "37.21", "pn": "4.56", "speed": "0.00", "state...
+[agent_2] Iteration 2/10
+[agent_0] Tool result: {'success': True, 'data': '[{"ts_code": "688825", "turnover_rate": 11.42, "volume_ratio": 1.05, "circ_mv": 0.24100300000000002, "name": "长鑫科技", "pe_ttm": "126.95", "pn": "25.68", "speed": "0.06", "sta...
+[agent_0] Iteration 2/10
+llm_response <Output>
+{
+    "tool_name": "price_info",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "300308"
+    }
+}
+</Output>
+[agent_3] Selected tool: price_info
+[agent_3] Executing tool: price_info
+call tool price_info {'market': 'CN-Stock', 'symbol': '300308', 'trigger_time': '2026-08-12 15:54:46'}
+llm_response <Output>
+{
+    "tool_name": "stock_summary",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "300308.SZ"
+    }
+}
+</Output>
+[agent_1] Selected tool: stock_summary
+[agent_1] Executing tool: stock_summary
+call tool stock_summary {'market': 'CN-Stock', 'symbol': '300308.SZ', 'trigger_time': '2026-08-12 15:54:46'}
+  0%|          | 0/17 [00:00<?, ?it/s]  6%|▌         | 1/17 [00:00<00:03,  5.13it/s] 12%|█▏        | 2/17 [00:00<00:02,  5.08it/s] 18%|█▊        | 3/17 [00:00<00:02,  5.05it/s] 24%|██▎       | 4/17 [00:00<00:02,  4.87it/s] 29%|██▉       | 5/17 [00:01<00:02,  4.94it/s] 35%|███▌      | 6/17 [00:01<00:02,  4.91it/s] 41%|████      | 7/17 [00:01<00:02,  4.95it/s] 47%|████▋     | 8/17 [00:01<00:01,  4.96it/s] 53%|█████▎    | 9/17 [00:01<00:01,  5.04it/s] 59%|█████▉    | 10/17 [00:01<00:01,  5.13it/s] 65%|██████▍   | 11/17 [00:02<00:01,  5.00it/s] 71%|███████   | 12/17 [00:02<00:01,  4.92it/s] 76%|███████▋  | 13/17 [00:02<00:00,  4.97it/s] 82%|████████▏ | 14/17 [00:02<00:00,  4.84it/s] 88%|████████▊ | 15/17 [00:03<00:00,  4.79it/s] 94%|█████████▍| 16/17 [00:03<00:00,  4.81it/s]100%|██████████| 17/17 [00:03<00:00,  4.86it/s]                                               📊  Fetching K-line & indicators via Akshare...
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.52it/s]                                             ✅  Data fetching complete.
+[agent_3] Tool result: {'success': True, 'data': '{\n  "result": "|    | date                |   股票代码 |    open |   close |    high |     low |      volume |    turnover |   amplitude |   change_percent |   change_amount | ...
+[agent_3] Iteration 3/10
+2026-08-12 21:45:02.331 | INFO     | tools.search_web:search_web:358 - Attempting search with Doubao/Volcengine for query: '中际旭创', base_url='https://open.feedcoopapi.com/search_api/web_search'
+2026-08-12 21:45:03.678 | INFO     | tools.search_web:search_web:378 - Search successful. Returning 10 results.
+✅  News fetching complete.
+🤖  Starting LLM technical analysis...
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "半导体行业市值超过500亿且今日主力资金净流入为正的股票",
+        "limit": 20
+    }
+}
+</Output>
+[agent_0] Selected tool: stock_selector
+[agent_0] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '半导体行业市值超过500亿且今日主力资金净流入为正的股票', 'limit': 20, 'trigger_time': '2026-08-12 15:54:46'}
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "通信设备行业主力资金净流入居前且涨幅超过3%的股票",
+        "limit": 10
+    }
+}
+</Output>
+[agent_2] Selected tool: stock_selector
+[agent_2] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '通信设备行业主力资金净流入居前且涨幅超过3%的股票', 'limit': 10, 'trigger_time': '2026-08-12 15:54:46'}
+llm_response <Output>
+{
+    "tool_name": "price_info",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "300502"
+    }
+}
+</Output>
+[agent_3] Selected tool: price_info
+[agent_3] Executing tool: price_info
+call tool price_info {'market': 'CN-Stock', 'symbol': '300502', 'trigger_time': '2026-08-12 15:54:46'}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.02it/s]                                             [agent_3] Tool result: {'success': True, 'data': '{\n  "result": "|    | date                |   股票代码 |   open |   close |   high |    low |      volume |    turnover |   amplitude |   change_percent |   change_amount |   t...
+[agent_3] Iteration 4/10
+[agent_2] Tool result: {'success': True, 'data': '[{"ts_code": "920138", "turnover_rate": 82.44, "volume_ratio": 0.0, "circ_mv": 0.0018440000000000002, "name": "N杰理", "pe_ttm": "37.21", "pn": "4.56", "speed": "0.00", "state...
+[agent_2] Iteration 3/10
+llm_response <Output>
+{
+    "tool_name": "final_report",
+    "properties": {}
+}
+</Output>
+[agent_3] Selected tool: final_report
+[agent_3] Generating final report...
+[agent_0] Tool result: {'success': True, 'data': '[{"ts_code": "688825", "turnover_rate": 11.42, "volume_ratio": 1.05, "circ_mv": 0.24100300000000002, "name": "长鑫科技", "pe_ttm": "126.95", "pn": "25.68", "speed": "0.06", "sta...
+[agent_0] Iteration 3/10
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "通信设备行业主力资金净流入居前且量比大于1的股票",
+        "limit": 10
+    }
+}
+</Output>
+[agent_2] Selected tool: stock_selector
+[agent_2] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '通信设备行业主力资金净流入居前且量比大于1的股票', 'limit': 10, 'trigger_time': '2026-08-12 15:54:46'}
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "存储芯片概念市值在50亿到300亿之间且今日涨幅超过3%的股票",
+        "limit": 20
+    }
+}
+</Output>
+[agent_0] Selected tool: stock_selector
+[agent_0] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '存储芯片概念市值在50亿到300亿之间且今日涨幅超过3%的股票', 'limit': 20, 'trigger_time': '2026-08-12 15:54:46'}
+[agent_2] Tool result: {'success': True, 'data': '[{"ts_code": "688825", "turnover_rate": 11.42, "volume_ratio": 1.05, "circ_mv": 0.24100300000000002, "name": "长鑫科技", "pe_ttm": "126.95", "pn": "25.68", "speed": "0.06", "sta...
+[agent_2] Iteration 4/10
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "通信设备行业主力资金净流入居前且市值大于500亿的股票",
+        "limit": 10
+    }
+}
+</Output>
+[agent_2] Selected tool: stock_selector
+[agent_2] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '通信设备行业主力资金净流入居前且市值大于500亿的股票', 'limit': 10, 'trigger_time': '2026-08-12 15:54:46'}
+[agent_0] Tool result: {'success': True, 'data': '[{"ts_code": "688825", "turnover_rate": 11.42, "volume_ratio": 1.05, "circ_mv": 0.24100300000000002, "name": "长鑫科技", "pe_ttm": "126.95", "pn": "25.68", "speed": "0.06", "sta...
+[agent_0] Iteration 4/10
+llm_response <Output>
+{
+    "tool_name": "final_report",
+    "properties": {}
+}
+</Output>
+[agent_0] Selected tool: final_report
+[agent_0] Generating final report...
+[agent_2] Tool result: {'success': True, 'data': '[{"ts_code": "688825", "turnover_rate": 11.42, "volume_ratio": 1.05, "circ_mv": 0.24100300000000002, "name": "长鑫科技", "pe_ttm": "126.95", "pn": "25.68", "speed": "0.06", "sta...
+[agent_2] Iteration 5/10
+llm_response <Output>
+{
+    "tool_name": "price_info",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "688825.SH"
+    }
+}
+</Output>
+[agent_2] Selected tool: price_info
+[agent_2] Executing tool: price_info
+call tool price_info {'market': 'CN-Stock', 'symbol': '688825.SH', 'trigger_time': '2026-08-12 15:54:46'}
+[agent_2] Tool result: {'success': True, 'data': '{\n  "result": "|    | date                |   股票代码 |   open |   close |   high |   low |      volume |    turnover |   amplitude |   change_percent |   change_amount |   tu...
+[agent_2] Iteration 6/10
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-12_15-54-46.md
+[agent_3] Completed after 4 iterations
+llm_response <Output>
+{
+    "tool_name": "price_info",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "300308.SZ"
+    }
+}
+</Output>
+[agent_2] Selected tool: price_info
+[agent_2] Executing tool: price_info
+call tool price_info {'market': 'CN-Stock', 'symbol': '300308.SZ', 'trigger_time': '2026-08-12 15:54:46'}
+[agent_2] Tool result: {'success': True, 'data': '{\n  "result": "|    | date                |   股票代码 |    open |   close |    high |     low |      volume |    turnover |   amplitude |   change_percent |   change_amount | ...
+[agent_2] Iteration 7/10
+llm_response <Output>
+{
+    "tool_name": "stock_summary",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "300308.SZ"
+    }
+}
+</Output>
+[agent_2] Selected tool: stock_summary
+[agent_2] Executing tool: stock_summary
+call tool stock_summary {'market': 'CN-Stock', 'symbol': '300308.SZ', 'trigger_time': '2026-08-12 15:54:46'}
+📊  Fetching K-line & indicators via Akshare...
+✅  Data fetching complete.
+2026-08-12 21:45:11.601 | INFO     | tools.search_web:search_web:358 - Attempting search with Doubao/Volcengine for query: '中际旭创', base_url='https://open.feedcoopapi.com/search_api/web_search'
+2026-08-12 21:45:11.916 | INFO     | tools.search_web:search_web:378 - Search successful. Returning 10 results.
+✅  News fetching complete.
+🤖  Starting LLM technical analysis...
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-12_15-54-46.md
+[agent_0] Completed after 4 iterations
+使用股票基本信息缓存: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/utils/cache/market_manager/stock_basic_cache.json
+[agent_1] Tool result: {'success': True, 'data': '# 中际旭创（300308.SZ）技术分析报告\n\n**分析时间：** 2026年8月12日 15:54\n\n\n## 一、近期价格走势与波动特征\n\n### 1. 价格走势概述\n\n中际旭创当前收盘报 **921.0元**，当日上涨约4.6%（开盘880.13元，盘中最高936.8元，最低876.01元），日内振幅约6.9%，呈现明显...
+[agent_1] Iteration 3/10
+llm_response <Output>
+{
+    "tool_name": "final_report",
+    "properties": {}
+}
+</Output>
+[agent_1] Selected tool: final_report
+[agent_1] Generating final report...
+[agent_2] Tool result: {'success': True, 'data': '### 中际旭创（300308.SZ）技术分析报告\n\n**分析时间：** 2026年8月12日 15:54:46  \n**最新收盘价：** 921.00元  \n**数据来源：** 基于Akshare精简数据（K线、技术指标、新闻事件）\n\n---\n\n### 一、近期价格走势与波动特征\n\n1. **短期走势：** 最新交易日（8...
+[agent_2] Iteration 8/10
+llm_response <Output>
+{
+    "tool_name": "stock_summary",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "300502.SZ"
+    }
+}
+</Output>
+[agent_2] Selected tool: stock_summary
+[agent_2] Executing tool: stock_summary
+call tool stock_summary {'market': 'CN-Stock', 'symbol': '300502.SZ', 'trigger_time': '2026-08-12 15:54:46'}
+📊  Fetching K-line & indicators via Akshare...
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.21it/s]                                             ✅  Data fetching complete.
+2026-08-12 21:45:20.496 | INFO     | tools.search_web:search_web:358 - Attempting search with Doubao/Volcengine for query: '新易盛', base_url='https://open.feedcoopapi.com/search_api/web_search'
+2026-08-12 21:45:21.553 | INFO     | tools.search_web:search_web:378 - Search successful. Returning 4 results.
+✅  News fetching complete.
+🤖  Starting LLM technical analysis...
+[agent_2] Tool result: {'success': True, 'data': '### 新易盛（300502.SZ）技术分析报告\n\n**报告日期：** 2026年8月12日\n\n#### 一、近期价格走势与波动特征\n\n截至2026年8月12日，新易盛股价报收于**428.2元**，当日呈现宽幅震荡格局，开盘价为410.01元，盘中最高触及441.8元，最低下探至409.5元，日内振幅达7.9%，显示多空博弈激烈。...
+[agent_2] Iteration 9/10
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "存储芯片概念主力资金净流入居前且量比大于1的股票",
+        "limit": 10
+    }
+}
+</Output>
+[agent_2] Selected tool: stock_selector
+[agent_2] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '存储芯片概念主力资金净流入居前且量比大于1的股票', 'limit': 10, 'trigger_time': '2026-08-12 15:54:46'}
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-12_15-54-46.md
+[agent_1] Completed after 3 iterations
+❌ Research Agent 1 failed: 1 validation error for ResearchSignal
+has_opportunity
+  Input should be a valid string [type=string_type, input_value=True, input_type=bool]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_type
+[agent_2] Tool result: {'success': True, 'data': '[{"ts_code": "688825", "name": "长鑫科技", "industry": "未知", "close": 53.52, "pct_chg": 6.19, "vol": 5141021.35, "amount": 2715574.0, "volume_ratio": 1.05, "turnover_rate": 11.4...
+[agent_2] Iteration 10/10
+llm_response <Output>
+{
+    "tool_name": "stock_summary",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "688825.SH"
+    }
+}
+</Output>
+[agent_2] Selected tool: stock_summary
+[agent_2] Executing tool: stock_summary
+call tool stock_summary {'market': 'CN-Stock', 'symbol': '688825.SH', 'trigger_time': '2026-08-12 15:54:46'}
+[agent_2] Tool result: {'success': True, 'data': '好的，以下是根据您提供的有限数据，为长鑫科技（688825.SH）生成的股票技术分析报告。\n\n---\n\n### 长鑫科技（688825.SH）技术分析报告\n\n**分析时间：** 2026-08-12 15:54:46\n**数据截止日期：** 2026-08-11\n\n#### 一、近期价格走势与波动特征概述\n\n截至最新交易日...
+[agent_2] Max iterations (10) reached
+[agent_2] Generating final report...
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-12_15-54-46.md
+[agent_2] Completed after 10 iterations
+❌ Research Agent 2 failed: 1 validation error for ResearchSignal
+has_opportunity
+  Input should be a valid string [type=string_type, input_value=True, input_type=bool]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_type
+✅ Research round 1: 0 new signals, 0 total
+✅ Selected 0 buy signals and 0 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 2/10): Running Research Agents...
+[agent_1] Plan created:
+1. 使用stock_symbol_search工具，查询中际旭创(300308)、新易盛(300502)、天孚通信(300394)、长鑫科技(688825)等光通信/CPO概念股及东山精密(002384)、生益科技(600183)等PCB龙头股的准确代码，确认标的可交易性
+2. 使用price_info工具，获取上述候选标的的最新价格、涨跌幅和成交量数据，确认短期强势状态和流动性
+3. 使用st...
+[agent_1] Generating final report...
+[agent_0] Plan created:
+1. 使用stock_selector工具，分别筛选出通信设备/半导体/光模块行业中市值较小、换手率较高、近期涨幅较大的股票（如中际旭创、新易盛、长鑫科技等），以及市值较大、波动率较低的稳健型股票（如工业富联、生益科技等），各取5-10只作为候选
+2. 对候选股票调用price_info工具，逐一获取最新价格、涨跌幅、成交量等实时行情数据，确认当日表现和市场热度
+3. 对重点候选股票（如中际旭创、...
+[agent_0] Generating final report...
+[agent_3] Plan created:
+1. 使用stock_symbol_search或stock_selector工具，在CN-Stock市场中筛选通信设备、半导体、电子元件等AI算力产业链板块中，今日主力资金净流入排名靠前且技术面呈上升趋势的龙头标的（如中际旭创、新易盛、生益科技等）
+2. 使用company_financial_info工具，对筛选出的候选标的（如中际旭创、新易盛、生益科技等）逐一查询其2026年半年报财务数据，...
+[agent_3] Generating final report...
+[agent_2] Plan created:
+1. 使用stock_selector工具筛选通信设备、半导体、元件行业中主力资金净流入居前且技术面呈多头排列的强势股，重点关注中际旭创、新易盛、天孚通信等光通信产业链标的
+2. 使用price_info和stock_summary工具获取候选标的（如中际旭创300308、新易盛300502、长鑫科技688825、东山精密002384、生益科技600183）的实时价格、均线系统、RSI、MACD等...
+[agent_2] Max iterations (10) reached
+[agent_2] Generating final report...
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-12_15-54-46.md
+[agent_1] Completed after 3 iterations
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-12_15-54-46.md
+[agent_2] Completed after 10 iterations
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-12_15-54-46.md
+[agent_0] Completed after 4 iterations
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-12_15-54-46.md
+[agent_3] Completed after 4 iterations
+✅ Research round 2: 0 new signals, 0 total
+✅ Selected 0 buy signals and 0 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 3/10): Running Research Agents...
+[agent_1] Plan created:
+1. 使用stock_symbol_search工具查询中际旭创(300308)、新易盛(300502)、长鑫科技(688825)、生益科技(600183)的股票代码确认
+2. 使用price_info工具获取中际旭创、新易盛、长鑫科技、生益科技的实时价格和涨跌数据
+3. 使用stock_summary工具获取中际旭创、新易盛、长鑫科技、生益科技的日线技术分析报告
+4. 使用stock_selec...
+[agent_1] Generating final report...
+[agent_3] Plan created:
+1. 使用stock_selector查询通信设备行业中主力资金净流入最大且涨幅适中的个股，筛选出光通信/CPO产业链龙头标的
+2. 使用stock_selector查询半导体行业中主力资金净流入最大且技术面处于上升趋势的个股，筛选出存储芯片/先进封装方向标的
+3. 使用stock_selector查询房地产行业涨停股及主力资金净流入个股，筛选政策催化下的滞涨补涨标的
+4. 使用price_inf...
+[agent_3] Generating final report...
+[agent_2] Plan created:
+1. 使用stock_selector工具筛选通信设备行业主力资金净流入且技术面强势的个股，如中际旭创、新易盛、天孚通信，获取其当前价格、量比、RSI等数据
+2. 使用stock_selector工具筛选半导体行业主力资金持续净流入且均线多头排列的个股，如长鑫科技、兆易创新、中微公司，获取技术指标数据
+3. 使用stock_selector工具筛选存储芯片行业量价齐升且RSI未超买的个股，如德明利...
+[agent_2] Max iterations (10) reached
+[agent_2] Generating final report...
+[agent_0] Plan created:
+1. 使用stock_selector工具筛选通信设备行业中市值大于500亿且主力资金净流入居前的股票，重点覆盖中际旭创、新易盛、天孚通信等CPO/光模块龙头，获取其市值、涨跌幅、换手率等数据
+2. 使用stock_selector工具筛选半导体行业中市值大于200亿且主力资金净流入居前的股票，重点覆盖存储芯片和半导体设备方向，获取其市值、涨跌幅、PE等数据
+3. 使用price_info工具查询...
+[agent_0] Generating final report...
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-12_15-54-46.md
+[agent_2] Completed after 10 iterations
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-12_15-54-46.md
+[agent_0] Completed after 4 iterations
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-12_15-54-46.md
+[agent_3] Completed after 4 iterations
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-12_15-54-46.md
+[agent_1] Completed after 3 iterations
+
+============================================================
+✅ [agent_3] Research Signals Ready
+============================================================
+1. 太极实业 | buy
+============================================================
+
+✅ Research round 3: 1 new signals, 1 total
+2026-08-12 21:46:10.640 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=27.2%', 'volume_healthy=1.14', 'macd_pos=1.272'] delta=-2.0
+2026-08-12 21:46:10.641 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=27.2%', 'volume_healthy=1.14', 'macd_pos=1.272'] delta=-2.0
+✅ Selected 0 buy signals and 1 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 4/10): Running Research Agents...
+[agent_0] Plan created:
+1. 使用stock_symbol_search工具，搜索中际旭创、新易盛、天孚通信、生益科技、太极实业等光通信/CPO产业链核心标的的股票代码
+2. 使用stock_selector工具，分别筛选"市值小于200亿且近期涨幅较大的光通信概念股"和"市值大于500亿的AI算力龙头股"，各取前5只
+3. 使用price_info工具，逐一获取上述候选标的的最新价格、涨跌幅和成交量数据，验证短期活跃度...
+[agent_0] Generating final report...
+[agent_2] Plan created:
+1. 使用stock_symbol_search工具，在CN-Stock市场中搜索中际旭创(300308)、天孚通信(300394)、东山精密(002384)、生益科技(600183)、长鑫科技(688825)等光通信/PCB/存储板块核心标的的准确股票代码
+2. 使用price_info工具逐一查询上述候选标的的最新价格、涨跌幅、量比等技术面数据，确认短期趋势状态
+3. 使用stock_sele...
+[agent_2] Max iterations (10) reached
+[agent_2] Generating final report...
+[agent_3] Plan created:
+1. 使用stock_selector筛选通信设备行业中主力资金净流入最大且涨幅适中的龙头股（如中际旭创、新易盛、天孚通信），确认其代码和价格信息
+2. 使用stock_selector筛选半导体/存储芯片行业中主力资金持续流入且技术面多头排列的标的（如兆易创新、长鑫科技、澜起科技），获取价格和财务数据
+3. 使用stock_selector筛选元件行业（MLCC）中受涨价催化且资金流入明显的标的...
+[agent_3] Generating final report...
+[agent_1] Plan created:
+1. 使用stock_selector工具筛选通信设备行业中主力资金净流入居前且技术面呈上升趋势的股票，重点关注中际旭创、新易盛、天孚通信等光模块龙头，确认其当前价格与量价关系
+2. 使用company_financial_info工具查询上述候选股（如中际旭创300308.SZ、新易盛300502.SZ）的最新财务数据与业绩公告，验证AI算力产业链景气度与中报业绩超预期的支撑逻辑
+3. 使用se...
+[agent_1] Generating final report...
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-12_15-54-46.md
+[agent_3] Completed after 4 iterations
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-12_15-54-46.md
+[agent_1] Completed after 3 iterations
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-12_15-54-46.md
+[agent_0] Completed after 4 iterations
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-12_15-54-46.md
+[agent_2] Completed after 10 iterations
+✅ Research round 4: 0 new signals, 1 total
+2026-08-12 21:46:23.749 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=27.2%', 'volume_healthy=1.14', 'macd_pos=1.272'] delta=-2.0
+2026-08-12 21:46:23.749 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=27.2%', 'volume_healthy=1.14', 'macd_pos=1.272'] delta=-2.0
+✅ Selected 0 buy signals and 1 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 5/10): Running Research Agents...
+[agent_3] Plan created:
+1. 使用 stock_selector 工具，在 CN-Stock 市场中筛选“通信设备行业 主力净流入 且 市值超过500亿”的龙头股，获取候选标的列表
+2. 使用 stock_selector 工具，在 CN-Stock 市场中筛选“半导体行业 主力净流入 且 市值超过500亿”的龙头股，获取候选标的列表
+3. 使用 stock_selector 工具，在 CN-Stock 市场中筛选“房地...
+[agent_3] Generating final report...
+[agent_0] Plan created:
+1. 使用stock_selector工具，分别筛选出市值大于1000亿且PE小于30的稳健型股票，以及市值在50-300亿之间且近期涨幅较高的风险偏好型股票，各获取前10个候选标的
+2. 针对筛选出的候选标的，使用price_info工具逐一获取最新价格、涨跌幅、成交量等行情数据，确认其短期交易活跃度和价格走势
+3. 对重点关注的候选标的，使用company_financial_info工具查询...
+[agent_0] Generating final report...
+[agent_1] Plan created:
+1. 使用stock_symbol_search工具查询中际旭创、新易盛、天孚通信、生益科技、东山精密等光通信/CPO产业链核心标的的股票代码，确认其市场符号
+2. 使用price_info工具获取上述核心标的的最新价格、涨跌幅和成交量数据，确认短期动量状态
+3. 使用stock_summary工具获取其中2-3只资金持续流入且技术面最强的标的（如中际旭创、天孚通信、生益科技）的技术分析报告，验证...
+[agent_1] Generating final report...
+[agent_2] Plan created:
+1. 使用stock_selector工具在CN-Stock市场筛选通信设备、半导体、元件行业中主力资金净流入且技术面强势的股票（如涨跌幅>2%、量比>1），获取候选标的列表
+2. 对候选标的逐一调用stock_summary工具获取技术分析报告，确认均线多头排列、RSI>50、MACD金叉等趋势延续信号，筛选出趋势跟踪者机会
+3. 使用price_info工具验证中际旭创（300308.SZ）、...
+[agent_2] Max iterations (10) reached
+[agent_2] Generating final report...
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-12_15-54-46.md
+[agent_3] Completed after 4 iterations
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-12_15-54-46.md
+[agent_0] Completed after 4 iterations
+
+============================================================
+✅ [agent_0] Research Signals Ready
+============================================================
+1. 太极实业 | buy
+============================================================
+
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-12_15-54-46.md
+[agent_1] Completed after 3 iterations
+
+============================================================
+✅ [agent_1] Research Signals Ready
+============================================================
+1. 太极实业 | buy
+============================================================
+
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-12_15-54-46.md
+[agent_2] Completed after 10 iterations
+
+============================================================
+✅ [agent_2] Research Signals Ready
+============================================================
+1. 云南锗业 | buy
+2. 太极实业 | buy
+============================================================
+
+✅ Research round 5: 4 new signals, 5 total
+2026-08-12 21:46:41.369 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=27.2%', 'volume_healthy=1.14', 'macd_pos=1.272'] delta=-2.0
+2026-08-12 21:46:41.370 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=32.3%', 'volume_healthy=1.52', 'macd_pos=9.257'] delta=-2.0
+2026-08-12 21:46:41.370 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=27.2%', 'volume_healthy=1.14', 'macd_pos=1.272'] delta=-2.0
+2026-08-12 21:46:41.370 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=32.3%', 'volume_healthy=1.52', 'macd_pos=9.257'] delta=-2.0
+✅ Selected 0 buy signals and 2 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 6/10): Running Research Agents...
+[agent_1] Plan created:
+1. 使用stock_symbol_search工具查询中际旭创、新易盛、天孚通信、生益科技、东山精密等光通信/CPO核心标的的股票代码
+2. 使用price_info工具获取上述核心标的的最新价格数据，确认当日涨幅、量比和资金流向
+3. 使用search_web工具搜索"英伟达 中际旭创 投资"和"光模块 CPO 涨价"等关键词，验证英伟达入股传闻和光模块涨价逻辑
+4. 使用stock_sele...
+[agent_1] Generating final report...
+[agent_2] Plan created:
+1. 使用stock_symbol_search工具，搜索"中际旭创"、"新易盛"、"天孚通信"的股票代码，确认光通信/CPO板块核心标的
+2. 使用price_info工具，分别查询中际旭创、新易盛、天孚通信的最新价格和涨跌幅，验证短期强势信号
+3. 使用stock_summary工具，分别获取中际旭创、新易盛、天孚通信的技术分析报告，确认均线多头排列和RSI/MACD趋势状态
+4. 使用sto...
+[agent_2] Max iterations (10) reached
+[agent_2] Generating final report...
+[agent_3] Plan created:
+1. 使用stock_symbol_search或stock_selector工具，筛选AI算力/光通信板块（如中际旭创、新易盛、东山精密、生益科技）中资金持续流入且技术面强势的标的，获取其代码和基本信息
+2. 使用stock_selector工具，筛选存储芯片/半导体板块（如兆易创新、长鑫科技、德明利、普冉股份）中主力净流入且涨幅适中的标的，确认代码
+3. 使用price_info和stock_...
+[agent_3] Generating final report...
+[agent_0] Plan created:
+1. 使用stock_selector工具，分别筛选“通信设备行业市值前5的股票”和“半导体行业市值前5的股票”，获取光通信/算力产业链核心标的的市值、PE、涨跌幅等数据
+2. 使用stock_selector工具，分别筛选“流通市值小于200亿且换手率大于5的通信设备股票”和“流通市值小于200亿且换手率大于5的半导体股票”，寻找适合风险偏好者的中低市值高波动标的
+3. 使用stock_sele...
+[agent_0] Generating final report...
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-12_15-54-46.md
+[agent_0] Completed after 4 iterations
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-12_15-54-46.md
+[agent_3] Completed after 4 iterations
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-12_15-54-46.md
+[agent_2] Completed after 10 iterations
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-12_15-54-46.md
+[agent_1] Completed after 3 iterations
+❌ Research Agent 2 failed: 1 validation error for ResearchSignal
+has_opportunity
+  Input should be a valid string [type=string_type, input_value=True, input_type=bool]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_type
+✅ Research round 6: 0 new signals, 5 total
+2026-08-12 21:47:00.491 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=27.2%', 'volume_healthy=1.14', 'macd_pos=1.272'] delta=-2.0
+2026-08-12 21:47:00.492 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=32.3%', 'volume_healthy=1.52', 'macd_pos=9.257'] delta=-2.0
+2026-08-12 21:47:00.493 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=27.2%', 'volume_healthy=1.14', 'macd_pos=1.272'] delta=-2.0
+2026-08-12 21:47:00.494 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=32.3%', 'volume_healthy=1.52', 'macd_pos=9.257'] delta=-2.0
+✅ Selected 0 buy signals and 2 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 7/10): Running Research Agents...
+[agent_1] Plan created:
+1. 使用stock_symbol_search工具，搜索“中际旭创”、“新易盛”、“长鑫科技”、“生益科技”、“东山精密”等光通信/算力产业链核心标的的股票代码，确认其准确符号
+2. 使用price_info工具，逐一查询上述候选标的的最新价格、涨跌幅及量比数据，确认其短期动量状态
+3. 使用stock_selector工具，筛选“通信设备”行业中主力净流入居前且市值适中的标的，补充候选池
+4....
+[agent_1] Generating final report...
+[agent_2] Plan created:
+1. 使用stock_selector在CN-Stock市场筛选通信设备、半导体、元件行业中主力资金净流入排名前5的个股，获取代码和基础行情
+2. 使用stock_selector在CN-Stock市场筛选存储芯片、CPO概念、PCB行业中技术面强势（量比>1.2、换手率>5%）且主力资金净流入的个股
+3. 使用stock_summary分别对步骤1和2筛选出的核心候选股（如中际旭创300308、...
+[agent_2] Max iterations (10) reached
+[agent_2] Generating final report...
+[agent_3] Plan created:
+1. 使用stock_symbol_search和stock_selector工具，搜索并确认AI算力/光通信（中际旭创、新易盛、天孚通信、东山精密）、存储芯片（兆易创新、江波龙）、MLCC（三环集团、风华高科）等核心标的的准确股票代码及当前行情数据
+2. 使用company_financial_info工具，查询上述候选标的的最新财务数据（营收、净利润、PE/PB等），验证中报业绩增长与估值匹配...
+[agent_3] Generating final report...
+[agent_0] Plan created:
+1. 使用stock_selector工具，针对风险偏好者群体，筛选通信设备行业中市值50-200亿、换手率高于5%、近期涨幅居前的中小市值股票，获取候选标的列表
+2. 使用stock_selector工具，针对稳健投资者群体，筛选半导体、通信设备行业中市值超过500亿、市盈率低于50的高市值龙头股票，获取候选标的列表
+3. 使用price_info和stock_summary工具，对筛选出的3-...
+[agent_0] Generating final report...
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-12_15-54-46.md
+[agent_2] Completed after 10 iterations
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-12_15-54-46.md
+[agent_1] Completed after 3 iterations
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-12_15-54-46.md
+[agent_3] Completed after 4 iterations
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-12_15-54-46.md
+[agent_0] Completed after 4 iterations
+✅ Research round 7: 0 new signals, 5 total
+2026-08-12 21:47:12.361 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=27.2%', 'volume_healthy=1.14', 'macd_pos=1.272'] delta=-2.0
+2026-08-12 21:47:12.362 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=32.3%', 'volume_healthy=1.52', 'macd_pos=9.257'] delta=-2.0
+2026-08-12 21:47:12.363 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=27.2%', 'volume_healthy=1.14', 'macd_pos=1.272'] delta=-2.0
+2026-08-12 21:47:12.363 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=32.3%', 'volume_healthy=1.52', 'macd_pos=9.257'] delta=-2.0
+✅ Selected 0 buy signals and 2 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 8/10): Running Research Agents...
+[agent_1] Plan created:
+1. 使用stock_symbol_search工具，搜索并确认候选股票代码，包括中际旭创、新易盛、长鑫科技、生益科技、东山精密、天孚通信等光通信/半导体板块标的
+2. 使用price_info工具，获取上述候选标的的最新价格、涨跌幅及成交量数据，确认短期交易活跃度
+3. 使用stock_summary工具，获取候选标的的技术面分析报告，评估短期趋势强度与入场时机
+4. 使用search_web工...
+[agent_1] Generating final report...
+[agent_2] Plan created:
+1. 使用stock_selector筛选通信设备、半导体、元件行业中主力资金净流入排名靠前且技术面呈多头排列的强势股，同时筛选超卖反弹潜力的错杀股
+2. 使用company_financial_info查询候选股票的最新财务数据，验证业绩增长与AI算力产业链景气度是否匹配
+3. 使用price_info和stock_summary获取候选股票的实时价格、均线系统、RSI、MACD等技术指标，确认...
+[agent_2] Max iterations (10) reached
+[agent_2] Generating final report...
+[agent_0] Plan created:
+1. 使用stock_selector工具筛选风险偏好者候选股票：查询“通信设备行业市值100-500亿且今日涨幅前5的股票”，获取中小市值高波动光通信/CPO标的
+2. 使用stock_selector工具筛选稳健投资者候选股票：查询“半导体或通信设备行业市值超1000亿且PE小于50的股票”，获取大盘蓝筹标的
+3. 使用stock_summary工具逐一分析候选股票（如中际旭创、东山精密、新易...
+[agent_0] Generating final report...
+[agent_3] Plan created:
+1. 使用stock_selector工具筛选通信设备行业中主力资金净流入前5的龙头股（如中际旭创、新易盛等），并获取其价格和资金流向数据
+2. 使用stock_selector工具筛选半导体行业中量化评分高且主力资金持续流入的标的（如长鑫科技、兆易创新等），确认其技术面状态
+3. 使用stock_selector工具筛选存储芯片概念中业绩高增长且主力资金净流入的股票（如江波龙、德明利等），并查询...
+[agent_3] Generating final report...
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-12_15-54-46.md
+[agent_0] Completed after 4 iterations
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-12_15-54-46.md
+[agent_2] Completed after 10 iterations
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-12_15-54-46.md
+[agent_1] Completed after 3 iterations
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-12_15-54-46.md
+[agent_3] Completed after 4 iterations
+✅ Research round 8: 0 new signals, 5 total
+2026-08-12 21:47:27.527 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=27.2%', 'volume_healthy=1.14', 'macd_pos=1.272'] delta=-2.0
+2026-08-12 21:47:27.528 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=32.3%', 'volume_healthy=1.52', 'macd_pos=9.257'] delta=-2.0
+2026-08-12 21:47:27.528 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=27.2%', 'volume_healthy=1.14', 'macd_pos=1.272'] delta=-2.0
+2026-08-12 21:47:27.528 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=32.3%', 'volume_healthy=1.52', 'macd_pos=9.257'] delta=-2.0
+✅ Selected 0 buy signals and 2 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 9/10): Running Research Agents...
+[agent_2] Plan created:
+1. 使用stock_selector在CN-Stock市场筛选通信设备、半导体、元件行业中技术面强势且主力资金净流入的标的，limit设为10
+2. 使用stock_selector在CN-Stock市场筛选房地产板块中近期涨幅居前且量比大于1.5的标的，limit设为10
+3. 使用stock_selector在CN-Stock市场筛选存储芯片概念中PE适中且市盈率低于行业均值的标的，limi...
+[agent_2] Max iterations (10) reached
+[agent_2] Generating final report...
+[agent_1] Plan created:
+1. 根据市场综合信息，筛选出AI算力、光通信、存储芯片等高景气主线中资金持续流入且技术面强势的候选标的，如中际旭创(300308.SZ)、新易盛(300502.SZ)、天孚通信(300394.SZ)、兆易创新(603986.SH)、长鑫科技(688825.SH)等
+2. 使用stock_symbol_search工具查询候选标的的准确股票代码，确认其属于A股市场可用交易标的
+3. 使用price...
+[agent_1] Generating final report...
+[agent_3] Plan created:
+1. 使用stock_symbol_search工具，搜索“中际旭创”、“新易盛”、“天孚通信”等光通信龙头股票代码，确认可用交易标的
+2. 使用price_info工具，查询中际旭创(300308.SZ)、天孚通信(300394.SZ)、新易盛(300502.SZ)的最新价格信息，确认短期交易机会
+3. 使用stock_selector工具，筛选“通信设备行业主力资金净流入且市盈率小于60的股票...
+[agent_3] Generating final report...
+[agent_0] Plan created:
+1. 使用stock_selector工具筛选风险偏好者目标：查询“通信设备行业中市值100-500亿且今日涨幅超过3%的股票”以及“半导体行业中市值小于300亿且今日涨幅超过2%的股票”，各取前5只作为候选。
+2. 使用stock_selector工具筛选稳健投资者目标：查询“通信设备行业中市值超过1000亿且今日主力净流入为正的股票”以及“半导体行业中市值超过1000亿且今日主力净流入为正的股...
+[agent_0] Generating final report...
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-12_15-54-46.md
+[agent_1] Completed after 3 iterations
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-12_15-54-46.md
+[agent_3] Completed after 4 iterations
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-12_15-54-46.md
+[agent_0] Completed after 4 iterations
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-12_15-54-46.md
+[agent_2] Completed after 10 iterations
+
+============================================================
+✅ [agent_2] Research Signals Ready
+============================================================
+1. 太极实业 | buy
+============================================================
+
+✅ Research round 9: 1 new signals, 6 total
+2026-08-12 21:47:41.852 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=27.2%', 'volume_healthy=1.14', 'macd_pos=1.272'] delta=-2.0
+2026-08-12 21:47:41.852 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=32.3%', 'volume_healthy=1.52', 'macd_pos=9.257'] delta=-2.0
+2026-08-12 21:47:41.853 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=27.2%', 'volume_healthy=1.14', 'macd_pos=1.272'] delta=-2.0
+2026-08-12 21:47:41.853 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=32.3%', 'volume_healthy=1.52', 'macd_pos=9.257'] delta=-2.0
+✅ Selected 0 buy signals and 2 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 10/10): Running Research Agents...
+[agent_1] Plan created:
+1. 使用stock_symbol_search工具查询光通信/CPO产业链核心标的（中际旭创、新易盛、天孚通信）及存储芯片龙头（长鑫科技、江波龙）的准确股票代码
+2. 使用price_info工具获取上述候选标的的最新价格、涨跌幅及成交量数据，验证短期交易活跃度
+3. 使用company_financial_info工具查询候选标的的近期财务数据（营收增速、净利润），确认业绩催化逻辑
+4. 使用...
+[agent_1] Generating final report...
+[agent_0] Plan created:
+1. 搜索光通信/CPO板块领涨核心标的（如中际旭创、新易盛、天孚通信）的最新价格与资金流向，确认短期动量与主力资金净流入状态
+2. 使用stock_selector筛选市值小于200亿且近期涨幅居前的半导体/存储芯片/PCB概念股（如太极实业、胜宏科技、景旺电子），获取中低市值高弹性标的池
+3. 搜索存储芯片及DDR5涨价相关个股（如江波龙、德明利、普冉股份）的近期公告和价格走势，评估短期催化与...
+[agent_0] Generating final report...
+[agent_2] Plan created:
+1. 使用stock_symbol_search工具，查询中际旭创(300308.SZ)、新易盛(300502.SZ)、天孚通信(300394.SZ)、长鑫科技(688825.SH)、东山精密(002384.SZ)等光通信/CPO核心标的的准确代码
+2. 调用price_info和stock_summary工具，获取上述候选标的的最新价格、技术指标（均线、RSI、MACD、布林带）及趋势状态，验证...
+[agent_2] Max iterations (10) reached
+[agent_2] Generating final report...
+[agent_3] Plan created:
+1. 使用stock_symbol_search或stock_selector工具，从市场信息中筛选AI算力/光通信产业链（如中际旭创、新易盛、工业富联、长鑫科技）及存储芯片（兆易创新、江波龙）等景气上行板块的龙头标的，确认其代码和当前估值。
+2. 利用price_info和stock_summary工具，对筛选出的5-6个候选标的（如300308.SZ、300502.SZ、601138.SH、6...
+[agent_3] Generating final report...
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-12_15-54-46.md
+[agent_2] Completed after 10 iterations
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-12_15-54-46.md
+[agent_1] Completed after 3 iterations
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-12_15-54-46.md
+[agent_0] Completed after 4 iterations
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-12_15-54-46.md
+[agent_3] Completed after 4 iterations
+✅ Research round 10: 0 new signals, 6 total
+2026-08-12 21:47:58.016 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=27.2%', 'volume_healthy=1.14', 'macd_pos=1.272'] delta=-2.0
+2026-08-12 21:47:58.017 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=32.3%', 'volume_healthy=1.52', 'macd_pos=9.257'] delta=-2.0
+2026-08-12 21:47:58.017 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=27.2%', 'volume_healthy=1.14', 'macd_pos=1.272'] delta=-2.0
+2026-08-12 21:47:58.018 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:677 - strong_trend_penalty: ['extended_ma20=32.3%', 'volume_healthy=1.52', 'macd_pos=9.257'] delta=-2.0
+✅ Selected 0 buy signals and 2 watchlist candidates
+⚠️  Stopped after 10 round(s): 0 buy signal(s), require_min_buys=1
+
+================================================================================
+✅ Trade Company Analysis Completed
+
+📈 Stage 4: Performance tracking...
+2026-08-12 21:47:58.036 | INFO     | utils.performance_tracker:record_signals:85 - Recorded 0 buy signals for trigger_time=2026-08-12 15:54:46; skipped 0 watchlist candidates
+2026-08-12 21:47:58.036 | INFO     | utils.performance_tracker:evaluate_pending:189 - Evaluation complete. Pending: 0, Total history: 0
+pipeline_done
+data_factors=12
+research_signals=6
+best_signals=0
+research_rounds=10
+require_min_buys_met=False
+an error occurred during closing of asynchronous generator <async_generator object PoolByteStream.__aiter__ at 0x11c303740>
+asyncgen: <async_generator object PoolByteStream.__aiter__ at 0x11c303740>
+Traceback (most recent call last):
+  File "/Users/ruby/Desktop/ai-trading/contest_trade_refactor/.venv/lib/python3.14/site-packages/httpcore2/_async/connection_pool.py", line 427, in __aiter__
+    yield chunk
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/ruby/Desktop/ai-trading/contest_trade_refactor/.venv/lib/python3.14/site-packages/httpcore2/_async/connection_pool.py", line 425, in __aiter__
+    async with safe_async_iterate(self._stream) as iterator:
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/contextlib.py", line 271, in __aexit__
+    raise RuntimeError("generator didn't stop after athrow()")
+RuntimeError: generator didn't stop after athrow()

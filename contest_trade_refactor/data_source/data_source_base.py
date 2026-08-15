@@ -62,5 +62,44 @@ class DataSourceBase:
         """
         pass
 
+    async def maybe_web_search_supplement(
+        self,
+        content: str,
+        *,
+        query: str,
+        trigger_time: str,
+        section_title: str,
+        extra_markers: tuple[str, ...] = (),
+    ) -> str:
+        from utils.web_search_supplement import append_web_search_supplement
+
+        return await append_web_search_supplement(
+            content,
+            query=query,
+            trigger_time=trigger_time,
+            section_title=section_title,
+            extra_markers=extra_markers,
+        )
+
+    async def akshare_web_search_fallback(
+        self,
+        *,
+        title: str,
+        query: str,
+        trigger_time: str,
+        section_title: str,
+        **extra_fields,
+    ) -> pd.DataFrame:
+        from utils.web_search_supplement import web_search_fallback_dataframe
+
+        return await web_search_fallback_dataframe(
+            title=title,
+            query=query,
+            trigger_time=trigger_time,
+            section_title=section_title,
+            pub_time=trigger_time,
+            **extra_fields,
+        )
+
 if __name__ == "__main__":
     pass

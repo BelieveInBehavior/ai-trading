@@ -3,5 +3,8 @@
     "python.terminal.activateEnvironment": true,
     "python.analysis.extraPaths": [
         "${workspaceFolder}"
+    ],
+    "cursorpyright.analysis.extraPaths": [
+        "${workspaceFolder}"
     ]
 }

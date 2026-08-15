@@ -1,41 +1,4 @@
-#YOUR_TUSHARE_KEY
-tushare_key: ""
-
-#YOUR_BOCHA_KEY
-bocha_key: ""
-
-#YOUR_SERP_KEY
-serp_key: ""
-
-#YOUR_FMP_KEY
-fmp_key: ""
-
-#YOUR_FINNHUB_KEY
-finnhub_key: ""
-
-#YOUR_ALPHA_VANTAGE_KEY
-alpha_vantage_key: ""
-
-# YOUR_POLYGON_KEY
-polygon_key: ""
-
-llm:
-  provider: "openai"
-  base_url: "https://api.kimi.com/coding/v1"
-  api_key: "sk-kimi-1dUEUQyoWraMyCnIiwo81EGS0Z6g1AnhBhrB3YHGjETbFUHuiqbJ33l50gaHT16V"
-  model_name: "kimi-latest"
-
-llm_thinking:
-  provider: "openai"
-  base_url: "https://api.kimi.com/coding/v1"
-  api_key: "sk-kimi-1dUEUQyoWraMyCnIiwo81EGS0Z6g1AnhBhrB3YHGjETbFUHuiqbJ33l50gaHT16V"
-  model_name: "kimi-latest"
-
-vlm:
-  provider: "openai"
-  base_url: "https://api.kimi.com/coding/v1"
-  api_key: "sk-kimi-1dUEUQyoWraMyCnIiwo81EGS0Z6g1AnhBhrB3YHGjETbFUHuiqbJ33l50gaHT16V"
-  model_name: "kimi-latest"
+# Secrets (API keys, LLM credentials): configure in .env — see .env.example
 
 # US Market specific data agents configuration
 data_agents_config:

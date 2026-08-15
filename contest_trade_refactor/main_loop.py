@@ -8,10 +8,12 @@ Uses the new agent loop implementations for cleaner control flow.
 import re
 import json
 import asyncio
+import pandas as pd
 from datetime import datetime
 from typing import Awaitable, Callable, List, Dict, Any, Optional
 
-from config.config import cfg, PROJECT_ROOT
+from config.config import cfg, PROJECT_ROOT, WORKSPACE_ROOT
+from config.strategies import get_strategy
 from agents.data_analysis_pipeline import DataAnalysisPipeline
 from agents.research_agent_loop import (
     ResearchAgentLoop,
@@ -25,10 +27,15 @@ from agents.quantitative_universe_screener import (
 )
 from agents.stock_opportunity_ranker import RankerConfig, StockOpportunityRanker
 from agents.signal_schema import parse_json_signals, validate_research_signal
+from agents.signal_tier_classifier import SignalTierClassifier
+from agents.market_regime_detector import MarketRegimeDetector, format_regime_report
+from utils.signal_tracker import SignalTracker
 from data_source.technical_indicators_akshare import compute_stock_technical_factor
 from utils.market_manager import GLOBAL_MARKET_MANAGER
 from utils.report_utils import generate_trade_decision_report
+from utils.financial_report_utils import enrich_signals_with_financial_report
 from utils.performance_tracker import PerformanceTracker
+from utils.cn_price_provider import get_index_daily
 from utils.date_utils import get_latest_completed_trading_date, get_trading_date_range
 from utils.system_health_utils import (
     count_data_factor_tool_errors,
@@ -296,9 +303,11 @@ class SimpleTradeCompany:
     - Orchestration: Simple async coordination
     """
 
-    def __init__(self):
-        self.workspace_dir = PROJECT_ROOT / "agents_workspace"
+    def __init__(self, strategy: str = "momentum"):
+        self.strategy = get_strategy(strategy)
+        self.workspace_dir = WORKSPACE_ROOT
         selection_config = getattr(cfg, "signal_selection_config", None) or {}
+        strategy_config = self.strategy
         self.quantitative_screener = QuantitativeUniverseScreener(
             QuantitativeScreenerConfig(
                 enabled=_config_bool(
@@ -315,11 +324,11 @@ class SimpleTradeCompany:
                 ),
                 top_k=_config_int(
                     selection_config.get("quantitative_screen_top_k"),
-                    80,
+                    _config_int(strategy_config.get("quantitative_screen_top_k"), 80),
                 ),
                 history_days=_config_int(
                     selection_config.get("quantitative_screen_history_days"),
-                    260,
+                    _config_int(strategy_config.get("quantitative_screen_history_days"), 260),
                 ),
                 benchmark_symbol=str(
                     selection_config.get("relative_strength_benchmark")
@@ -327,31 +336,60 @@ class SimpleTradeCompany:
                 ),
                 min_weekly_trend_score=_config_float(
                     selection_config.get("min_weekly_trend_score"),
-                    55.0,
+                    _config_float(strategy_config.get("min_weekly_trend_score"), 55.0),
                 ),
                 min_relative_strength_score=_config_float(
                     selection_config.get("min_relative_strength_score"),
-                    50.0,
+                    _config_float(strategy_config.get("min_relative_strength_score"), 50.0),
                 ),
                 min_relative_strength_20d_pct=_config_float(
                     selection_config.get("min_relative_strength_20d_pct"),
-                    0.0,
+                    _config_float(strategy_config.get("min_relative_strength_20d_pct"), 0.0),
                 ),
                 min_daily_entry_score=_config_float(
                     selection_config.get("min_daily_entry_score"),
-                    50.0,
+                    _config_float(strategy_config.get("min_daily_entry_score"), 50.0),
                 ),
                 min_amount=_config_float(
                     selection_config.get("quantitative_screen_min_amount"),
                     0.0,
                 ),
+                max_ma20_deviation_pct=_config_float(
+                    selection_config.get("quantitative_max_ma20_deviation_pct"),
+                    _config_float(strategy_config.get("quantitative_max_ma20_deviation_pct"), 60.0),
+                ),
+                max_prev_day_gain_pct=_config_float(
+                    selection_config.get("quantitative_max_prev_day_gain_pct"),
+                    _config_float(strategy_config.get("quantitative_max_prev_day_gain_pct"), 15.0),
+                ),
+                ma20_deviation_penalty=_config_float(
+                    selection_config.get("quantitative_ma20_deviation_penalty"),
+                    _config_float(strategy_config.get("quantitative_ma20_deviation_penalty"), 1.0),
+                ),
+                hard_max_ma20_deviation_pct=_config_float(
+                    selection_config.get("quantitative_hard_max_ma20_deviation_pct"),
+                    _config_float(strategy_config.get("quantitative_hard_max_ma20_deviation_pct"), 80.0),
+                ),
+                hard_max_prev_day_gain_pct=_config_float(
+                    selection_config.get("quantitative_hard_max_prev_day_gain_pct"),
+                    _config_float(strategy_config.get("quantitative_hard_max_prev_day_gain_pct"), 20.0),
+                ),
+                hard_min_weekly_score=_config_float(
+                    selection_config.get("quantitative_hard_min_weekly_score"),
+                    _config_float(strategy_config.get("quantitative_hard_min_weekly_score"), 30.0),
+                ),
+                hard_min_relative_score=_config_float(
+                    selection_config.get("quantitative_hard_min_relative_score"),
+                    _config_float(strategy_config.get("quantitative_hard_min_relative_score"), 25.0),
+                ),
                 require_data_quality=_config_bool(
                     selection_config.get("require_data_quality"),
                     True,
                 ),
+                # V2: 不再强制 Weinstein Stage 2。改用 stage 评分 + stage>=4硬拒绝。
                 require_weinstein_stage2=_config_bool(
                     selection_config.get("require_weinstein_stage2"),
-                    True,
+                    False,
                 ),
             )
         )
@@ -365,6 +403,12 @@ class SimpleTradeCompany:
             "context_string": "",
         }
         self.quantitative_candidates_by_code: Dict[str, Dict[str, Any]] = {}
+
+        # ���增：信号分级���和市���环境识别器
+        self.signal_tier_classifier = SignalTierClassifier()
+        self.market_regime_detector = MarketRegimeDetector()
+        self.signal_tracker = SignalTracker(self.workspace_dir)
+        ranker_overrides = self.strategy.get("ranker_overrides") or {}
         self.signal_ranker = StockOpportunityRanker(
             RankerConfig(
                 reject_future_evidence=_config_bool(
@@ -380,20 +424,48 @@ class SimpleTradeCompany:
                     True,
                 ),
                 min_weekly_trend_score=_config_float(
-                    selection_config.get("min_weekly_trend_score"),
-                    55.0,
+                    ranker_overrides.get("min_weekly_trend_score"),
+                    _config_float(selection_config.get("min_weekly_trend_score"), 55.0),
                 ),
                 min_relative_strength_score=_config_float(
-                    selection_config.get("min_relative_strength_score"),
-                    50.0,
+                    ranker_overrides.get("min_relative_strength_score"),
+                    _config_float(selection_config.get("min_relative_strength_score"), 50.0),
                 ),
                 min_relative_strength_20d_pct=_config_float(
-                    selection_config.get("min_relative_strength_20d_pct"),
-                    0.0,
+                    ranker_overrides.get("min_relative_strength_20d_pct"),
+                    _config_float(selection_config.get("min_relative_strength_20d_pct"), 0.0),
                 ),
                 min_daily_entry_score=_config_float(
-                    selection_config.get("min_daily_entry_score"),
+                    ranker_overrides.get("min_daily_entry_score"),
+                    _config_float(selection_config.get("min_daily_entry_score"), 50.0),
+                ),
+                min_flow_confirmation_score=_config_float(
+                    ranker_overrides.get("min_flow_confirmation_score"),
+                    _config_float(selection_config.get("min_flow_confirmation_score"), 55.0),
+                ),
+                min_regime_confirmation_score=_config_float(
+                    ranker_overrides.get("min_regime_confirmation_score"),
+                    _config_float(selection_config.get("min_regime_confirmation_score"), 52.0),
+                ),
+                max_prev_day_gain_pct=_config_float(
+                    ranker_overrides.get("max_prev_day_gain_pct"),
+                    _config_float(selection_config.get("max_prev_day_gain_pct"), 6.0),
+                ),
+                max_ma20_deviation_pct=_config_float(
+                    ranker_overrides.get("max_ma20_deviation_pct"),
+                    _config_float(selection_config.get("max_ma20_deviation_pct"), 8.0),
+                ),
+                min_risk_reward_score=_config_float(
+                    ranker_overrides.get("min_risk_reward_score"),
                     50.0,
+                ),
+                expected_return_floor_pct=_config_float(
+                    ranker_overrides.get("expected_return_floor_pct"),
+                    0.3,
+                ),
+                strong_trend_penalty_bias=_config_float(
+                    ranker_overrides.get("strong_trend_penalty_bias"),
+                    0.0,
                 ),
             )
         )
@@ -424,28 +496,71 @@ class SimpleTradeCompany:
                 source_list=agent_config["data_source_list"],
                 final_target_tokens=agent_config.get("final_target_tokens", 4000),
                 bias_goal=agent_config.get("bias_goal", ""),
+                passthrough_summary=agent_config.get("passthrough_summary", False),
             )
 
         # Initialize Research Agents
         self.research_agents = {}
-        belief_list_path = PROJECT_ROOT / cfg.research_agent_config["belief_list_path"]
-
-        with open(belief_list_path, 'r', encoding='utf-8') as f:
-            belief_list = json.load(f)
+        belief_list = strategy_config.get("belief_list")
+        if not belief_list:
+            belief_list_path = PROJECT_ROOT / cfg.research_agent_config["belief_list_path"]
+            with open(belief_list_path, 'r', encoding='utf-8') as f:
+                belief_list = json.load(f)
 
         for agent_idx, belief in enumerate(belief_list):
             config = ResearchAgentLoopConfig(
                 agent_name=f"agent_{agent_idx}",
                 belief=belief,
                 verbose=True,
+                enable_cache=False,
             )
             self.research_agents[agent_idx] = ResearchAgentLoop(config)
 
     def _get_signal_selection_settings(self) -> tuple[int, int]:
         config = getattr(cfg, "signal_selection_config", None) or {}
-        require_min_buys = max(0, int(config.get("require_min_buys", 1)))
-        max_research_rounds = max(1, int(config.get("max_research_rounds", 10)))
+        strategy = self.strategy or {}
+        require_min_buys = max(0, int(config.get("require_min_buys", strategy.get("require_min_buys", 0))))
+        max_research_rounds = max(1, int(config.get("max_research_rounds", strategy.get("max_research_rounds", 10))))
         return require_min_buys, max_research_rounds
+
+    def _get_max_stall_rounds(self) -> int:
+        config = getattr(cfg, "signal_selection_config", None) or {}
+        strategy = self.strategy or {}
+        return max(1, int(config.get("max_stall_rounds", strategy.get("max_stall_rounds", 3))))
+
+    async def _enrich_round_signals_financial(
+        self,
+        signals: List[Dict[str, Any]],
+        trigger_time: str,
+    ) -> List[Dict[str, Any]]:
+        """Attach latest income-statement YOY figures to candidate signals."""
+        if not signals:
+            return signals
+        needs = [s for s in signals if not s.get("financial_report")]
+        if not needs:
+            return signals
+        try:
+            enriched = await enrich_signals_with_financial_report(
+                signals=needs,
+                trigger_time=trigger_time,
+                period_count=3,
+                concurrency=3,
+            )
+            by_key = {
+                (str(s.get("symbol_code") or ""), s.get("research_round" or 0)): s
+                for s in enriched
+            }
+        except Exception as exc:
+            logger.warning("financial enrich failed: {}", exc)
+            return signals
+
+        def _apply(sig):
+            key = (str(sig.get("symbol_code") or ""), sig.get("research_round"))
+            enr = by_key.get(key) or by_key.get((str(sig.get("symbol_code") or ""), None))
+            if enr:
+                return enr
+            return sig
+        return [_apply(sig) for sig in signals]
 
     async def _run_research_and_select_until_min_buys(
         self,
@@ -463,6 +578,7 @@ class SimpleTradeCompany:
         or max_research_rounds is reached.
         """
         require_min_buys, max_rounds = self._get_signal_selection_settings()
+        max_stall_rounds = self._get_max_stall_rounds()
         using_default_research_runner = research_runner is None
         research_runner = research_runner or self._run_research_agents
 
@@ -472,6 +588,7 @@ class SimpleTradeCompany:
         consensus_signals: List[Dict[str, Any]] = []
         rounds_completed = 0
         met_requirement = require_min_buys == 0
+        stall_rounds = 0
 
         if (
             self.quantitative_screener.config.enabled
@@ -511,9 +628,30 @@ class SimpleTradeCompany:
                 data_factors,
                 trigger_time=trigger_time,
             )
+            round_signals = await self._enrich_round_signals_financial(
+                round_signals,
+                trigger_time=trigger_time,
+            )
             for signal in round_signals:
                 signal["research_round"] = round_num
+            had_new_signals = len(round_signals) > 0
             all_research_signals.extend(round_signals)
+
+            if not had_new_signals and require_min_buys > 0:
+                stall_rounds += 1
+                no_new_warning = (
+                    f"stall_new_signals={stall_rounds}"
+                    f",limit={max_stall_rounds},round={round_num}"
+                )
+                if stall_rounds >= max_stall_rounds:
+                    print(
+                        f"⚠️  No new signals for {stall_rounds} consecutive round(s) "
+                        f"(limit {max_stall_rounds}); stopping research retry loop."
+                    )
+                    self.system_health["warnings"].append(no_new_warning)
+                    break
+            else:
+                stall_rounds = 0
 
             print(
                 f"✅ Research round {round_num}: {len(round_signals)} new signals, "
@@ -623,7 +761,7 @@ class SimpleTradeCompany:
             self.system_health["warnings"].append(f"data_factor_errors={data_factor_errors}")
         print(f"✅ Data Agents completed: {len(data_factors)} factors generated")
 
-        market_context = self._build_market_context(data_factors)
+        market_context = self._build_market_context(data_factors, trigger_time=trigger_time)
 
         # Stage 2+3: Research + strict gate selection; retry research until min buys met
         print("\n🎯 Stage 2+3: Research and buy selection (strict gates)...")
@@ -651,8 +789,15 @@ class SimpleTradeCompany:
             "quantitative_candidates": quantitative_candidates,
             # Backward-compatible alias. From here on this means passed-gate buys only.
             "best_signals": buy_signals,
+            "logic_version": {
+                "schema": "trade_decision.v2",
+                "strategy_id": (self.strategy or {}).get("id"),
+                "workspace_root": str(WORKSPACE_ROOT),
+                "generated_by": "main_loop.SimpleTradeCompany",
+            },
             "market_context": market_context,
             "system_health": self.system_health,
+            "strategy": self.strategy,
             "research_rounds": selection["research_rounds"],
             "require_min_buys": selection["require_min_buys"],
             "require_min_buys_met": selection["require_min_buys_met"],
@@ -661,13 +806,29 @@ class SimpleTradeCompany:
         generate_trade_decision_report(result)
 
         # Stage 4: Record signals and evaluate past performance
-        print("\n📈 Stage 4: Performance tracking...")
+        print("\n���� Stage 4: Performance tracking...")
         await self.performance_tracker.record_signals(trigger_time, buy_signals)
         await self.performance_tracker.evaluate_pending()
         perf_stats = self.performance_tracker.get_summary_stats()
         if perf_stats["total_signals"] > 0:
             print(f"   Historical win rate: {perf_stats['win_rate']:.1f}% ({perf_stats['total_signals']} signals)")
         result["performance_stats"] = perf_stats
+
+        # Stage 4.5: Record signals for tier-based tracking (NEW)
+        # Track both passed-buy and watchlist candidates so downstream evaluation can
+        # compare pass vs watch and calibrate tier confidence over time.
+        tier_signals = list(buy_signals or []) + list(watchlist or [])
+        if tier_signals and hasattr(self, 'signal_tracker'):
+            self.signal_tracker.record_signals(
+                signals=tier_signals,
+                trigger_time=trigger_time,
+                metadata={
+                    "market_regime": selection.get("market_regime"),
+                    "regime_confidence": selection.get("regime_confidence"),
+                    "strategy": self.strategy.get("name", "default"),
+                }
+            )
+            print(f"   📊 Recorded {len(tier_signals)} signals for tier-based tracking")
 
         return result
 
@@ -950,20 +1111,37 @@ class SimpleTradeCompany:
     ) -> Dict[str, List[Dict]]:
         """
         Select passed-gate buy signals and keep rejected candidates separate.
+        使用���场环���识���和���号分级系统
         """
         if not research_signals:
             return {
                 "buy_signals": [],
                 "watchlist": [],
                 "consensus_signals": [],
+                "market_regime": "neutral",
+                "regime_confidence": 50.0,
+                "regime_reasons": [],
+                "signal_tiers": {},
             }
 
+        # 1. 市场���境识别
+        regime, regime_confidence, regime_reasons = self.market_regime_detector.detect(
+            market_context=market_context,
+            index_data=pd.DataFrame(market_context.get("index_snapshot", {}).get("market_index_df") or []) if isinstance(market_context, dict) and market_context.get("index_snapshot", {}).get("market_index_df") else None,
+        )
+        print(f"\n市场���境识���: {regime} (置信���: {regime_confidence:.1f}%)")
+        for reason in regime_reasons:
+            print(f"  - {reason}")
+
+        # 2. 共���聚合
         aggregator = getattr(self, "consensus_aggregator", None)
         consensus_signals = (
             aggregator.aggregate(research_signals, trigger_time)
             if aggregator
             else list(research_signals)
         )
+
+        # 3. ���序打分
         ranked = self.signal_ranker.rank_signals(
             research_signals=consensus_signals,
             trigger_time=trigger_time,
@@ -971,6 +1149,19 @@ class SimpleTradeCompany:
             system_health=system_health,
         )
 
+        # 4. 信���分���（核心改进）
+        signal_tiers = self.signal_tier_classifier.classify(
+            signals=ranked,
+            market_regime=regime
+        )
+
+        # ���印分级结果
+        print(self.signal_tier_classifier.get_tier_summary(signal_tiers))
+
+        # 5. 构���最终���入信号列表（A+B级）
+        buy_signals = signal_tiers.get("tier_A", []) + signal_tiers.get("tier_B", [])
+
+        # 6. ���建���察列���（C��� + 部分watch）
         watchlist = self.signal_ranker.build_watchlist(
             research_signals=consensus_signals,
             trigger_time=trigger_time,
@@ -980,7 +1171,7 @@ class SimpleTradeCompany:
         )
         buy_keys = {
             (sig.get("symbol_code") or sig.get("symbol_name") or "").strip()
-            for sig in ranked
+            for sig in buy_signals
         }
         watchlist = [
             sig for sig in watchlist
@@ -989,10 +1180,20 @@ class SimpleTradeCompany:
                 and str(sig.get("buy_decision") or "").lower() != "buy"
             )
         ]
+        # ���加C���信号到观察列表
+        for c_signal in signal_tiers.get("tier_C", []):
+            code = (c_signal.get("symbol_code") or c_signal.get("symbol_name") or "").strip()
+            if code not in buy_keys:
+                watchlist.append(c_signal)
+
         return {
-            "buy_signals": ranked,
-            "watchlist": watchlist,
+            "buy_signals": buy_signals,
+            "watchlist": watchlist[:8],  # 限制观���列表���度
             "consensus_signals": consensus_signals,
+            "market_regime": regime,
+            "regime_confidence": regime_confidence,
+            "regime_reasons": regime_reasons,
+            "signal_tiers": signal_tiers,
         }
 
     def _select_best_signals(
@@ -1010,7 +1211,84 @@ class SimpleTradeCompany:
             system_health=system_health,
         )["buy_signals"]
 
-    def _build_market_context(self, data_factors: List[Dict]) -> Dict[str, Any]:
+    def _load_index_market_snapshot(self, trigger_time: str) -> Dict[str, Any]:
+        """
+        Build a lightweight market snapshot from the major CN indices so that
+        regime detection uses actual price/MAs rather than only text keywords.
+        """
+        snapshot: Dict[str, Any] = {
+            "index_available": False,
+            "index_ma_trend": "neutral",
+            "index_ma_reasons": [],
+            "indices": {},
+        }
+        try:
+            from utils.cn_price_provider import get_index_daily
+            from utils.date_utils import get_latest_completed_trading_date
+
+            trade_date = get_latest_completed_trading_date(trigger_time)
+            start_date, end_date = get_trading_date_range(
+                end_date=trade_date,
+                count=80,
+                include_end=True,
+            )
+            symbols = {
+                "sh000001": "上证指数",
+                "sz399006": "创业板指",
+                "sh000688": "科创50",
+            }
+            reason_bits = []
+            for symbol, name in symbols.items():
+                try:
+                    df = get_index_daily(symbol, start_date, end_date, False)
+                    if df is None or df.empty or len(df) < 20:
+                        continue
+                    closes = df["close"].dropna().astype(float)
+                    latest = float(closes.iloc[-1])
+                    ma5 = float(closes.iloc[-5:].mean())
+                    ma10 = float(closes.iloc[-10:].mean())
+                    ma20 = float(closes.iloc[-20:].mean())
+                    snapshot["indices"][name] = {
+                        "close": round(latest, 2),
+                        "ma5": round(ma5, 2),
+                        "ma10": round(ma10, 2),
+                        "ma20": round(ma20, 2),
+                        "above_ma20": bool(latest >= ma20),
+                    }
+                    if ma5 > ma10 > ma20 and latest > ma5:
+                        reason_bits.append(f"{name}:多头排列")
+                    elif ma5 < ma10 < ma20 and latest < ma5:
+                        reason_bits.append(f"{name}:空头排列")
+                    else:
+                        reason_bits.append(f"{name}:震荡")
+                except Exception:
+                    continue
+
+            if len(snapshot["indices"]) >= 2:
+                snapshot["index"] = True
+                snapshot["index_trend"] = "up" if reason_bits.count("多头排列") >= 2 else (
+                    "down" if reason_bits.count("空头排列") >= 2 else "neutral"
+                )
+                snapshot["index_reasons"] = reason_bits
+                # Keep the raw SH index frame for MarketRegimeDetector index-technical analysis.
+                try:
+                    sh_frame = get_index_daily("sh000001", start_date, end_date, False)
+                    if sh_frame is not None and not sh_frame.empty:
+                        frame = sh_frame[["date", "close"]].dropna().reset_index(drop=True)
+                        snapshot["market_index_df"] = [
+                            {
+                                "date": str(row.get("date") or row.get("日期") or ""),
+                                "close": row.get("close", row.get("收盘")),
+                            }
+                            for row in frame.to_dict(orient="records")
+                        ]
+                except Exception:
+                    pass
+        except Exception as exc:
+            print(f"⚠️ 指数快照失败: {exc}")
+        return snapshot
+
+    def _build_market_context(self, data_factors: List[Dict], trigger_time: str = "") -> Dict[str, Any]:
         context = {
             "market_trend": "neutral",
             "risk_sentiment": "neutral",
@@ -1020,16 +1298,30 @@ class SimpleTradeCompany:
             "has_block_trade_data": False,
             "has_zt_seal_data": False,
             "data_source_count": len(data_factors or []),
+            "index_snapshot": {},
         }
+
+        # 1) 指数均线/收盘数据作为主依据（如果可用），文本关键词作为补充/兜底。
+        index_snapshot = self._load_index_market_snapshot(trigger_time or "") if trigger_time else {}
+        if index_snapshot.get("index"):
+            context["index_snapshot"] = index_snapshot
+            index_trend = str(index_snapshot.get("index_trend") or "neutral")
+            if index_trend in {"up", "bullish", "bull"}:
+                context["market_trend"] = "up"
+            elif index_trend in {"down", "bearish", "bear"}:
+                context["market_trend"] = "down"
 
         combined_text = "\n".join((factor.get("context_string") or "") for factor in data_factors or [])
 
-        positive_trend_hits = sum(combined_text.count(keyword) for keyword in ["四连阳", "普涨", "收涨", "上涨", "新高", "反弹"])
+        positive_trend_hits = sum(combined_text.count(keyword) for keyword in ["涨停", "普涨", "收涨", "上涨", "新高", "反弹"])
         negative_trend_hits = sum(combined_text.count(keyword) for keyword in ["回调", "下跌", "承压", "走弱", "回落"])
-        if positive_trend_hits > negative_trend_hits + 1:
-            context["market_trend"] = "up"
-        elif negative_trend_hits > positive_trend_hits + 1:
-            context["market_trend"] = "down"
+
+        # 仅在指数数据不可用时才退化到关键词计数；且不再让“回调/风险”等舆情词单方面压过均线多头。
+        if not index_snapshot.get("index"):
+            if positive_trend_hits > negative_trend_hits + 1:
+                context["market_trend"] = "up"
+            elif negative_trend_hits > positive_trend_hits + 1:
+                context["market_trend"] = "down"
 
         risk_on_hits = sum(combined_text.count(keyword) for keyword in [
             "热钱", "共振", "净买入", "情绪回暖", "活跃",

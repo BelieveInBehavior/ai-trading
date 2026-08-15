@@ -1,0 +1,1599 @@
+Loading config from: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/config.yaml (Market: CN-Stock)
+[sina_summary_agent] Loaded: data_source.sina_news_crawl.SinaNewsCrawl
+[thx_summary_agent] Loaded: data_source.thx_news_crawl.ThxNewsCrawl
+[price_market_agent] Loaded: data_source.price_market_akshare.PriceMarketAkshare
+[hot_money_agent] Loaded: data_source.hot_money_akshare.HotMoneyAkshare
+[northbound_flow_agent] Loaded: data_source.northbound_flow_akshare.NorthboundFlowAkshare
+[technical_indicators_agent] Loaded: data_source.technical_indicators_akshare.TechnicalIndicatorsAkshare
+2026-08-13 20:21:24.927 | INFO     | utils.threshold_manager:load:125 - 阈值已从 /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/factor_thresholds.yaml 加载
+[individual_fund_flow_agent] Loaded: data_source.individual_fund_flow_akshare.IndividualFundFlowAkshare
+[margin_trading_agent] Loaded: data_source.margin_trading_akshare.MarginTradingAkshare
+[block_trade_agent] Loaded: data_source.block_trade_akshare.BlockTradeAkshare
+[sector_fund_flow_trend_agent] Loaded: data_source.sector_fund_flow_trend_akshare.SectorFundFlowTrendAkshare
+[zt_seal_strength_agent] Loaded: data_source.zt_seal_strength_akshare.ZtSealStrengthAkshare
+[web_search_market_supplement_agent] Loaded: data_source.web_search_market_supplement.WebSearchMarketSupplement
+pipeline_start strategy=swing trigger_time=2026-08-13 20:30:00 quantitative_screen=on max_symbols=0 concurrency=4
+🚀 Starting Trade Company Analysis at 2026-08-13 20:30:00
+================================================================================
+
+🔎 Stage 0: Full-market quantitative screening...
+Stage 0 progress: 1/5005 scanned
+2026-08-13 20:21:24.996 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 301717.SZ 技术因子: insufficient_rows<20
+2026-08-13 20:21:25.404 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 001232.SZ 技术因子: insufficient_rows<20
+Stage 0 progress: 200/5005 scanned
+2026-08-13 20:21:26.001 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 688828.SH 技术因子: insufficient_rows<20
+2026-08-13 20:21:26.141 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 301707.SZ 技术因子: insufficient_rows<20
+Stage 0 progress: 400/5005 scanned
+2026-08-13 20:21:27.051 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 301677.SZ 技术因子: insufficient_rows<20
+2026-08-13 20:21:27.572 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 688825.SH 技术因子: insufficient_rows<20
+Stage 0 progress: 600/5005 scanned
+Stage 0 progress: 800/5005 scanned
+Stage 0 progress: 1000/5005 scanned
+Stage 0 progress: 1200/5005 scanned
+2026-08-13 20:21:31.143 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 688806.SH 技术因子: insufficient_rows<20
+Stage 0 progress: 1400/5005 scanned
+2026-08-13 20:21:31.500 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 603468.SH 技术因子: insufficient_rows<20
+Stage 0 progress: 1600/5005 scanned
+Stage 0 progress: 1800/5005 scanned
+Stage 0 progress: 2000/5005 scanned
+Stage 0 progress: 2200/5005 scanned
+Stage 0 progress: 2400/5005 scanned
+Stage 0 progress: 2600/5005 scanned
+Stage 0 progress: 2800/5005 scanned
+Stage 0 progress: 3000/5005 scanned
+Stage 0 progress: 3200/5005 scanned
+Stage 0 progress: 3400/5005 scanned
+Stage 0 progress: 3600/5005 scanned
+Stage 0 progress: 3800/5005 scanned
+Stage 0 progress: 4000/5005 scanned
+Stage 0 progress: 4200/5005 scanned
+Stage 0 progress: 4400/5005 scanned
+Stage 0 progress: 4600/5005 scanned
+Stage 0 progress: 4800/5005 scanned
+Stage 0 progress: 5000/5005 scanned
+Stage 0 progress: 5005/5005 scanned
+✅ Quantitative screen: universe=5005, scanned=4997, passed=64, research_candidates=64
+
+📊 Stage 1: Running Data Agents...
+[sina_summary_agent] Starting analysis for 2026-08-13 20:30:00
+[thx_summary_agent] Starting analysis for 2026-08-13 20:30:00
+[price_market_agent] Starting analysis for 2026-08-13 20:30:00
+2026-08-13 20:21:48.733 | INFO     | data_source.price_market_akshare:get_data:38 - 获取 20260813 的价格市场数据
+2026-08-13 20:21:48.733 | INFO     | data_source.price_market_akshare:get_llm_summary:411 - 获取 20260813 的价格市场LLM分析总结
+2026-08-13 20:21:48.736 | INFO     | data_source.price_market_akshare:get_kline_data:130 - 获取 上证指数 K线数据成功，90 条记录
+2026-08-13 20:21:48.739 | INFO     | data_source.price_market_akshare:get_kline_data:130 - 获取 创业板指 K线数据成功，90 条记录
+2026-08-13 20:21:48.741 | INFO     | data_source.price_market_akshare:get_kline_data:130 - 获取 科创50 K线数据成功，90 条记录
+2026-08-13 20:21:48.742 | INFO     | data_source.price_market_akshare:get_current_day_data:207 - 获取 上证指数 当日数据成功
+2026-08-13 20:21:48.744 | INFO     | data_source.price_market_akshare:get_current_day_data:207 - 获取 创业板指 当日数据成功
+2026-08-13 20:21:48.744 | INFO     | data_source.price_market_akshare:get_current_day_data:207 - 获取 科创50 当日数据成功
+2026-08-13 20:21:54.919 | WARNING  | utils.sector_flow_provider:_first_available:179 - akshare:stock_board_industry_name_em 获取失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+2026-08-13 20:21:54.992 | WARNING  | utils.sector_flow_provider:_first_available:179 - tushare:moneyflow_ind_dc 获取失败: 抱歉，您没有接口(moneyflow_ind_dc)访问权限，权限的具体详情访问：https://tushare.pro/document/1?doc_id=108。
+  0%|          | 0/2 [00:00<?, ?it/s]100%|██████████| 2/2 [00:00<00:00, 13.48it/s]                                             2026-08-13 20:21:55.420 | INFO     | utils.sector_flow_provider:_first_available:175 - akshare:stock_fund_flow_industry 获取成功，90 条
+findfont: Failed to find font weight bold, now using 400.
+2026-08-13 20:21:55.602 | INFO     | data_source.price_market_akshare:generate_kline_charts_base64:400 - 成功生成上证指数K线图，大小: 193500 字符
+2026-08-13 20:21:55.750 | INFO     | data_source.price_market_akshare:generate_kline_charts_base64:400 - 成功生成创业板指K线图，大小: 206448 字符
+2026-08-13 20:21:55.895 | INFO     | data_source.price_market_akshare:generate_kline_charts_base64:400 - 成功生成科创50K线图，大小: 189808 字符
+2026-08-13 20:21:55.895 | INFO     | data_source.price_market_akshare:generate_kline_charts_base64:402 - 成功生成3张K线图
+[hot_money_agent] Starting analysis for 2026-08-13 20:30:00
+2026-08-13 20:21:56.085 | INFO     | data_source.hot_money_akshare:get_data:34 - 获取 20260813 的热钱市场数据
+2026-08-13 20:21:56.085 | INFO     | data_source.hot_money_akshare:get_llm_summary:194 - 获取 20260813 的热钱市场LLM分析总结
+2026-08-13 20:21:56.086 | INFO     | data_source.hot_money_akshare:get_zt_data:77 - 获取 20260813 涨停数据成功，59 条记录
+2026-08-13 20:21:56.087 | INFO     | data_source.hot_money_akshare:get_dt_data:97 - 获取 20260813 跌停数据成功，4 条记录
+2026-08-13 20:21:56.088 | INFO     | data_source.hot_money_akshare:get_lhb_data:120 - 获取 20260730到20260813 龙虎榜数据成功，893 条记录
+2026-08-13 20:21:56.098 | INFO     | data_source.hot_money_akshare:get_lhb_jg_data:143 - 获取 20260730到20260813 龙虎榜机构数据成功，537 条记录
+2026-08-13 20:22:12.965 | WARNING  | utils.sector_flow_provider:_first_available:179 - akshare:stock_board_concept_name_em 获取失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+2026-08-13 20:22:14.539 | WARNING  | utils.sector_flow_provider:_first_available:179 - tushare:moneyflow_ind_dc 获取失败: 抱歉，您没有接口(moneyflow_ind_dc)访问权限，权限的具体详情访问：https://tushare.pro/document/1?doc_id=108。
+  0%|          | 0/8 [00:00<?, ?it/s] 25%|██▌       | 2/8 [00:00<00:00, 12.96it/s] 50%|█████     | 4/8 [00:00<00:00, 13.34it/s] 75%|███████▌  | 6/8 [00:00<00:00, 13.36it/s]100%|██████████| 8/8 [00:00<00:00, 13.23it/s]                                             2026-08-13 20:22:15.249 | INFO     | utils.sector_flow_provider:_first_available:175 - akshare:stock_fund_flow_concept 获取成功，387 条
+2026-08-13 20:22:15.250 | INFO     | data_source.hot_money_akshare:get_concept_data:164 - 获取概念板块数据成功，387 条记录，来源: akshare:stock_fund_flow_concept
+2026-08-13 20:22:15.253 | INFO     | data_source.hot_money_akshare:get_yyb_data:184 - 获取游资营业部数据成功，200 条记录
+[northbound_flow_agent] Starting analysis for 2026-08-13 20:30:00
+2026-08-13 20:22:15.264 | INFO     | data_source.northbound_flow_akshare:get_data:35 - 获取 20260813 的北向资金数据
+2026-08-13 20:22:15.266 | INFO     | data_source.northbound_flow_akshare:_get_hsgt_hist:85 - 获取沪股通历史数据成功，2730 条记录
+2026-08-13 20:22:15.267 | INFO     | data_source.northbound_flow_akshare:_get_hsgt_hist:85 - 获取深股通历史数据成功，2254 条记录
+2026-08-13 20:22:15.268 | INFO     | data_source.northbound_flow_akshare:_get_fund_flow_summary:102 - 获取北向资金流向汇总成功，4 条记录
+[technical_indicators_agent] Starting analysis for 2026-08-13 20:30:00
+2026-08-13 20:22:15.287 | INFO     | data_source.technical_indicators_akshare:get_data:548 - 获取 20260813 的技术指标数据
+[technical_indicators_agent] Fetched 1 from TechnicalIndicatorsAkshare
+[technical_indicators_agent] High-value selection: 1 docs kept
+[technical_indicators_agent] Processing 1 batches...
+[individual_fund_flow_agent] Starting analysis for 2026-08-13 20:30:00
+2026-08-13 20:22:15.504 | INFO     | data_source.individual_fund_flow_akshare:get_data:35 - 获取 20260813 的个股资金流数据
+2026-08-13 20:22:15.505 | INFO     | data_source.individual_fund_flow_akshare:_get_fund_flow_rank:173 - 获取个股资金流排名(今日)成功，5205条
+2026-08-13 20:22:15.506 | INFO     | data_source.individual_fund_flow_akshare:_get_fund_flow_rank:173 - 获取个股资金流排名(3日)成功，5205条
+2026-08-13 20:22:15.507 | INFO     | data_source.individual_fund_flow_akshare:_get_fund_flow_rank:173 - 获取个股资金流排名(5日)成功，5205条
+2026-08-13 20:22:15.587 | INFO     | utils.factor_store:save:62 - [FactorStore] 保存 individual_fund_flow @ 20260813: 5205 条
+[individual_fund_flow_agent] Fetched 1 from IndividualFundFlowAkshare
+[individual_fund_flow_agent] High-value selection: 1 docs kept
+[individual_fund_flow_agent] Processing 1 batches...
+[margin_trading_agent] Starting analysis for 2026-08-13 20:30:00
+2026-08-13 20:22:15.594 | INFO     | data_source.margin_trading_akshare:get_data:40 - 获取 20260813 的融资融券数据
+2026-08-13 20:22:15.594 | WARNING  | data_source.margin_trading_akshare:_get_margin_detail:231 - sh市融资融券明细为空 (20260813)
+2026-08-13 20:22:15.595 | WARNING  | data_source.margin_trading_akshare:_get_margin_detail:231 - sz市融资融券明细为空 (20260813)
+[block_trade_agent] Starting analysis for 2026-08-13 20:30:00
+2026-08-13 20:22:15.595 | INFO     | data_source.block_trade_akshare:get_data:39 - 获取 20260813 的大宗交易数据
+2026-08-13 20:22:15.596 | INFO     | data_source.block_trade_akshare:_get_daily_summary:210 - 获取大宗交易每日统计成功，32条
+2026-08-13 20:22:15.596 | INFO     | data_source.block_trade_akshare:_get_detail_data:228 - 获取大宗交易明细成功，100条
+2026-08-13 20:22:15.602 | INFO     | utils.factor_store:save:62 - [FactorStore] 保存 block_trade @ 20260813: 32 条
+[block_trade_agent] Fetched 1 from BlockTradeAkshare
+[block_trade_agent] High-value selection: 1 docs kept
+[block_trade_agent] Processing 1 batches...
+[sector_fund_flow_trend_agent] Starting analysis for 2026-08-13 20:30:00
+2026-08-13 20:22:15.604 | INFO     | data_source.sector_fund_flow_trend_akshare:get_data:35 - 获取 20260813 的板块资金流向趋势数据
+2026-08-13 20:22:21.790 | WARNING  | utils.sector_flow_provider:_first_available:179 - akshare:stock_board_industry_name_em 获取失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+2026-08-13 20:22:23.615 | WARNING  | utils.sector_flow_provider:_first_available:179 - tushare:moneyflow_ind_dc 获取失败: 抱歉，您没有接口(moneyflow_ind_dc)访问权限，权限的具体详情访问：https://tushare.pro/document/1?doc_id=108。
+  0%|          | 0/2 [00:00<?, ?it/s]                                     2026-08-13 20:22:23.796 | INFO     | utils.sector_flow_provider:_first_available:175 - akshare:stock_fund_flow_industry 获取成功，90 条
+2026-08-13 20:22:23.796 | INFO     | data_source.sector_fund_flow_trend_akshare:_get_industry_fund_flow:200 - 获取行业板块数据成功，90条，来源: akshare:stock_fund_flow_industry
+2026-08-13 20:22:39.058 | WARNING  | utils.sector_flow_provider:_first_available:179 - akshare:stock_board_concept_name_em 获取失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+2026-08-13 20:22:39.124 | WARNING  | utils.sector_flow_provider:_first_available:179 - tushare:moneyflow_ind_dc 获取失败: 抱歉，您没有接口(moneyflow_ind_dc)访问权限，权限的具体详情访问：https://tushare.pro/document/1?doc_id=108。
+  0%|          | 0/8 [00:00<?, ?it/s] 25%|██▌       | 2/8 [00:00<00:00, 15.36it/s] 50%|█████     | 4/8 [00:00<00:00, 14.60it/s] 75%|███████▌  | 6/8 [00:00<00:00, 15.21it/s]100%|██████████| 8/8 [00:00<00:00, 15.53it/s]                                             2026-08-13 20:22:39.713 | INFO     | utils.sector_flow_provider:_first_available:175 - akshare:stock_fund_flow_concept 获取成功，387 条
+2026-08-13 20:22:39.713 | INFO     | data_source.sector_fund_flow_trend_akshare:_get_concept_fund_flow:218 - 获取概念板块数据成功，387条，来源: akshare:stock_fund_flow_concept
+2026-08-13 20:22:39.729 | INFO     | utils.factor_store:save:62 - [FactorStore] 保存 sector_fund_flow @ 20260813: 90 条
+[sector_fund_flow_trend_agent] Fetched 1 from SectorFundFlowTrendAkshare
+[sector_fund_flow_trend_agent] High-value selection: 1 docs kept
+[sector_fund_flow_trend_agent] Processing 1 batches...
+[zt_seal_strength_agent] Starting analysis for 2026-08-13 20:30:00
+2026-08-13 20:22:39.732 | INFO     | data_source.zt_seal_strength_akshare:get_data:37 - 获取 20260813 的涨停封单强度数据
+2026-08-13 20:22:39.733 | INFO     | data_source.zt_seal_strength_akshare:_get_zt_pool:204 - 获取涨停池成功，59条
+2026-08-13 20:22:39.739 | INFO     | utils.factor_store:save:62 - [FactorStore] 保存 zt_seal_strength @ 20260813: 59 条
+[zt_seal_strength_agent] Fetched 1 from ZtSealStrengthAkshare
+[zt_seal_strength_agent] High-value selection: 1 docs kept
+[zt_seal_strength_agent] Processing 1 batches...
+[web_search_market_supplement_agent] Starting analysis for 2026-08-13 20:30:00
+2026-08-13 20:22:39.763 | INFO     | tools.search_web:search_web:358 - Attempting search with Doubao/Volcengine for query: '北向资金20260813', base_url='https://open.feedcoopapi.com/search_api/web_search'
+2026-08-13 20:22:40.040 | INFO     | tools.search_web:search_web:378 - Search successful. Returning 2 results.
+2026-08-13 20:22:40.045 | INFO     | tools.search_web:search_web:358 - Attempting search with Doubao/Volcengine for query: 'A股融资融券20260813', base_url='https://open.feedcoopapi.com/search_api/web_search'
+2026-08-13 20:22:40.412 | INFO     | tools.search_web:search_web:378 - Search successful. Returning 5 results.
+2026-08-13 20:22:40.416 | INFO     | tools.search_web:search_web:358 - Attempting search with Doubao/Volcengine for query: 'A股龙虎榜20260813', base_url='https://open.feedcoopapi.com/search_api/web_search'
+2026-08-13 20:22:40.782 | INFO     | tools.search_web:search_web:378 - Search successful. Returning 4 results.
+[northbound_flow_agent] Fetched 1 from NorthboundFlowAkshare
+[northbound_flow_agent] High-value selection: 1 docs kept
+[northbound_flow_agent] Completed: 1947 chars
+[margin_trading_agent] Fetched 1 from MarginTradingAkshare
+[margin_trading_agent] High-value selection: 1 docs kept
+[margin_trading_agent] Completed: 2284 chars
+[technical_indicators_agent] Completed: 2189 chars
+[individual_fund_flow_agent] Completed: 2217 chars
+[block_trade_agent] Completed: 552 chars
+[sector_fund_flow_trend_agent] Completed: 1927 chars
+[zt_seal_strength_agent] Completed: 2178 chars
+2026-08-13 20:22:40.840 | INFO     | tools.search_web:search_web:358 - Attempting search with Doubao/Volcengine for query: 'A股涨停20260813', base_url='https://open.feedcoopapi.com/search_api/web_search'
+2026-08-13 20:22:41.102 | INFO     | tools.search_web:search_web:378 - Search successful. Returning 4 results.
+2026-08-13 20:22:41.105 | INFO     | tools.search_web:search_web:358 - Attempting search with Doubao/Volcengine for query: 'A股大宗交易20260813', base_url='https://open.feedcoopapi.com/search_api/web_search'
+2026-08-13 20:22:41.539 | INFO     | tools.search_web:search_web:378 - Search successful. Returning 4 results.
+[web_search_market_supplement_agent] Fetched 1 from WebSearchMarketSupplement
+[web_search_market_supplement_agent] High-value selection: 1 docs kept
+[web_search_market_supplement_agent] Completed: 5352 chars
+2026-08-13 20:22:41.584 | ERROR    | data_source.thx_news_crawl:crawl_frontend_pages:222 - ❌ Frontend crawling failed: BrowserType.launch: Executable doesn't exist at /Users/ruby/Library/Caches/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-mac-arm64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+2026-08-13 20:22:41.781 | INFO     | data_source.sina_news_crawl:crawl_all_pages:524 - Sina crawl completed: pages=1-50, total_items=2500, enrich_success=0, enrich_failed=0, elapsed=53.05s
+2026-08-13 20:22:41.781 | INFO     | data_source.sina_news_crawl:get_data:552 - 📊 Processing 2500 collected items...
+2026-08-13 20:22:41.797 | INFO     | data_source.sina_news_crawl:get_data:592 - get sina news until 2026-08-13 20:30:00 success. Total 2288 rows
+[sina_summary_agent] Fetched 2262 from SinaNewsCrawl
+[sina_summary_agent] High-value selection: 220 docs kept
+[sina_summary_agent] Processing 6 batches...
+2026-08-13 20:22:48.277 | INFO     | data_source.thx_news_crawl:get_data:237 - ✅ API crawling completed successfully: 1000 records
+2026-08-13 20:22:48.278 | INFO     | data_source.thx_news_crawl:get_data:248 - ✅ Frontend crawling completed successfully: 0 records
+2026-08-13 20:22:48.278 | INFO     | data_source.thx_news_crawl:get_data:258 - 📈 Data collection summary:
+2026-08-13 20:22:48.278 | INFO     | data_source.thx_news_crawl:get_data:259 -   - API records: 1000
+2026-08-13 20:22:48.278 | INFO     | data_source.thx_news_crawl:get_data:260 -   - Frontend records: 0
+2026-08-13 20:22:48.278 | INFO     | data_source.thx_news_crawl:get_data:261 -   - Combined total: 1000
+2026-08-13 20:22:48.282 | INFO     | data_source.thx_news_crawl:get_data:291 - 时间筛选后剩余 517 条数据（区间: 2026-08-12 20:30:00 至 2026-08-13 20:30:00）
+2026-08-13 20:22:48.283 | INFO     | data_source.thx_news_crawl:get_data:310 - 🎉 Successfully collected data from API only until 2026-08-13 20:30:00
+2026-08-13 20:22:48.283 | INFO     | data_source.thx_news_crawl:get_data:314 - Final result: 517 rows after deduplication and time filtering
+[thx_summary_agent] Fetched 517 from ThxNewsCrawl
+[thx_summary_agent] High-value selection: 180 docs kept
+[thx_summary_agent] Processing 6 batches...
+[price_market_agent] Fetched 1 from PriceMarketAkshare
+[price_market_agent] High-value selection: 1 docs kept
+[price_market_agent] Processing 1 batches...
+[price_market_agent] Completed: 1345 chars
+[hot_money_agent] Fetched 1 from HotMoneyAkshare
+[hot_money_agent] High-value selection: 1 docs kept
+[hot_money_agent] Processing 1 batches...
+[hot_money_agent] Completed: 1474 chars
+[sina_summary_agent] Completed: 6224 chars
+
+============================================================
+✅ [sina_summary_agent] Data Factor Ready
+============================================================
+# 市场信息综合摘要
+
+**报告时间：2026年8月13日 20:30**
+
+
+## 一、核心要点
+
+1. **全球货币政策分化加剧**：中国央行明确维持适度宽松并加码流动性投放；日本政府支持央行加快加息，9月或10月为行动窗口；美国7月CPI温和，美联储加息预期降温但美债收益率创金融危机以来新高。
+2. **AI算力产业链景气度持续验证**：海内外AI算力龙头（中芯国际、工业富联、CoreWeave、Nebius、Coherent等）财报全面超预期，算力租赁、光模块、液冷等细分方向订单饱满。
+3. **科技巨头财报密集披露**：腾讯、京东、联想、中国移动等核心科技公司二季度业绩分化，AI投入
+...
+============================================================
+
+[thx_summary_agent] Completed: 6884 chars
+
+============================================================
+✅ [thx_summary_agent] Data Factor Ready
+============================================================
+# 市场信息综合摘要
+
+**2026年8月13日 20:30**
+
+
+## 一、宏观经济与政策
+
+### （一）海外宏观数据与政策动向
+
+**美国通胀数据符合预期，加息预期降温。** 美国7月CPI季调后环比上涨0.1%，同比上涨3.4%，核心通胀环比上涨0.2%、同比上涨2.5%，均符合市场预期。中金公司研报认为，美国通胀或已进入新阶段，其驱动力正由关税、油价等供给冲击逐步转向AI投资带来的需求扩张，通胀持续的时间可能相应延长。数据公布后美股短线跳涨，道琼斯指数期货涨0.30%，标普500指数期货涨0.41%，纳斯达克100指数期货涨0.91%，现货黄金反弹至4418美元/盎司[1][2]。
+...
+============================================================
+
+
+============================================================
+✅ [price_market_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260813:市场宏观数据汇总
+Publish Time: 2026-08-13 20:30:00
+Relevance Score: 
+Relevance Label: 
+Event Type: 
+Direction: 
+Signal Confidence: 
+Content: ## A股市场20260813收盘观察报告
+
+**一、指数收盘与盘面特征**
+
+2026年8月13日，A股三大指数全线收跌，成交呈放量调整格局。上证指数收报3926.97点，下跌19.71点（-0.50%），全天高开低走，开盘价3957.16
+...
+============================================================
+
+
+============================================================
+✅ [hot_money_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260813:热钱市场数据汇总
+Publish Time: 2026-08-13 20:30:00
+Relevance Score: 
+Relevance Label: 
+Event Type: 
+Direction: 
+Signal Confidence: 
+Content: ## 20260813 热钱市场活跃度分析报告
+
+**一、涨跌停与市场情绪**
+
+当日涨停59只，跌停4只，涨跌停比约14.75:1，市场情绪偏多。连板梯队呈“中间厚、两端薄”结构：5连板1只，4连板6只，3连板2只，2连板13只，首板37只
+...
+============================================================
+
+
+============================================================
+✅ [northbound_flow_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260813:北向资金数据汇总
+Publish Time: 2026-08-13 20:30:00
+Relevance Score: 
+Relevance Label: 
+Event Type: 
+Direction: 
+Signal Confidence: 
+Content: ## 20260813 北向资金数据汇总
+
+### 一、当日北向资金汇总
+- **沪股通** (2026-08-13): 成交净买额0.00元, 资金净流入0.00元, 上涨391/下跌1214, 上证指数 -0.50%（盘中/数据源暂未披露
+...
+============================================================
+
+
+============================================================
+✅ [technical_indicators_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260813:技术指标分析报告
+Publish Time: 2026-08-13 20:30:00
+Relevance Score: 
+Relevance Label: 
+Event Type: 
+Direction: 
+Signal Confidence: 
+Content: <!-- cache_version:technical_indicators_akshare_v4 -->
+
+## 技术指标分析报告 (20260813)
+
+### 大盘指数技术面
+上证指数: 收盘3926.97, MA5=3942.87(
+...
+============================================================
+
+
+============================================================
+✅ [individual_fund_flow_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260813:个股主力资金流分析
+Publish Time: 2026-08-13 20:30:00
+Relevance Score: 8
+Relevance Label: high
+Event Type: capital_flow
+Direction: neutral
+Signal Confidence: 0.7
+Content: ## 20260813 个股主力资金流分析
+
+### 一、主力吸筹信号（主力大幅净流入 + 涨幅偏低）
+逻辑：主力资金大量流入但股价未明显上涨，可能在吸筹阶段
+
+- 宁德时代(30075
+...
+============================================================
+
+
+============================================================
+✅ [margin_trading_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260813:融资融券异动分析
+Publish Time: 2026-08-13 20:30:00
+Relevance Score: 7
+Relevance Label: high
+Event Type: margin_trading
+Direction: neutral
+Signal Confidence: 0.65
+Content: 融资融券数据获取失败
+
+### 融资融券联网补充
+来源：豆包搜索联网补充
+
+<search_result id=1>
+<title>融资融券汇总数据</title>
+<time>20
+...
+============================================================
+
+
+============================================================
+✅ [block_trade_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260813:大宗交易折溢价分析
+Publish Time: 2026-08-13 20:30:00
+Relevance Score: 7
+Relevance Label: high
+Event Type: block_trade
+Direction: neutral
+Signal Confidence: 0.6
+Content: ## 20260813 大宗交易折溢价分析
+
+### 一、溢价成交（机构抢筹信号）
+逻辑：成交价高于收盘价，买方愿意付出溢价，极度看好
+
+- *ST明德(002932): 溢价率+0.00
+...
+============================================================
+
+
+============================================================
+✅ [sector_fund_flow_trend_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260813:板块资金流向趋势分析
+Publish Time: 2026-08-13 20:30:00
+Relevance Score: 8
+Relevance Label: high
+Event Type: sector_flow
+Direction: neutral
+Signal Confidence: 0.7
+Content: ## 20260813 板块资金流向趋势分析
+
+### 一、行业板块资金净流入 TOP15
+逻辑：行业板块整体资金持续流入，板块内标的有轮动补涨机会
+
+- 银行: 涨跌幅+0.29%, 
+...
+============================================================
+
+
+============================================================
+✅ [zt_seal_strength_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260813:涨停封单强度分析
+Publish Time: 2026-08-13 20:30:00
+Relevance Score: 9
+Relevance Label: high
+Event Type: limit_up
+Direction: bullish
+Signal Confidence: 0.7
+Content: ## 20260813 涨停封单强度分析
+
+
+### 三、连板股封单情况
+逻辑：连板股封单强度决定是否能继续打板
+
+- 秦安股份(603758): 封单强度0.00%, 封单额0.00亿, 连板5
+...
+============================================================
+
+
+============================================================
+✅ [web_search_market_supplement_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260813:联网搜索市场数据补充
+Publish Time: 2026-08-13 20:30:00
+Relevance Score: 6
+Relevance Label: medium
+Event Type: web_search_supplement
+Direction: neutral
+Signal Confidence: 0.55
+Content: ## 20260813 联网搜索市场数据补充
+
+
+### 龙虎榜与游资席位
+来源：豆包搜索联网补充
+
+<search_result id=1>
+<title>通
+...
+============================================================
+
+✅ Data Agents completed: 12 factors generated
+
+🎯 Stage 2+3: Research and buy selection (strict gates)...
+
+🔍 Stage 2 (round 1/10): Running Research Agents...
+[agent_3] Plan created:
+1. 使用stock_symbol_search工具，搜索"天孚通信"、"药明康德"、"中科曙光"、"协创数据"、"生益科技"等候选标的的股票代码，确认目标标的的准确symbol信息。
+2. 使用price_info工具，逐一查询上述候选标的的最新价格、涨跌幅等实时行情数据，确认当前价格位置和交易状态。
+3. 使用stock_summary工具，获取上述候选标的的技术面分析报告，包括均线、RSI、...
+[agent_3] Iteration 1/10
+[agent_0] Plan created:
+1. 使用stock_selector工具在CN-Stock市场中筛选AI算力、光模块、CPO相关行业中市值较大且近期资金流入明显的股票，获取候选标的列表
+2. 对筛选出的候选标的（如天孚通信、新易盛、生益科技等）使用price_info和stock_summary工具获取最新价格、技术指标和趋势信息，确认是否处于回踩20日线企稳的买点位置
+3. 使用company_financial_info工...
+[agent_0] Iteration 1/10
+[agent_2] Plan created:
+1. 使用stock_selector筛选AI算力/光模块/PCB产业链中基本面强劲（营收和利润高增长）且估值合理的股票，如"光模块行业营收增长最快的5只股票"、"PCB行业净利润增长超50%的股票"
+2. 使用stock_selector筛选创新药/CRO/医药板块中主力资金持续流入且估值合理的股票，如"创新药行业净利润同比增长的股票"、"CRO概念市盈率低于50的股票"
+3. 对筛选出的候选股...
+[agent_2] Iteration 1/10
+[agent_1] Plan created:
+1. 使用stock_selector筛选符合“周线多头、RS评分高、MA20偏离不超过6%、前日涨幅不超过5%”的候选股票，重点关注量化分前20名，获取代码与价格数据
+2. 使用price_info和stock_summary逐一核查候选股票（如桐昆股份601233.SH、星宸科技301536.SZ、龙源技术300105.SZ等）的日线技术形态，确认是否处于回踩20日均线企稳状态
+3. 使用st...
+[agent_1] Iteration 1/10
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "通信设备行业市值最大的10只股票",
+        "limit": 10
+    }
+}
+</Output>
+[agent_0] Selected tool: stock_selector
+[agent_0] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '通信设备行业市值最大的10只股票', 'limit': 10, 'trigger_time': '2026-08-13 20:30:00'}
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "光模块行业市盈率小于60的股票",
+        "limit": 20
+    }
+}
+</Output>
+[agent_2] Selected tool: stock_selector
+[agent_2] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '光模块行业市盈率小于60的股票', 'limit': 20, 'trigger_time': '2026-08-13 20:30:00'}
+llm_response <Output>
+{
+    "tool_name": "stock_symbol_search",
+    "properties": {
+        "market": "CN-Stock",
+        "queries": ["天孚通信", "药明康德", "中科曙光", "协创数据", "生益科技", "新易盛", "海光信息", "工业富联", "浪潮信息", "光迅科技"],
+        "limit_per_query": 3,
+        "match_mode": "best"
+    }
+}
+</Output>
+[agent_3] Selected tool: stock_symbol_search
+[agent_3] Executing tool: stock_symbol_search
+call tool stock_symbol_search {'market': 'CN-Stock', 'queries': ['天孚通信', '药明康德', '中科曙光', '协创数据', '生益科技', '新易盛', '海光信息', '工业富联', '浪潮信息', '光迅科技'], 'limit_per_query': 3, 'match_mode': 'best', 'trigger_time': '2026-08-13 20:30:00'}
+Loaded 5543 stocks for search
+[agent_3] Tool result: {'success': True, 'data': '{\n  "results": {\n    "天孚通信": [\n      {\n        "ts_code": "300394",\n        "name": "天孚通信",\n        "market": "CN-Stock",\n        "match_type": "exact",\n        "mat...
+[agent_3] Iteration 2/10
+llm_response <Output>
+{
+    "tool_name": "stock_symbol_search",
+    "properties": {
+        "market": "CN-Stock",
+        "queries": ["桐昆股份", "星宸科技", "龙源技术", "华依科技", "立霸股份"],
+        "limit_per_query": 3,
+        "match_mode": "best"
+    }
+}
+</Output>
+[agent_1] Selected tool: stock_symbol_search
+[agent_1] Executing tool: stock_symbol_search
+call tool stock_symbol_search {'market': 'CN-Stock', 'queries': ['桐昆股份', '星宸科技', '龙源技术', '华依科技', '立霸股份'], 'limit_per_query': 3, 'match_mode': 'best', 'trigger_time': '2026-08-13 20:30:00'}
+[agent_2] Tool result: {'success': True, 'data': '[{"ts_code": "688825", "turnover_rate": 10.33, "volume_ratio": 0.98, "circ_mv": 0.238121, "name": "长鑫科技", "pe_ttm": "125.43", "pn": "25.38", "speed": "0.13", "state": "", "s...
+[agent_2] Iteration 2/10
+[agent_0] Tool result: {'success': True, 'data': '[{"ts_code": "688825", "turnover_rate": 10.33, "volume_ratio": 0.98, "circ_mv": 0.238121, "name": "长鑫科技", "pe_ttm": "125.43", "pn": "25.38", "speed": "0.13", "state": "", "s...
+[agent_0] Iteration 2/10
+Loaded 5543 stocks for search
+[agent_1] Tool result: {'success': True, 'data': '{\n  "results": {\n    "桐昆股份": [\n      {\n        "ts_code": "601233",\n        "name": "桐昆股份",\n        "market": "CN-Stock",\n        "match_type": "exact",\n        "mat...
+[agent_1] Iteration 2/10
+llm_response <Output>
+{
+    "tool_name": "stock_summary",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "601233.SH"
+    }
+}
+</Output>
+[agent_1] Selected tool: stock_summary
+[agent_1] Executing tool: stock_summary
+call tool stock_summary {'market': 'CN-Stock', 'symbol': '601233.SH', 'trigger_time': '2026-08-13 20:30:00'}
+llm_response <Output>
+{
+    "tool_name": "price_info",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "300394"
+    }
+}
+</Output>
+[agent_3] Selected tool: price_info
+[agent_3] Executing tool: price_info
+call tool price_info {'market': 'CN-Stock', 'symbol': '300394', 'trigger_time': '2026-08-13 20:30:00'}
+📊  Fetching K-line & indicators via Akshare...
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.00it/s]                                             ✅  Data fetching complete.
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.02it/s]                                             2026-08-13 20:23:26.911 | INFO     | tools.search_web:search_web:358 - Attempting search with Doubao/Volcengine for query: '桐昆股份', base_url='https://open.feedcoopapi.com/search_api/web_search'
+2026-08-13 20:23:27.724 | INFO     | tools.search_web:search_web:378 - Search successful. Returning 3 results.
+[agent_3] Tool result: {'success': True, 'data': '{\n  "result": "|    | date                |   股票代码 |   open |   close |   high |    low |      volume |    turnover |   amplitude |   change_percent |   change_amount |   t...
+[agent_3] Iteration 3/10
+✅  News fetching complete.
+🤖  Starting LLM technical analysis...
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "通信设备行业市值最大的20只股票",
+        "limit": 20
+    }
+}
+</Output>
+[agent_0] Selected tool: stock_selector
+[agent_0] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '通信设备行业市值最大的20只股票', 'limit': 20, 'trigger_time': '2026-08-13 20:30:00'}
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "通信设备行业市盈率小于60且总市值大于500亿的股票",
+        "limit": 20
+    }
+}
+</Output>
+[agent_2] Selected tool: stock_selector
+[agent_2] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '通信设备行业市盈率小于60且总市值大于500亿的股票', 'limit': 20, 'trigger_time': '2026-08-13 20:30:00'}
+llm_response {
+  "tool_name": "stock_summary",
+  "properties": {
+    "market": "CN-Stock",
+    "symbol": "300394"
+  }
+}
+[agent_0] Tool result: {'success': True, 'data': '[{"ts_code": "688825", "turnover_rate": 10.33, "volume_ratio": 0.98, "circ_mv": 0.238121, "name": "长鑫科技", "pe_ttm": "125.43", "pn": "25.38", "speed": "0.13", "state": "", "s...
+[agent_0] Iteration 3/10
+llm_response {
+  "tool_name": "price_info",
+  "properties": {
+    "market": "CN-Stock",
+    "symbol": "603259"
+  }
+}
+[agent_2] Tool result: {'success': True, 'data': '[{"ts_code": "688825", "turnover_rate": 10.33, "volume_ratio": 0.98, "circ_mv": 0.238121, "name": "长鑫科技", "pe_ttm": "125.43", "pn": "25.38", "speed": "0.13", "state": "", "s...
+[agent_2] Iteration 3/10
+llm_response {
+  "tool_name": "price_info",
+  "properties": {
+    "market": "CN-Stock",
+    "symbol": "603019"
+  }
+}
+[agent_3] Selected tool: unknown
+2026-08-13 20:23:29.792 | WARNING  | agents.research_agent_loop:execute_tool:188 - Tool selection error: Failed to call tool 3 times with error: 'NoneType' object has no attribute 'group'
+[agent_3] Iteration 4/10
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "电子元件行业市值最大的10只股票",
+        "limit": 10
+    }
+}
+</Output>
+[agent_0] Selected tool: stock_selector
+[agent_0] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '电子元件行业市值最大的10只股票', 'limit': 10, 'trigger_time': '2026-08-13 20:30:00'}
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "化学制药行业市盈率小于50且总市值大于100亿的股票",
+        "limit": 20
+    }
+}
+</Output>
+[agent_2] Selected tool: stock_selector
+[agent_2] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '化学制药行业市盈率小于50且总市值大于100亿的股票', 'limit': 20, 'trigger_time': '2026-08-13 20:30:00'}
+llm_response <Output>
+{
+    "tool_name": "price_info",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "603259"
+    }
+}
+</Output>
+[agent_3] Selected tool: price_info
+[agent_3] Executing tool: price_info
+call tool price_info {'market': 'CN-Stock', 'symbol': '603259', 'trigger_time': '2026-08-13 20:30:00'}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.83it/s]                                             [agent_3] Tool result: {'success': True, 'data': '{\n  "result": "|    | date                |   股票代码 |   open |   close |   high |    low |      volume |    turnover |   amplitude |   change_percent |   change_amount |   t...
+[agent_3] Iteration 5/10
+[agent_0] Tool result: {'success': True, 'data': '[{"ts_code": "688825", "turnover_rate": 10.33, "volume_ratio": 0.98, "circ_mv": 0.238121, "name": "长鑫科技", "pe_ttm": "125.43", "pn": "25.38", "speed": "0.13", "state": "", "s...
+[agent_0] Iteration 4/10
+[agent_2] Tool result: {'success': True, 'data': '[{"ts_code": "688825", "turnover_rate": 10.33, "volume_ratio": 0.98, "circ_mv": 0.238121, "name": "长鑫科技", "pe_ttm": "125.43", "pn": "25.38", "speed": "0.13", "state": "", "s...
+[agent_2] Iteration 4/10
+llm_response {
+  "tool_name": "stock_summary",
+  "properties": {
+    "market": "CN-Stock",
+    "symbol": "300394"
+  }
+}
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "通信设备行业市值最大的20只股票",
+        "limit": 20
+    }
+}
+</Output>
+[agent_0] Selected tool: stock_selector
+[agent_0] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '通信设备行业市值最大的20只股票', 'limit': 20, 'trigger_time': '2026-08-13 20:30:00'}
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "创新药行业市盈率小于60且总市值大于100亿的股票",
+        "limit": 20
+    }
+}
+</Output>
+[agent_2] Selected tool: stock_selector
+[agent_2] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '创新药行业市盈率小于60且总市值大于100亿的股票', 'limit': 20, 'trigger_time': '2026-08-13 20:30:00'}
+llm_response <Output>
+{
+  "tool_name": "price_info",
+  "properties": {
+    "market": "CN-Stock",
+    "symbol": "300394"
+  }
+}
+</Output>
+[agent_3] Selected tool: price_info
+[agent_3] Executing tool: price_info
+call tool price_info {'market': 'CN-Stock', 'symbol': '300394', 'trigger_time': '2026-08-13 20:30:00'}
+[agent_3] Tool result: {'success': True, 'data': '{\n  "result": "|    | date                |   股票代码 |   open |   close |   high |    low |      volume |    turnover |   amplitude |   change_percent |   change_amount |   t...
+[agent_3] Iteration 6/10
+[agent_0] Tool result: {'success': True, 'data': '[{"ts_code": "688825", "turnover_rate": 10.33, "volume_ratio": 0.98, "circ_mv": 0.238121, "name": "长鑫科技", "pe_ttm": "125.43", "pn": "25.38", "speed": "0.13", "state": "", "s...
+[agent_0] Iteration 5/10
+[agent_2] Tool result: {'success': True, 'data': '[{"ts_code": "688825", "turnover_rate": 10.33, "volume_ratio": 0.98, "circ_mv": 0.238121, "name": "长鑫科技", "pe_ttm": "125.43", "pn": "25.38", "speed": "0.13", "state": "", "s...
+[agent_2] Iteration 5/10
+llm_response <Output>
+{
+    "tool_name": "price_info",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "600183"
+    }
+}
+</Output>
+[agent_3] Selected tool: price_info
+[agent_3] Executing tool: price_info
+call tool price_info {'market': 'CN-Stock', 'symbol': '600183', 'trigger_time': '2026-08-13 20:30:00'}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.25it/s]                                             [agent_3] Tool result: {'success': True, 'data': '{\n  "result": "|    | date                |   股票代码 |   open |   close |   high |    low |      volume |    turnover |   amplitude |   change_percent |   change_amount |   t...
+[agent_3] Iteration 7/10
+llm_response <Output>
+{
+    "tool_name": "stock_selector",
+    "properties": {
+        "market": "CN-Stock",
+        "query": "通信设备行业市值大于1000亿的股票",
+        "limit": 20
+    }
+}
+</Output>
+[agent_0] Selected tool: stock_selector
+[agent_0] Executing tool: stock_selector
+call tool stock_selector {'market': 'CN-Stock', 'query': '通信设备行业市值大于1000亿的股票', 'limit': 20, 'trigger_time': '2026-08-13 20:30:00'}
+llm_response <Output>
+{
+    "tool_name": "stock_summary",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "300308.SZ"
+    }
+}
+</Output>
+[agent_2] Selected tool: stock_summary
+[agent_2] Executing tool: stock_summary
+call tool stock_summary {'market': 'CN-Stock', 'symbol': '300308.SZ', 'trigger_time': '2026-08-13 20:30:00'}
+[agent_2] Tool result: {'success': True, 'data': '# 中际旭创（300308.SZ）技术分析报告\n\n**分析时间：** 2026年8月13日 18:00 | **最新交易日：** 2026年8月12日 | **收盘价：** 921.00元\n\n\n## 一、近期价格走势与波动特征\n\n中际旭创当前处于**中期回调后的低位震荡阶段**。自7月30日港股上市以来，A股股价经历了一轮显著回调...
+[agent_2] Iteration 6/10
+llm_response <Output>
+{
+    "tool_name": "stock_summary",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "300394"
+    }
+}
+</Output>
+[agent_3] Selected tool: stock_summary
+[agent_3] Executing tool: stock_summary
+call tool stock_summary {'market': 'CN-Stock', 'symbol': '300394', 'trigger_time': '2026-08-13 20:30:00'}
+[agent_3] Tool result: {'success': True, 'data': '# 天孚通信(300394)技术分析报告\n\n**报告时间：** 2026年8月13日 08:50\n\n\n## 一、近期价格走势与波动特征\n\n### 1.1 最新交易日概况（2026-08-12）\n\n| 项目 | 数值 |\n|------|------|\n| 收盘价 | 240.05 |\n| 开盘价 | 224.01 |\n...
+[agent_3] Iteration 8/10
+llm_response <Output>
+{
+    "tool_name": "stock_summary",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "603228.SH"
+    }
+}
+</Output>
+[agent_2] Selected tool: stock_summary
+[agent_2] Executing tool: stock_summary
+call tool stock_summary {'market': 'CN-Stock', 'symbol': '603228.SH', 'trigger_time': '2026-08-13 20:30:00'}
+📊  Fetching K-line & indicators via Akshare...
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.10it/s]                                             ✅  Data fetching complete.
+2026-08-13 20:23:36.728 | INFO     | tools.search_web:search_web:358 - Attempting search with Doubao/Volcengine for query: '景旺电子', base_url='https://open.feedcoopapi.com/search_api/web_search'
+2026-08-13 20:23:37.741 | INFO     | tools.search_web:search_web:378 - Search successful. Returning 3 results.
+✅  News fetching complete.
+🤖  Starting LLM technical analysis...
+[agent_0] Tool result: {'success': True, 'data': '[{"ts_code": "688825", "turnover_rate": 10.33, "volume_ratio": 0.98, "circ_mv": 0.238121, "name": "长鑫科技", "pe_ttm": "125.43", "pn": "25.38", "speed": "0.13", "state": "", "s...
+[agent_0] Iteration 6/10
+llm_response <Output>
+{
+    "tool_name": "final_report",
+    "properties": {}
+}
+</Output>
+[agent_3] Selected tool: final_report
+[agent_3] Generating final report...
+llm_response <Output>
+{
+    "tool_name": "price_info",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "300394.SZ"
+    }
+}
+</Output>
+[agent_0] Selected tool: price_info
+[agent_0] Executing tool: price_info
+call tool price_info {'market': 'CN-Stock', 'symbol': '300394.SZ', 'trigger_time': '2026-08-13 20:30:00'}
+[agent_0] Tool result: {'success': True, 'data': '{\n  "result": "|    | date                |   股票代码 |   open |   close |   high |    low |      volume |    turnover |   amplitude |   change_percent |   change_amount |   t...
+[agent_0] Iteration 7/10
+llm_response <Output>
+{
+    "tool_name": "stock_summary",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "300394.SZ"
+    }
+}
+</Output>
+[agent_0] Selected tool: stock_summary
+[agent_0] Executing tool: stock_summary
+call tool stock_summary {'market': 'CN-Stock', 'symbol': '300394.SZ', 'trigger_time': '2026-08-13 20:30:00'}
+[agent_0] Tool result: {'success': True, 'data': '# 天孚通信(300394.SZ)技术分析报告\n\n**分析时间**: 2026-08-13 18:00  \n**最新交易日**: 2026-08-12 | **收盘价**: 240.05元\n\n\n## 一、近期价格走势与波动特征\n\n天孚通信近期呈现**剧烈波动后强势反弹**的走势特征。7月28日单日暴跌13.21%至181.56元...
+[agent_0] Iteration 8/10
+llm_response <Output>
+{
+    "tool_name": "stock_summary",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "300502.SZ"
+    }
+}
+</Output>
+[agent_0] Selected tool: stock_summary
+[agent_0] Executing tool: stock_summary
+call tool stock_summary {'market': 'CN-Stock', 'symbol': '300502.SZ', 'trigger_time': '2026-08-13 20:30:00'}
+📊  Fetching K-line & indicators via Akshare...
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.03it/s]                                             ✅  Data fetching complete.
+2026-08-13 20:23:40.768 | INFO     | tools.search_web:search_web:358 - Attempting search with Doubao/Volcengine for query: '新易盛', base_url='https://open.feedcoopapi.com/search_api/web_search'
+2026-08-13 20:23:41.624 | INFO     | tools.search_web:search_web:378 - Search successful. Returning 8 results.
+✅  News fetching complete.
+🤖  Starting LLM technical analysis...
+[agent_1] Tool result: {'success': True, 'data': '# 桐昆股份(601233.SH)技术分析报告\n\n**分析时间**: 2026-08-13 20:30:00\n\n\n## 一、近期价格走势与波动特征\n\n最新交易日（8月13日）桐昆股份收报**22.67元**，当日下跌1.90%（由开盘23.11元回落至收盘22.67元），日内振幅约2.9%（最高23.33 / 最低22.66），收...
+[agent_1] Iteration 3/10
+llm_response <Output>
+{
+    "tool_name": "stock_summary",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "301536.SZ"
+    }
+}
+</Output>
+[agent_1] Selected tool: stock_summary
+[agent_1] Executing tool: stock_summary
+call tool stock_summary {'market': 'CN-Stock', 'symbol': '301536.SZ', 'trigger_time': '2026-08-13 20:30:00'}
+📊  Fetching K-line & indicators via Akshare...
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.65it/s]                                             ✅  Data fetching complete.
+2026-08-13 20:23:42.844 | INFO     | tools.search_web:search_web:358 - Attempting search with Doubao/Volcengine for query: '星宸科技', base_url='https://open.feedcoopapi.com/search_api/web_search'
+2026-08-13 20:23:43.710 | INFO     | tools.search_web:search_web:378 - Search successful. Returning 1 results.
+✅  News fetching complete.
+🤖  Starting LLM technical analysis...
+[agent_2] Tool result: {'success': True, 'data': '### 景旺电子（603228.SH）技术分析报告\n**分析时间：** 2026-08-13 20:30:00  \n**最新收盘价：** 97.20元  \n**数据来源：** 基于Akshare精简数据（K线、技术指标及新闻事件）\n\n---\n\n### 一、近期价格走势与波动特征\n\n景旺电子近期呈现**强势上行**态势，但短线波...
+[agent_2] Iteration 7/10
+llm_response <Output>
+{
+    "tool_name": "final_report",
+    "properties": {}
+}
+</Output>
+[agent_2] Selected tool: final_report
+[agent_2] Generating final report...
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-13_20-30-00.md
+[agent_3] Completed after 8 iterations
+[agent_1] Tool result: {'success': True, 'data': '# 星宸科技（301536.SZ）技术分析报告\n\n**分析时间：** 2026年8月13日 20:30\n\n\n## 一、近期价格走势与波动特征\n\n### 1. 当日行情概览\n\n| 项目 | 数值 |\n|------|------|\n| 收盘价 | 122.30 |\n| 开盘价 | 126.50 |\n| 最高价 | 127...
+[agent_1] Iteration 4/10
+llm_response {
+  "tool_name": "stock_summary",
+  "properties": {
+    "market": "CN-Stock",
+    "symbol": "300105.SZ"
+  }
+}
+llm_response {
+  "tool_name": "stock_summary",
+  "properties": {
+    "market": "CN-Stock",
+    "symbol": "300105.SZ"
+  }
+}
+llm_response I apologize for the repeated failures. Let me try a different approach and use the stock_selector tool to gather more information about potential opportunities.
+
+{
+  "tool_name": "stock_selector",
+  "properties": {
+    "market": "CN-Stock",
+    "query": "量化分大于90的股票",
+    "limit": 20
+  }
+}
+[agent_1] Selected tool: unknown
+2026-08-13 20:23:54.344 | WARNING  | agents.research_agent_loop:execute_tool:188 - Tool selection error: Failed to call tool 3 times with error: 'NoneType' object has no attribute 'group'
+[agent_1] Iteration 5/10
+[agent_0] Tool result: {'success': True, 'data': '# 新易盛（300502.SZ）技术分析报告\n\n**分析时间：** 2026年8月13日 20:30\n\n\n## 一、近期价格走势与波动特征\n\n### 1.1 短线走势\n\n最新交易日（8月13日）股价收于 **429.9元**，单日下跌 **3.25%**（前收444.4元）。日内呈现高开低走格局——开盘价444.4元即为接近当...
+[agent_0] Iteration 9/10
+llm_response <Output>
+{
+    "tool_name": "final_report",
+    "properties": {}
+}
+</Output>
+[agent_0] Selected tool: final_report
+[agent_0] Generating final report...
+llm_response <Output>
+{
+    "tool_name": "final_report",
+    "properties": {}
+}
+</Output>
+[agent_1] Selected tool: final_report
+[agent_1] Generating final report...
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-13_20-30-00.md
+[agent_1] Completed after 5 iterations
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-13_20-30-00.md
+[agent_2] Completed after 7 iterations
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-13_20-30-00.md
+[agent_0] Completed after 9 iterations
+使用股票基本信息缓存: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/utils/cache/market_manager/stock_basic_cache.json
+
+============================================================
+✅ [agent_1] Research Signals Ready
+============================================================
+1. 桐昆股份 | buy
+2. 星宸科技 | buy
+============================================================
+
+✅ Research round 1: 2 new signals, 2 total
+
+市场���境识���: neutral (置信���: 52.5%)
+  - ���场趋势向下
+  - ���险偏好积极
+  - 个股���金流数据可用
+2026-08-13 20:24:06.543 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:24:06.543 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+============================================================
+���号分���结���
+============================================================
+A级���高确定性���: 0个
+B级���高确定性���: 0个
+C级���高确定性���: 0个
+============================================================
+2026-08-13 20:24:06.544 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:24:06.544 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+✅ Selected 0 buy signals and 2 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 2/10): Running Research Agents...
+[agent_1] Plan created:
+1. 使用stock_symbol_search搜索候选股票桐昆股份、星宸科技、龙源技术、华依科技、立霸股份的股票代码，确认其市场可用性
+2. 使用stock_summary获取候选股票桐昆股份、星宸科技、龙源技术、华依科技、立霸股份的技术面分析报告，确认趋势与均线状态
+3. 使用price_info获取候选股票的最新价格信息，确认当前价位与20日线偏离度及短期走势
+4. 使用company_fi...
+[agent_1] Generating final report...
+[agent_3] Plan created:
+1. 使用stock_selector工具，基于“AI算力”和“光模块”方向筛选出相关股票（如中际旭创、天孚通信、新易盛、工业富联等），获取其最新价格、估值和量比等基础数据。
+2. 使用stock_selector工具，基于“创新药”和“CRO”方向筛选出相关股票（如药明康德、博济医药等），获取其最新价格、涨跌幅和主力资金流数据。
+3. 使用company_financial_info工具，查询上...
+[agent_3] Generating final report...
+[agent_2] Plan created:
+1. 使用stock_selector筛选医药生物板块（CRO、创新药、医疗服务）中基本面优质且资金持续流入的标的，重点关注药明康德、天孚通信等主力资金连续净流入个股
+2. 使用company_financial_info和stock_summary对筛选出的候选标的（如药明康德603259.SH、天孚通信300394.SZ、新易盛300502.SZ）进行财务数据验证和技术面确认
+3. 使用sto...
+[agent_2] Generating final report...
+[agent_0] Plan created:
+1. 使用stock_selector筛选当前处于趋势初期且靠近20日线的优质成长股，重点关注AI算力、创新药、光模块等景气板块，设置条件如"市值大于500亿且PE小于50的算力概念股"
+2. 对筛选出的候选标的逐一调用stock_summary获取技术面分析报告，确认其处于趋势初/中期、靠近20日线回踩企稳、未过度偏离均线
+3. 使用company_financial_info查询候选标的近期财...
+[agent_0] Generating final report...
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-13_20-30-00.md
+[agent_3] Completed after 8 iterations
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-13_20-30-00.md
+[agent_1] Completed after 5 iterations
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-13_20-30-00.md
+[agent_2] Completed after 7 iterations
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-13_20-30-00.md
+[agent_0] Completed after 9 iterations
+
+============================================================
+✅ [agent_1] Research Signals Ready
+============================================================
+1. 桐昆股份 | buy
+2. 星宸科技 | buy
+3. 龙源技术 | buy
+4. 立霸股份 | buy
+5. 华依科技 | buy
+============================================================
+
+✅ Research round 2: 5 new signals, 7 total
+
+市场���境识���: neutral (置信���: 52.5%)
+  - ���场趋势向下
+  - ���险偏好积极
+  - 个股���金流数据可用
+2026-08-13 20:24:20.413 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:24:20.414 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:24:20.414 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:24:20.414 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:24:20.414 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+============================================================
+���号分���结���
+============================================================
+A级���高确定性���: 0个
+B级���高确定性���: 0个
+C级���高确定性���: 0个
+============================================================
+2026-08-13 20:24:20.414 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:24:20.415 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:24:20.415 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:24:20.415 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:24:20.415 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+✅ Selected 0 buy signals and 5 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 3/10): Running Research Agents...
+[agent_1] Plan created:
+1. 使用stock_symbol_search工具搜索并确认候选股票代码，包括桐昆股份(601233)、星宸科技(301536)、龙源技术(300105)、华依科技(688071)、恒逸石化(000703)等量化筛选出的标的
+2. 使用stock_selector工具筛选当前处于温和上涨趋势且未远离20日均线的股票，重点关注量化评分高、趋势刚确认的标的
+3. 使用price_info工具获取候选...
+[agent_1] Generating final report...
+[agent_0] Plan created:
+1. 使用stock_selector工具筛选医药/创新药板块中主力资金持续流入且技术面靠近20日线企稳的标的，如CRO概念、重组蛋白相关股票
+2. 使用stock_selector工具筛选AI算力/光模块/CPO板块中处于趋势初中期、回踩20日线企稳的标的，如天孚通信、新易盛等
+3. 使用stock_summary和price_info工具对筛选出的候选标的进行技术面验证，确认MA20偏离度、R...
+[agent_0] Generating final report...
+[agent_3] Plan created:
+1. 使用stock_symbol_search或stock_selector工具，在CN-Stock市场中搜索AI算力产业链（如光模块、PCB、算力租赁）相关龙头标的，例如中际旭创、新易盛、天孚通信、生益科技、工业富联，确认其股票代码。
+2. 使用stock_symbol_search或stock_selector工具，在CN-Stock市场中搜索医药创新药/CRO板块近期资金流入明显的标的，例...
+[agent_3] Generating final report...
+[agent_2] Plan created:
+1. 使用stock_selector筛选AI算力/光模块/半导体产业链中基本面优秀（营收和利润高增长、PE合理）且近期涨幅温和的标的，重点考察中际旭创、新易盛、天孚通信、生益科技、工业富联等
+2. 使用company_financial_info和stock_summary对筛选出的候选标的逐一核实财务数据（营收、利润增速）和技术面状态（MA20偏离度、RSI、趋势位置），剔除过热或基本面不匹配...
+[agent_2] Generating final report...
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-13_20-30-00.md
+[agent_1] Completed after 5 iterations
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-13_20-30-00.md
+[agent_0] Completed after 9 iterations
+
+============================================================
+✅ [agent_1] Research Signals Ready
+============================================================
+1. 桐昆股份 | buy
+============================================================
+
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-13_20-30-00.md
+[agent_2] Completed after 7 iterations
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-13_20-30-00.md
+[agent_3] Completed after 8 iterations
+✅ Research round 3: 1 new signals, 8 total
+
+市场���境识���: neutral (置信���: 52.5%)
+  - ���场趋势向下
+  - ���险偏好积极
+  - 个股���金流数据可用
+2026-08-13 20:24:37.303 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:24:37.303 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:24:37.304 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:24:37.304 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:24:37.304 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+============================================================
+���号分���结���
+============================================================
+A级���高确定性���: 0个
+B级���高确定性���: 0个
+C级���高确定性���: 0个
+============================================================
+2026-08-13 20:24:37.305 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:24:37.305 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:24:37.305 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:24:37.305 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:24:37.306 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+✅ Selected 0 buy signals and 5 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 4/10): Running Research Agents...
+[agent_1] Plan created:
+1. 使用stock_selector工具，按"创新药 CRO 主力资金净流入"查询医药板块强势个股，筛选出资金持续流入且涨幅适中的标的
+2. 使用price_info工具查询候选标的（如药明康德603259.SH、新易盛300502.SZ、天孚通信300394.SZ）的最新价格、量比和技术面数据，确认回踩20日线企稳信号
+3. 使用stock_summary工具获取候选标的（如桐昆股份60123...
+[agent_1] Generating final report...
+[agent_0] Plan created:
+1. 使用stock_selector工具筛选当前处于趋势初/中期、靠近20日线且基本面良好的成长股，重点查询AI算力、光模块、创新药、半导体等景气行业，获取候选股票列表及其财务数据
+2. 使用stock_symbol_search工具确认候选股票代码，并对重点标的调用stock_summary和price_info获取技术面分析（均线位置、量比、RSI、MACD）及最新价格信息
+3. 使用com...
+[agent_0] Generating final report...
+[agent_3] Plan created:
+1. 使用stock_selector工具在CN-Stock市场中筛选AI算力产业链（如通信设备、半导体、电子元件行业）中市值较大且近期资金流入明显的龙头股，获取候选股票列表
+2. 使用company_financial_info工具查询候选股票的财务数据（营收增速、净利润增速、毛利率等），验证其业绩景气度是否支撑AI算力主线
+3. 使用price_info和stock_summary工具获取候选...
+[agent_3] Generating final report...
+[agent_2] Plan created:
+1. 使用stock_symbol_search和stock_selector工具，结合市场摘要中的AI算力、创新药、光模块等热点方向及量化筛选结果，初步锁定5-8只候选股票（如天孚通信、药明康德、海光信息、中科曙光、协创数据等）并确认其代码
+2. 对每只候选股票调用price_info和stock_summary工具，获取最新价格、技术指标（MA20偏离度、RSI、量比等），确认上升趋势且买点接...
+[agent_2] Generating final report...
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-13_20-30-00.md
+[agent_2] Completed after 7 iterations
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-13_20-30-00.md
+[agent_3] Completed after 8 iterations
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-13_20-30-00.md
+[agent_0] Completed after 9 iterations
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-13_20-30-00.md
+[agent_1] Completed after 5 iterations
+
+============================================================
+✅ [agent_1] Research Signals Ready
+============================================================
+1. 桐昆股份 | buy
+2. 星宸科技 | buy
+============================================================
+
+
+============================================================
+✅ [agent_2] Research Signals Ready
+============================================================
+1. TCL科技 | buy
+============================================================
+
+✅ Research round 4: 3 new signals, 11 total
+
+市场���境识���: neutral (置信���: 52.5%)
+  - ���场趋势向下
+  - ���险偏好积极
+  - 个股���金流数据可用
+2026-08-13 20:24:55.190 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:24:55.190 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:24:55.190 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=4.2%', 'rsi_healthy=56.0', 'volume_healthy=1.00', 'macd_pos=0.056'] delta=16.0
+2026-08-13 20:24:55.191 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:24:55.191 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:24:55.191 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+============================================================
+���号分���结���
+============================================================
+A级���高确定性���: 0个
+B级���高确定性���: 0个
+C级���高确定性���: 0个
+============================================================
+2026-08-13 20:24:55.191 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:24:55.192 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:24:55.192 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=4.2%', 'rsi_healthy=56.0', 'volume_healthy=1.00', 'macd_pos=0.056'] delta=16.0
+2026-08-13 20:24:55.192 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:24:55.192 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:24:55.192 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+✅ Selected 0 buy signals and 5 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 5/10): Running Research Agents...
+[agent_0] Plan created:
+1. 使用stock_symbol_search确认候选股票代码（如海光信息、工业富联、天孚通信、药明康德、生益科技等），确保代码准确
+2. 使用stock_selector筛选符合"AI算力/CPO/光模块"和"医药CRO/创新药"高景气方向的标的，重点关注量比温和、靠近20日线、RS评分高的个股
+3. 使用price_info获取候选股票最新价格、涨跌幅、量比等行情数据，验证技术面位置（MA2...
+[agent_0] Generating final report...
+[agent_3] Plan created:
+1. 使用stock_selector工具，筛选AI算力产业链（如光模块、PCB、算力租赁）中市值较大、近期主力资金净流入且技术面强势的股票，获取候选标的列表
+2. 使用stock_symbol_search工具，查询候选标的的准确股票代码，确认其属于CN-Stock市场可交易范围
+3. 使用price_info和stock_summary工具，逐一获取候选标的的最新价格、技术指标和短期走势信息，...
+[agent_3] Generating final report...
+[agent_2] Plan created:
+1. 使用stock_selector筛选AI算力产业链中基本面强劲（如营收增长、PE合理）且技术面未过热的标的，重点关注光模块、PCB、算力租赁等方向，获取候选股票列表
+2. 对筛选出的候选股票逐一调用stock_summary和price_info，确认其技术面处于上升趋势且股价接近20日均线支撑位，排除已过度上涨或破位的个股
+3. 使用company_financial_info查询候选股票...
+[agent_2] Generating final report...
+[agent_1] Plan created:
+1. 使用stock_symbol_search工具，查询量化预筛选中高评分候选股（桐昆股份、星宸科技、龙源技术、华依科技、立霸股份等）的准确股票代码和名称
+2. 使用stock_summary工具，对量化预筛选中评分最高且符合"回踩20日线企稳、趋势刚确认"特征的前5-8只候选股（如桐昆股份601233.SH、星宸科技301536.SZ、龙源技术300105.SZ、华依科技688071.SH、立...
+[agent_1] Generating final report...
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-13_20-30-00.md
+[agent_2] Completed after 7 iterations
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-13_20-30-00.md
+[agent_1] Completed after 5 iterations
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-13_20-30-00.md
+[agent_3] Completed after 8 iterations
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-13_20-30-00.md
+[agent_0] Completed after 9 iterations
+
+============================================================
+✅ [agent_1] Research Signals Ready
+============================================================
+1. 桐昆股份 | buy
+2. 星宸科技 | buy
+3. 龙源技术 | buy
+4. 立霸股份 | buy
+5. 华依科技 | buy
+============================================================
+
+✅ Research round 5: 5 new signals, 16 total
+
+市场���境识���: neutral (置信���: 52.5%)
+  - ���场趋势向下
+  - ���险偏好积极
+  - 个股���金流数据可用
+2026-08-13 20:25:12.961 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:25:12.961 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=4.2%', 'rsi_healthy=56.0', 'volume_healthy=1.00', 'macd_pos=0.056'] delta=16.0
+2026-08-13 20:25:12.961 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:25:12.961 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:25:12.961 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:25:12.962 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+============================================================
+���号分���结���
+============================================================
+A级���高确定性���: 0个
+B级���高确定性���: 0个
+C级���高确定性���: 0个
+============================================================
+2026-08-13 20:25:12.962 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:25:12.962 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=4.2%', 'rsi_healthy=56.0', 'volume_healthy=1.00', 'macd_pos=0.056'] delta=16.0
+2026-08-13 20:25:12.962 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:25:12.962 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:25:12.962 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:25:12.963 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+✅ Selected 0 buy signals and 5 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 6/10): Running Research Agents...
+[agent_3] Plan created:
+1. 使用stock_symbol_search工具查询候选标的（药明康德、天孚通信、生益科技、浪潮信息、协创数据）的股票代码确认
+2. 使用price_info工具获取上述候选标的的最新价格信息，确认当前价格位置和短期走势
+3. 使用stock_summary工具获取药明康德、天孚通信、生益科技的技术分析报告，验证趋势强度
+4. 使用company_financial_info工具查询药明康德、...
+[agent_3] Generating final report...
+[agent_1] Plan created:
+1. 使用stock_symbol_search工具查询量化预筛选报告中关键候选标的（如桐昆股份601233.SH、星宸科技301536.SZ、龙源技术300105.SZ等）的完整股票代码和名称确认
+2. 使用price_info工具获取候选标的（桐昆股份、星宸科技、龙源技术、华依科技、立霸股份等）的最新价格信息，确认当前价格位置和趋势状态
+3. 使用stock_summary工具获取候选标的的技...
+[agent_1] Generating final report...
+[agent_0] Plan created:
+1. 使用stock_selector在CN-Stock市场中筛选医药生物板块（CRO、创新药、生物制品）中市值适中、PE合理且近期主力资金净流入的标的，获取候选股票列表
+2. 使用stock_selector在CN-Stock市场中筛选AI算力/光通信/CPO板块（通信设备、电子元件、半导体）中技术面处于趋势初期、靠近20日均线且量比温和的标的，获取候选股票列表
+3. 对初步筛选出的候选股票逐一...
+[agent_0] Generating final report...
+[agent_2] Plan created:
+1. 使用stock_selector筛选AI算力/光模块/半导体行业中基本面优异（营收增速>30%、净利润增速>50%、PE<50）且技术面未过热的标的，获取候选股票列表
+2. 对量化预筛选报告中排名靠前的候选标的（如桐昆股份、星宸科技、恒逸石化、TCL科技等）逐一调用company_financial_info查询最新财务数据，确认业绩增长与估值匹配度
+3. 对通过基本面筛选的候选标的逐一调用...
+[agent_2] Generating final report...
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-13_20-30-00.md
+[agent_1] Completed after 5 iterations
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-13_20-30-00.md
+[agent_2] Completed after 7 iterations
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-13_20-30-00.md
+[agent_0] Completed after 9 iterations
+
+============================================================
+✅ [agent_1] Research Signals Ready
+============================================================
+1. 桐昆股份 | buy
+============================================================
+
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-13_20-30-00.md
+[agent_3] Completed after 8 iterations
+✅ Research round 6: 1 new signals, 17 total
+
+市场���境识���: neutral (置信���: 52.5%)
+  - ���场趋势向下
+  - ���险偏好积极
+  - 个股���金流数据可用
+2026-08-13 20:25:26.566 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:25:26.566 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=4.2%', 'rsi_healthy=56.0', 'volume_healthy=1.00', 'macd_pos=0.056'] delta=16.0
+2026-08-13 20:25:26.567 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:25:26.567 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:25:26.568 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:25:26.568 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+============================================================
+���号分���结���
+============================================================
+A级���高确定性���: 0个
+B级���高确定性���: 0个
+C级���高确定性���: 0个
+============================================================
+2026-08-13 20:25:26.568 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:25:26.569 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=4.2%', 'rsi_healthy=56.0', 'volume_healthy=1.00', 'macd_pos=0.056'] delta=16.0
+2026-08-13 20:25:26.569 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:25:26.569 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:25:26.570 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:25:26.570 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+✅ Selected 0 buy signals and 5 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 7/10): Running Research Agents...
+[agent_0] Plan created:
+1. 利用stock_symbol_search工具，分别查询"药明康德"、"天孚通信"、"新易盛"、"中科曙光"和"协创数据"的股票代码，确认目标标的的准确symbol。
+2. 利用price_info工具，分别查询上述5只股票的实时价格数据，确认当前价格、涨跌幅及近期走势。
+3. 利用stock_summary工具，分别获取上述5只股票的技术分析报告，确认其是否满足"靠近20日线回踩企稳、温和...
+[agent_0] Generating final report...
+[agent_2] Plan created:
+1. 使用stock_symbol_search工具查询候选标的（药明康德、天孚通信、生益科技、海光信息、中科曙光）的准确股票代码
+2. 使用company_financial_info工具获取上述候选标的的基本面财务数据（营收、利润、估值）
+3. 使用stock_summary工具获取上述候选标的的技术面走势分析（趋势、均线位置、是否过热）
+4. 使用price_info工具获取上述候选标的的最...
+[agent_2] Generating final report...
+[agent_1] Plan created:
+1. 使用stock_selector筛选医药生物（CRO/创新药）板块中主力资金持续净流入、技术面处于20日均线上方且未过度偏离（MA20偏离<6%）的标的，重点分析药明康德、天孚通信等候选个股
+2. 使用price_info和stock_summary工具逐一验证候选标的（药明康德、新易盛、天孚通信、中科曙光、海光信息等）的当前价格、均线位置、RSI、MACD等技术指标，确认回踩企稳或趋势确认...
+[agent_1] Generating final report...
+[agent_3] Plan created:
+1. 使用stock_selector在CN-Stock市场中筛选AI算力/光模块/CPO相关行业（如半导体、通信设备、电子元件）中市值较大且近期主力资金净流入明显的股票，获取候选标的列表。
+2. 对筛选出的候选标的（如中际旭创、新易盛、天孚通信、生益科技、东山精密等），使用price_info和stock_summary查询其最新价格、技术指标和短期趋势状态，确认处于上升趋势且未过度超买。
+3....
+[agent_3] Generating final report...
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-13_20-30-00.md
+[agent_1] Completed after 5 iterations
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-13_20-30-00.md
+[agent_3] Completed after 8 iterations
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-13_20-30-00.md
+[agent_0] Completed after 9 iterations
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-13_20-30-00.md
+[agent_2] Completed after 7 iterations
+✅ Research round 7: 0 new signals, 17 total
+
+市场���境识���: neutral (置信���: 52.5%)
+  - ���场趋势向下
+  - ���险偏好积极
+  - 个股���金流数据可用
+2026-08-13 20:25:45.072 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:25:45.072 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=4.2%', 'rsi_healthy=56.0', 'volume_healthy=1.00', 'macd_pos=0.056'] delta=16.0
+2026-08-13 20:25:45.073 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:25:45.073 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:25:45.073 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:25:45.074 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+============================================================
+���号分���结���
+============================================================
+A级���高确定性���: 0个
+B级���高确定性���: 0个
+C级���高确定性���: 0个
+============================================================
+2026-08-13 20:25:45.074 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:25:45.074 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=4.2%', 'rsi_healthy=56.0', 'volume_healthy=1.00', 'macd_pos=0.056'] delta=16.0
+2026-08-13 20:25:45.075 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:25:45.075 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:25:45.076 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:25:45.076 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+✅ Selected 0 buy signals and 5 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 8/10): Running Research Agents...
+[agent_3] Plan created:
+1. 使用stock_symbol_search工具查询中科曙光、海光信息、药明康德、天孚通信、紫光股份等候选股票的准确代码
+2. 使用stock_selector工具筛选AI算力产业链（通信设备、半导体、电子元件行业）中市值较大、近期资金流入明显的股票
+3. 使用stock_selector工具筛选创新药与CRO板块（医疗服务、化学制药、生物制品行业）中主力资金净流入居前的股票
+4. 使用pri...
+[agent_3] Generating final report...
+[agent_0] Plan created:
+1. 使用stock_symbol_search工具查询候选标的的股票代码，包括药明康德、天孚通信、新易盛、协创数据、中科曙光等，确认其市场代码格式
+2. 使用stock_summary工具获取上述候选标的的技术分析报告，重点确认MA20偏离度、RSI、量价关系等指标是否符合回踩企稳特征
+3. 使用company_financial_info工具查询候选标的的近期财务数据，验证业绩增长逻辑（如营收...
+[agent_0] Generating final report...
+[agent_2] Plan created:
+1. 使用stock_symbol_search工具查询医药CRO板块龙头药明康德(603259.SH)、翰宇药业(300199.SZ)及CPO光模块板块天孚通信(300394.SZ)、新易盛(300502.SZ)等股票代码确认
+2. 使用company_financial_info工具获取药明康德、翰宇药业、天孚通信、新易盛等候选标的的财务数据，验证营收利润增长与基本面
+3. 使用stock_s...
+[agent_2] Generating final report...
+[agent_1] Plan created:
+1. 使用stock_symbol_search或stock_selector工具，根据AI算力、光模块、创新药等热点板块，筛选符合"趋势刚确认、回踩20日线企稳、相对强度温和"条件的候选股票标的
+2. 使用price_info和stock_summary工具，逐一验证候选股票的技术面状态，确认其处于上升趋势且距20日均线偏离度在合理范围内（不超6%）
+3. 使用company_financial...
+[agent_1] Generating final report...
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-13_20-30-00.md
+[agent_0] Completed after 9 iterations
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-13_20-30-00.md
+[agent_1] Completed after 5 iterations
+
+============================================================
+✅ [agent_1] Research Signals Ready
+============================================================
+1. 桐昆股份 | buy
+============================================================
+
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-13_20-30-00.md
+[agent_3] Completed after 8 iterations
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-13_20-30-00.md
+[agent_2] Completed after 7 iterations
+✅ Research round 8: 1 new signals, 18 total
+
+市场���境识���: neutral (置信���: 52.5%)
+  - ���场趋势向下
+  - ���险偏好积极
+  - 个股���金流数据可用
+2026-08-13 20:26:02.625 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:26:02.625 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=4.2%', 'rsi_healthy=56.0', 'volume_healthy=1.00', 'macd_pos=0.056'] delta=16.0
+2026-08-13 20:26:02.625 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:26:02.626 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:26:02.626 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:26:02.626 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+============================================================
+���号分���结���
+============================================================
+A级���高确定性���: 0个
+B级���高确定性���: 0个
+C级���高确定性���: 0个
+============================================================
+2026-08-13 20:26:02.627 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:26:02.627 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=4.2%', 'rsi_healthy=56.0', 'volume_healthy=1.00', 'macd_pos=0.056'] delta=16.0
+2026-08-13 20:26:02.627 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:26:02.627 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:26:02.627 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:26:02.627 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+✅ Selected 0 buy signals and 5 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 9/10): Running Research Agents...
+[agent_0] Plan created:
+1. 使用stock_symbol_search工具，查询并确认候选标的（如药明康德、天孚通信、生益科技、新易盛、海光信息等）的准确股票代码
+2. 使用stock_summary工具，逐一获取候选标的的技术面分析报告，确认其是否处于趋势初/中期且靠近20日线回踩企稳
+3. 使用company_financial_info工具，逐一查询候选标的的财务数据，验证行业景气度和业绩增长基本面
+4. 使用p...
+[agent_0] Generating final report...
+[agent_3] Plan created:
+1. 使用stock_symbol_search工具，在CN-Stock市场搜索"药明康德"、"天孚通信"、"中芯国际"、"海光信息"、"工业富联"等核心标的的股票代码，确认符号准确性
+2. 使用price_info工具，分别获取上述标的的最新价格信息，确认收盘价、涨跌幅及交易状态
+3. 使用stock_summary工具，对上述标的进行技术面分析，获取K线形态、均线系统、RSI、MACD等技术指...
+[agent_3] Generating final report...
+[agent_1] Plan created:
+1. 使用stock_selector筛选医药/CRO板块中主力资金净流入靠前且涨幅未过度偏离20日均线的标的，如创新药、CRO概念相关股票
+2. 使用stock_selector筛选AI算力/光模块板块中技术面趋势良好、回踩关键均线企稳且相对强度适中的标的（如光通信、PCB相关）
+3. 使用price_info或stock_summary工具，对筛选出的候选标的逐一验证技术面信号（如20日均线支...
+[agent_1] Generating final report...
+[agent_2] Plan created:
+1. 基于市场背景信息，筛选出AI算力/CPO/光通信、创新药/CRO、芯片半导体、银行防御等方向中符合"基本面向上但股价未过度透支"标准的候选股票池，优先从量化预筛选列表和板块资金流向中选取标的
+2. 使用stock_selector工具分别查询AI算力、创新药、半导体、银行等行业的龙头股票，获取PE、PB、总市值、涨跌幅等关键指标，筛选基本面优秀且估值合理的标的
+3. 对筛选出的候选标的逐一调...
+[agent_2] Generating final report...
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-13_20-30-00.md
+[agent_3] Completed after 8 iterations
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-13_20-30-00.md
+[agent_0] Completed after 9 iterations
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-13_20-30-00.md
+[agent_2] Completed after 7 iterations
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-13_20-30-00.md
+[agent_1] Completed after 5 iterations
+
+============================================================
+✅ [agent_1] Research Signals Ready
+============================================================
+1. 桐昆股份 | buy
+2. 星宸科技 | buy
+3. 龙源技术 | buy
+4. 华依科技 | buy
+5. 立霸股份 | buy
+============================================================
+
+✅ Research round 9: 5 new signals, 23 total
+
+市场���境识���: neutral (置信���: 52.5%)
+  - ���场趋势向下
+  - ���险偏好积极
+  - 个股���金流数据可用
+2026-08-13 20:26:16.767 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:26:16.767 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:26:16.767 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=4.2%', 'rsi_healthy=56.0', 'volume_healthy=1.00', 'macd_pos=0.056'] delta=16.0
+2026-08-13 20:26:16.768 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:26:16.768 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:26:16.768 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+============================================================
+���号分���结���
+============================================================
+A级���高确定性���: 0个
+B级���高确定性���: 0个
+C级���高确定性���: 0个
+============================================================
+2026-08-13 20:26:16.768 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:26:16.768 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:26:16.769 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=4.2%', 'rsi_healthy=56.0', 'volume_healthy=1.00', 'macd_pos=0.056'] delta=16.0
+2026-08-13 20:26:16.769 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:26:16.769 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:26:16.769 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+✅ Selected 0 buy signals and 5 watchlist candidates
+⚠️  0 buy signal(s) < require_min_buys=1, retrying research (gates unchanged)...
+
+🔍 Stage 2 (round 10/10): Running Research Agents...
+[agent_3] Plan created:
+1. 使用stock_symbol_search搜索“药明康德”、“天孚通信”、“新易盛”、“浪潮信息”、“协创数据”等候选标的的股票代码，确认交易symbol
+2. 使用stock_selector筛选“创新药行业市值前5”、“CRO概念主力净流入前5”、“算力硬件行业市值前5”等，获取更多候选标的
+3. 使用price_info获取候选标的（如药明康德603259.SH、天孚通信300394....
+[agent_3] Generating final report...
+[agent_0] Plan created:
+1. 基于全球市场摘要和量化预筛选报告，筛选出AI算力、创新药、光模块等景气赛道的候选标的，重点聚焦量化分高且靠近20日线的品种，如天孚通信、药明康德、生益科技等
+2. 使用stock_symbol_search工具查询候选公司的准确股票代码，确认其在CN-Stock市场可用
+3. 使用price_info和stock_summary工具获取候选标的的最新价格、技术指标和趋势分析数据，验证是否处于...
+[agent_0] Generating final report...
+[agent_1] Plan created:
+1. 使用stock_selector筛选量化预筛选中评分靠前且符合“回踩20日线企稳、趋势刚确认”条件的候选标的，如桐昆股份(601233.SH)、星宸科技(301536.SZ)、龙源技术(300105.SZ)等，获取其最新价格、量比、市值等数据
+2. 使用price_info工具逐一查询上述候选标的（如601233.SH、301536.SZ、300105.SZ、688071.SH、603519...
+[agent_1] Generating final report...
+[agent_2] Plan created:
+1. 基于市场信息摘要中AI算力产业链高景气线索，使用stock_selector筛选半导体、通信设备、电子元件行业中营收和利润增长强劲且PE合理的股票，如中际旭创、新易盛、工业富联等，选取3-5个候选标的
+2. 基于市场信息中创新药/CRO板块资金大幅流入（主力净流入50.76亿）的线索，使用stock_selector筛选医疗服务、化学制药、生物制品行业中业绩增长且估值合理的股票，如药明康德等...
+[agent_2] Generating final report...
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-13_20-30-00.md
+[agent_1] Completed after 5 iterations
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-13_20-30-00.md
+[agent_3] Completed after 8 iterations
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-13_20-30-00.md
+[agent_0] Completed after 9 iterations
+
+============================================================
+✅ [agent_0] Research Signals Ready
+============================================================
+1. TCL科技 | buy
+============================================================
+
+
+============================================================
+✅ [agent_1] Research Signals Ready
+============================================================
+1. 桐昆股份 | buy
+============================================================
+
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-13_20-30-00.md
+[agent_2] Completed after 7 iterations
+✅ Research round 10: 2 new signals, 25 total
+
+市场���境识���: neutral (置信���: 52.5%)
+  - ���场趋势向下
+  - ���险偏好积极
+  - 个股���金流数据可用
+2026-08-13 20:26:35.496 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=4.2%', 'rsi_healthy=56.0', 'volume_healthy=1.00', 'macd_pos=0.056'] delta=16.0
+2026-08-13 20:26:35.497 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:26:35.497 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:26:35.497 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:26:35.497 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:26:35.498 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+============================================================
+���号分���结���
+============================================================
+A级���高确定性���: 0个
+B级���高确定性���: 0个
+C级���高确定性���: 0个
+============================================================
+2026-08-13 20:26:35.498 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=4.2%', 'rsi_healthy=56.0', 'volume_healthy=1.00', 'macd_pos=0.056'] delta=16.0
+2026-08-13 20:26:35.498 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.4%', 'rsi_healthy=62.0', 'volume_healthy=1.12', 'macd_pos=0.210'] delta=16.0
+2026-08-13 20:26:35.499 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=3.0%', 'rsi_healthy=44.5', 'volume_dry=0.67', 'macd_pos=0.722'] delta=7.0
+2026-08-13 20:26:35.499 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.5%', 'rsi_healthy=47.1', 'macd_pos=0.020'] delta=12.0
+2026-08-13 20:26:35.499 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=2.4%', 'rsi_healthy=57.9', 'macd_pos=0.026'] delta=12.0
+2026-08-13 20:26:35.499 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:678 - strong_trend_penalty: ['early_uptrend_ma20=1.9%', 'rsi_healthy=52.5', 'macd_pos=0.041'] delta=12.0
+✅ Selected 0 buy signals and 5 watchlist candidates
+⚠️  Stopped after 10 round(s): 0 buy signal(s), require_min_buys=1
+
+================================================================================
+✅ Trade Company Analysis Completed
+
+���� Stage 4: Performance tracking...
+2026-08-13 20:26:35.511 | INFO     | utils.performance_tracker:record_signals:85 - Recorded 0 buy signals for trigger_time=2026-08-13 20:30:00; skipped 0 watchlist candidates
+2026-08-13 20:26:35.511 | INFO     | utils.performance_tracker:evaluate_pending:189 - Evaluation complete. Pending: 0, Total history: 0
+pipeline_done
+strategy=swing
+data_factors=12
+research_signals=25
+best_signals=0
+research_rounds=10
+require_min_buys_met=False
+an error occurred during closing of asynchronous generator <async_generator object safe_async_iterate at 0x11c5192a0>
+asyncgen: <async_generator object safe_async_iterate at 0x11c5192a0>
+Traceback (most recent call last):
+  File "/Users/ruby/Desktop/ai-trading/contest_trade_refactor/.venv/lib/python3.14/site-packages/httpcore2/_async/http11.py", line 313, in __aiter__
+    yield chunk
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/ruby/Desktop/ai-trading/contest_trade_refactor/.venv/lib/python3.14/site-packages/httpcore2/_utils.py", line 62, in safe_async_iterate
+    await iterator.aclose()
+  File "/Users/ruby/Desktop/ai-trading/contest_trade_refactor/.venv/lib/python3.14/site-packages/httpcore2/_async/http11.py", line 320, in __aiter__
+    raise exc
+  File "/Users/ruby/Desktop/ai-trading/contest_trade_refactor/.venv/lib/python3.14/site-packages/httpcore2/_async/http11.py", line 311, in __aiter__
+    async with safe_async_iterate(self._connection._receive_response_body(**kwargs)) as iterator:
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/contextlib.py", line 271, in __aexit__
+    raise RuntimeError("generator didn't stop after athrow()")
+RuntimeError: generator didn't stop after athrow()
+an error occurred during closing of asynchronous generator <async_generator object PoolByteStream.__aiter__ at 0x11ddd3740>
+asyncgen: <async_generator object PoolByteStream.__aiter__ at 0x11ddd3740>
+Traceback (most recent call last):
+  File "/Users/ruby/Desktop/ai-trading/contest_trade_refactor/.venv/lib/python3.14/site-packages/httpcore2/_async/connection_pool.py", line 427, in __aiter__
+    yield chunk
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/ruby/Desktop/ai-trading/contest_trade_refactor/.venv/lib/python3.14/site-packages/httpcore2/_async/connection_pool.py", line 425, in __aiter__
+    async with safe_async_iterate(self._stream) as iterator:
+               ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/contextlib.py", line 271, in __aexit__
+    raise RuntimeError("generator didn't stop after athrow()")
+RuntimeError: generator didn't stop after athrow()

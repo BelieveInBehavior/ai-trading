@@ -1,0 +1,39 @@
+{
+  "trigger_time": "2026-08-08 20:20:46",
+  "research_signals": [
+    {
+      "symbol_code": "300502.SZ"
+    }
+  ],
+  "buy_signals": [],
+  "watchlist": [
+    {
+      "symbol_code": "300502.SZ",
+      "symbol_name": "新易盛",
+      "buy_score": 96.73,
+      "probability_value": 0.5636,
+      "expected_return_t1_pct": 0.632,
+      "buy_decision": "watch",
+      "technical_factor": {
+        "report_date": "20260810",
+        "close": 399.6,
+        "change_pct": -5.07,
+        "ma20_deviation_pct": -14.0,
+        "rsi": 29.3,
+        "macd": -7.021,
+        "volume_ratio": 1.08,
+        "bollinger": "中下"
+      },
+      "next_day_gate_report": {
+        "passed": false,
+        "failed_reasons": [
+          "risk_reward<50.0",
+          "data_quality<45.0"
+        ]
+      }
+    }
+  ],
+  "best_signals": [],
+  "market_context": {},
+  "system_health": {}
+}

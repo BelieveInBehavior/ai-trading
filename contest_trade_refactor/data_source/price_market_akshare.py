@@ -38,9 +38,16 @@ class PriceMarketAkshare(DataSourceBase):
             logger.info(f"获取 {trade_date} 的价格市场数据")
 
             llm_summary_dict = await self.get_llm_summary(trade_date)
+            content = await self.maybe_web_search_supplement(
+                llm_summary_dict["llm_summary"],
+                query=f"A股市场行情{trade_date}",
+                trigger_time=trigger_time,
+                section_title="市场行情联网补充",
+                extra_markers=("分析失败:", "数据获取失败"),
+            )
             data = [{
                 "title": f"{trade_date}:市场宏观数据汇总",
-                "content": llm_summary_dict["llm_summary"],
+                "content": content,
                 "pub_time": trigger_time,
                 "url": None
             }]
@@ -50,7 +57,13 @@ class PriceMarketAkshare(DataSourceBase):
                 
         except Exception as e:
             logger.error(f"获取价格市场数据失败: {e}")
-            return pd.DataFrame()
+            trade_date = get_latest_completed_trading_date(trigger_time)
+            return await self.akshare_web_search_fallback(
+                title=f"{trade_date}:市场宏观数据汇总",
+                query=f"A股市场行情{trade_date}",
+                trigger_time=trigger_time,
+                section_title="市场行情联网补充",
+            )
     
     def get_kline_data(self, trade_date: str) -> dict:
         """

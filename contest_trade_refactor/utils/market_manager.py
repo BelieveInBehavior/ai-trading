@@ -911,14 +911,16 @@ class MarketManager:
         cache_path = Path(__file__).parent / 'cache' / 'market_manager' / 'stock_basic_cache.json'
         
         try:
+            if not cache_path.exists():
+                from utils.market_cache_bootstrap import ensure_market_manager_caches
+                ensure_market_manager_caches(verbose=True)
             if cache_path.exists():
                 print(f"使用股票基本信息缓存: {cache_path}")
                 with open(cache_path, 'r', encoding='utf-8') as f:
                     cache_data = json.load(f)
                 return pd.DataFrame(cache_data)
-            else:
-                print(f"股票基本信息缓存不存在: {cache_path}")
-                return None
+            print(f"股票基本信息缓存不存在: {cache_path}")
+            return None
         except Exception as e:
             print(f"读取股票基本信息缓存失败: {e}")
             return None
@@ -972,6 +974,10 @@ class MarketManager:
             return {}
 
         cache_path = Path(__file__).parent / 'cache' / 'market_manager' / 'namechange_data.json'
+        
+        if not cache_path.exists():
+            from utils.market_cache_bootstrap import ensure_market_manager_caches
+            ensure_market_manager_caches(verbose=True)
         
         if not cache_path.exists():
             raise FileNotFoundError(

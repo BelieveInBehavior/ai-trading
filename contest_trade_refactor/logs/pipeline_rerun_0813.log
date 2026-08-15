@@ -1,0 +1,25 @@
+Loading config from: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/config.yaml (Market: CN-Stock)
+[sina_summary_agent] Loaded: data_source.sina_news_crawl.SinaNewsCrawl
+[thx_summary_agent] Loaded: data_source.thx_news_crawl.ThxNewsCrawl
+[price_market_agent] Loaded: data_source.price_market_akshare.PriceMarketAkshare
+[hot_money_agent] Loaded: data_source.hot_money_akshare.HotMoneyAkshare
+[northbound_flow_agent] Loaded: data_source.northbound_flow_akshare.NorthboundFlowAkshare
+[technical_indicators_agent] Loaded: data_source.technical_indicators_akshare.TechnicalIndicatorsAkshare
+2026-08-13 19:35:10.078 | INFO     | utils.threshold_manager:load:125 - 阈值已从 /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/factor_thresholds.yaml 加载
+[individual_fund_flow_agent] Loaded: data_source.individual_fund_flow_akshare.IndividualFundFlowAkshare
+[margin_trading_agent] Loaded: data_source.margin_trading_akshare.MarginTradingAkshare
+[block_trade_agent] Loaded: data_source.block_trade_akshare.BlockTradeAkshare
+[sector_fund_flow_trend_agent] Loaded: data_source.sector_fund_flow_trend_akshare.SectorFundFlowTrendAkshare
+[zt_seal_strength_agent] Loaded: data_source.zt_seal_strength_akshare.ZtSealStrengthAkshare
+[web_search_market_supplement_agent] Loaded: data_source.web_search_market_supplement.WebSearchMarketSupplement
+pipeline_start strategy=momentum trigger_time=2026-08-13 19:35:10 quantitative_screen=on max_symbols=0 concurrency=4
+🚀 Starting Trade Company Analysis at 2026-08-13 19:35:10
+================================================================================
+
+🔎 Stage 0: Full-market quantitative screening...
+Stage 0 progress: 1/5005 scanned
+2026-08-13 19:35:10.162 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 301717.SZ 技术因子: insufficient_rows<20
+2026-08-13 19:35:10.587 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 001232.SZ 技术因子: insufficient_rows<20
+Stage 0 progress: 200/5005 scanned
+2026-08-13 19:35:11.189 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 688828.SH 技术因子: insufficient_rows<20
+2026-08-13 19:35:11.353 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 301707.SZ 技术因子: insufficient_rows<20

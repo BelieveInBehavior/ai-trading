@@ -73,8 +73,13 @@ class TestQuantitativeUniverseScreener(unittest.TestCase):
 
         self.assertEqual(result["status"], "ok")
         self.assertEqual(result["universe_count"], 2)
-        self.assertEqual(result["passed_count"], 1)
+        # V2: 强势股必须通过，弱势股允许进入研究池，但分数必须明显更低。
+        self.assertGreaterEqual(result["passed_count"], 1)
         self.assertEqual(result["candidates"][0]["symbol_code"], "600001.SH")
+        self.assertGreater(
+            result["candidates"][0]["quantitative_score"],
+            result["candidates"][-1]["quantitative_score"],
+        )
         self.assertIn("允许 Research Agent 研究的候选", result["context_string"])
 
     def test_research_signals_are_restricted_to_quantitative_candidates(self):

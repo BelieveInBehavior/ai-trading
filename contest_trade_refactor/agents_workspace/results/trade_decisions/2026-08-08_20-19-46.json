@@ -1,0 +1,39 @@
+{
+  "trigger_time": "2026-08-08 20:19:46",
+  "research_signals": [
+    {
+      "symbol_code": "600519.SH"
+    }
+  ],
+  "consensus_signals": [
+    {
+      "symbol_code": "600519.SH"
+    }
+  ],
+  "best_signals": [
+    {
+      "symbol_code": "600519.SH",
+      "symbol_name": "贵州茅台",
+      "buy_score": 78.2,
+      "probability_value": 0.72,
+      "expected_return_t1_pct": 1.15,
+      "buy_decision": "buy",
+      "signal_contract_version": "buy-signal.v1",
+      "entry_timing": "next_trading_day_open",
+      "analysis_as_of_date": "2026-08-08",
+      "risk_flags": [],
+      "next_day_gate_report": {
+        "passed": true,
+        "failed_reasons": []
+      }
+    }
+  ],
+  "market_context": {
+    "market_trend": "up",
+    "risk_sentiment": "risk_on",
+    "has_sector_flow_data": true
+  },
+  "system_health": {
+    "tool_error_count": 0
+  }
+}

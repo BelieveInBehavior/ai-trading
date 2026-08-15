@@ -1,0 +1,11 @@
+[
+  {
+    "trigger_time": "2026-08-13 18:00:00",
+    "symbol_code": "000100.SZ",
+    "symbol_name": "TCL科技",
+    "action": "buy",
+    "buy_decision": "buy",
+    "probability": 0.5636,
+    "agent_name": "agent_0"
+  }
+]

@@ -39,6 +39,12 @@ class BlockTradeAkshare(DataSourceBase):
             logger.info(f"获取 {trade_date} 的大宗交易数据")
 
             report = self._build_block_trade_report(trade_date)
+            report = await self.maybe_web_search_supplement(
+                report,
+                query=f"A股大宗交易{trade_date}",
+                trigger_time=trigger_time,
+                section_title="大宗交易联网补充",
+            )
 
             data = [{
                 "title": f"{trade_date}:大宗交易折溢价分析",
@@ -58,7 +64,18 @@ class BlockTradeAkshare(DataSourceBase):
         except Exception as e:
             traceback.print_exc()
             logger.error(f"获取大宗交易数据失败: {e}")
-            return pd.DataFrame()
+            trade_date = get_latest_completed_trading_date(trigger_time)
+            return await self.akshare_web_search_fallback(
+                title=f"{trade_date}:大宗交易折溢价分析",
+                query=f"A股大宗交易{trade_date}",
+                trigger_time=trigger_time,
+                section_title="大宗交易联网补充",
+                market_relevance_score=7,
+                market_relevance_label="high",
+                signal_event_type="block_trade",
+                signal_direction="neutral",
+                signal_confidence=0.6,
+            )
 
     def _build_block_trade_report(self, trade_date: str) -> str:
         """构建大宗交易分析报告"""

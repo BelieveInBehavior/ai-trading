@@ -1,0 +1,2 @@
+{"date": "20260814", "trigger_time": "2026-08-14 18:00:00", "strategy": "momentum", "workspace": "/Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace_replays/momentum/20260814", "exit_code": 1, "status": "error"}
+{"date": "20260814", "trigger_time": "2026-08-14 18:00:00", "strategy": "momentum", "workspace": "/Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace_replays/momentum/20260814", "exit_code": 0, "status": "ok"}

@@ -559,3 +559,62 @@ class TestStockOpportunityRanker(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestFinancialEvidenceConsistency(unittest.TestCase):
+    def test_financial_claim_caveat_blocks_buy(self):
+        ranker = StockOpportunityRanker(RankerConfig())
+        signal = {
+            "has_opportunity": "是",
+            "action": "买入",
+            "symbol_code": "000703.SZ",
+            "symbol_name": "恒逸石化",
+            "probability": "62%",
+            "evidence_list": [
+                {
+                    "description": "上半年归母净利润59.02亿元，同比暴增2500.73%，推出首次中期分红。",
+                    "time": "2026-08-12 18:00:00",
+                    "from_source": "global_summary",
+                }
+            ],
+            "limitations": [
+                "材料来源与公司公告存在口径差异，需以正式财报为准。"
+            ],
+        }
+        scored = ranker.score_signals(
+            [signal],
+            "2026-08-12 18:00:00",
+            market_context={"has_sector_flow_data": True},
+            system_health={},
+        )[0]
+        self.assertFalse(scored["next_day_gate_report"]["passed"])
+        self.assertIn("financial_evidence_caveat", scored["next_day_gate_report"]["failed_reasons"])
+        self.assertIn("financial_statement_conflict", scored["next_day_gate_report"]["failed_reasons"])
+
+    def test_financial_negative_figure_in_limitations_blocks_buy(self):
+        ranker = StockOpportunityRanker(RankerConfig())
+        signal = {
+            "has_opportunity": "是",
+            "action": "买入",
+            "symbol_code": "000703.SZ",
+            "symbol_name": "恒逸石化",
+            "probability": "62%",
+            "evidence_list": [
+                {
+                    "description": "净利润同比大增2502.73%，业绩拐点确立。",
+                    "time": "2026-08-12 18:00:00",
+                    "from_source": "sina_summary_agent",
+                }
+            ],
+            "limitations": [
+                "公司公告净利润同比下滑47.32%，与媒体口径存在较大差异。"
+            ],
+        }
+        scored = ranker.score_signals(
+            [signal],
+            "2026-08-12 18:00:00",
+            market_context={"has_sector_flow_data": True},
+            system_health={},
+        )[0]
+        self.assertFalse(scored["next_day_gate_report"]["passed"])
+        self.assertIn("financial_claim_conflict", scored["next_day_gate_report"]["failed_reasons"])

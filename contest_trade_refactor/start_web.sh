@@ -3,6 +3,13 @@
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
+if [ -f "$ROOT/.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/.env"
+  set +a
+fi
+
 echo "Starting Python backend on http://localhost:8000 ..."
 cd "$ROOT"
 .venv/bin/python web_app.py &

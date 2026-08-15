@@ -1,0 +1,17 @@
+{
+  "agent_name": "block_trade_agent",
+  "trigger_time": "2026-08-12 15:54:46",
+  "source_list": [
+    "data_source.block_trade_akshare.BlockTradeAkshare"
+  ],
+  "bias_goal": "",
+  "context_string": "Batch 1 Documents:\n<doc id=1> Title: 20260812:大宗交易折溢价分析\nPublish Time: 2026-08-12 15:54:46\nRelevance Score: 7\nRelevance Label: high\nEvent Type: block_trade\nDirection: neutral\nSignal Confidence: 0.6\nContent: ## 20260812 大宗交易折溢价分析\n\n\n### 六、大宗交易市场统计\n- 当日大宗交易笔数: 1\n- 当日大宗交易总额: 0.00亿\n- 溢价成交笔数: 0\n- 深度折价成交笔数: 0</doc>\n",
+  "references": [],
+  "batch_summaries": [
+    {
+      "batch_id": 1,
+      "summary": "<doc id=1> Title: 20260812:大宗交易折溢价分析\nPublish Time: 2026-08-12 15:54:46\nRelevance Score: 7\nRelevance Label: high\nEvent Type: block_trade\nDirection: neutral\nSignal Confidence: 0.6\nContent: ## 20260812 大宗交易折溢价分析\n\n\n### 六、大宗交易市场统计\n- 当日大宗交易笔数: 1\n- 当日大宗交易总额: 0.00亿\n- 溢价成交笔数: 0\n- 深度折价成交笔数: 0</doc>\n",
+      "references": []
+    }
+  ]
+}

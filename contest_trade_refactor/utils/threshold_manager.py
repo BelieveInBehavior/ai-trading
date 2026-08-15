@@ -14,10 +14,10 @@ import yaml
 from pathlib import Path
 from typing import Any, Dict
 from loguru import logger
-from config.config import PROJECT_ROOT
+from config.config import WORKSPACE_ROOT
 
 
-THRESHOLDS_FILE = PROJECT_ROOT / "agents_workspace" / "factor_thresholds.yaml"
+THRESHOLDS_FILE = WORKSPACE_ROOT / "factor_thresholds.yaml"
 
 # 默认阈值（写死的初始值，会被 YAML 文件覆盖）
 DEFAULT_THRESHOLDS = {

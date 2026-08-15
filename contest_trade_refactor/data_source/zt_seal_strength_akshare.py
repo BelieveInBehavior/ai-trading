@@ -37,6 +37,12 @@ class ZtSealStrengthAkshare(DataSourceBase):
             logger.info(f"获取 {trade_date} 的涨停封单强度数据")
 
             report = self._build_zt_strength_report(trade_date)
+            report = await self.maybe_web_search_supplement(
+                report,
+                query=f"A股涨停封板{trade_date}",
+                trigger_time=trigger_time,
+                section_title="涨停封板联网补充",
+            )
 
             data = [{
                 "title": f"{trade_date}:涨停封单强度分析",
@@ -56,7 +62,18 @@ class ZtSealStrengthAkshare(DataSourceBase):
         except Exception as e:
             traceback.print_exc()
             logger.error(f"获取涨停封单强度数据失败: {e}")
-            return pd.DataFrame()
+            trade_date = get_latest_completed_trading_date(trigger_time)
+            return await self.akshare_web_search_fallback(
+                title=f"{trade_date}:涨停封单强度分析",
+                query=f"A股涨停封板{trade_date}",
+                trigger_time=trigger_time,
+                section_title="涨停封板联网补充",
+                market_relevance_score=9,
+                market_relevance_label="high",
+                signal_event_type="limit_up",
+                signal_direction="bullish",
+                signal_confidence=0.7,
+            )
 
     def _build_zt_strength_report(self, trade_date: str) -> str:
         """构建涨停封单强度分析报告"""

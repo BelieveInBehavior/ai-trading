@@ -18,10 +18,10 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 
 from loguru import logger
-from config.config import PROJECT_ROOT
+from config.config import WORKSPACE_ROOT
 
 
-FACTOR_STORE_DIR = PROJECT_ROOT / "agents_workspace" / "factor_store"
+FACTOR_STORE_DIR = WORKSPACE_ROOT / "factor_store"
 
 
 class FactorStore:

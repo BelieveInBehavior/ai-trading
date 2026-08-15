@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
 
-from config.config import PROJECT_ROOT
+from config.config import WORKSPACE_ROOT
 
 
 def _format_optional_number(value, precision: int = 2, suffix: str = "") -> str:
@@ -31,7 +31,7 @@ def _safe_trigger_time(trigger_time: str) -> str:
 
 
 def _results_dir() -> Path:
-    return PROJECT_ROOT / "agents_workspace" / "results"
+    return WORKSPACE_ROOT / "results"
 
 
 def _get_text(cn_text: str, en_text: str) -> str:
@@ -84,6 +84,34 @@ def _format_technical_summary(signal: Dict) -> str:
     if "missing_kline" in warnings:
         return _get_text("K线/均线数据缺失", "K-line/MA data missing")
     return _get_text("未提供K线/均线数据", "No K-line/MA data provided")
+
+
+def _format_financial_consistency(signal: Dict) -> str:
+    gate = signal.get("next_day_gate_report") or {}
+    reasons = gate.get("failed_reasons") or gate.get("risk_flags") or []
+    financial_flags = [
+        str(r) for r in reasons
+        if "financial" in str(r).lower()
+        or "statement_conflict" in str(r).lower()
+        or "claim_conflict" in str(r).lower()
+    ]
+    if financial_flags:
+        base = ", ".join(sorted(set(financial_flags))) + "; " + "请以正式财报/公告口径为准"
+    else:
+        # Also check scorecard/data_quality reason
+        quality_reason = signal.get("data_quality_reason") or (signal.get("next_day_factor_scorecard") or {}).get("data_quality_reason", "")
+        if "financial-conflict" in quality_reason:
+            base = "data_quality_financial_conflict"
+        else:
+            base = "ok"
+    report = signal.get("financial_report") or {}
+    if report:
+        extra = f" report_yoy={report.get('net_profit_yoy')}, period={report.get('period')}"
+        if base == "ok":
+            base = "ok" + extra
+        else:
+            base += extra
+    return base
 
 
 def generate_data_agent_report(factor: Dict) -> Optional[Path]:
@@ -178,7 +206,7 @@ def load_factors_for_trigger(trigger_time: str) -> Dict:
     """
     factors_data = {"trigger_time": trigger_time, "agents": {}}
     timestamp_str = _safe_trigger_time(trigger_time)
-    factors_dir = PROJECT_ROOT / "agents_workspace" / "factors"
+    factors_dir = WORKSPACE_ROOT / "factors"
     if not factors_dir.exists():
         return factors_data
 
@@ -244,8 +272,16 @@ def generate_trade_decision_report(trade_result: Dict) -> Optional[Path]:
     json_path = report_dir / f"{safe_time}.json"
     md_path = report_dir / f"{safe_time}.md"
 
+    def _json_default(obj):
+        if hasattr(obj, "isoformat"):
+            try:
+                return obj.isoformat()
+            except Exception:
+                return str(obj)
+        return str(obj)
+
     with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(trade_result, f, ensure_ascii=False, indent=2)
+        json.dump(trade_result, f, ensure_ascii=False, indent=2, default=_json_default)
 
     def _is_buy_signal(signal: Dict) -> bool:
         decision = str(signal.get("buy_decision") or "").lower()
@@ -373,6 +409,8 @@ def generate_trade_decision_report(trade_result: Dict) -> Optional[Path]:
                 f"- `consensus_confidence`: `{consensus.get('consensus_confidence', '')}`",
                 f"- `agent_votes`: `buy={consensus.get('buy_vote_count', 0)}, watch={consensus.get('watch_vote_count', 0)}, sell={consensus.get('sell_vote_count', 0)}`",
                 f"- `gate_failed_reasons`: `{failed}`",
+                f"- `financial_consistency`: `{_format_financial_consistency(sig)}`",
+                f"- `financial_consistency`: `{_format_financial_consistency(sig)}`",
                 "",
             ])
 

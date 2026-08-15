@@ -20,7 +20,7 @@ from agents.prompts import (
 )
 from models.llm_model import GLOBAL_LLM
 from utils.llm_utils import count_tokens
-from config.config import cfg, PROJECT_ROOT
+from config.config import cfg, WORKSPACE_ROOT
 from utils.report_utils import generate_data_agent_report, refresh_combined_data_report
 
 
@@ -54,9 +54,10 @@ class DataAnalysisPipeline:
         self.high_value_keep_ratio = kwargs.get("high_value_keep_ratio", 0.35)
         self.high_value_min_docs = kwargs.get("high_value_min_docs", 40)
         self.high_value_max_docs = kwargs.get("high_value_max_docs", 220)
+        self.passthrough_summary = bool(kwargs.get("passthrough_summary", False))
 
         # Setup workspace
-        self.factor_dir = PROJECT_ROOT / "agents_workspace" / "factors" / agent_name
+        self.factor_dir = WORKSPACE_ROOT / "factors" / agent_name
         self.factor_dir.mkdir(parents=True, exist_ok=True)
 
         # Initialize data sources
@@ -109,15 +110,24 @@ class DataAnalysisPipeline:
         data_df = self._select_high_value_news(data_df)
         print(f"[{self.agent_name}] High-value selection: {len(data_df)} docs kept")
 
-        # Step 3: Create batches
-        batches = self._create_batches(data_df)
-        print(f"[{self.agent_name}] Processing {len(batches)} batches...")
+        if self.passthrough_summary:
+            final_summary = self._build_passthrough_summary(data_df)
+            batch_results = [{
+                "batch_id": 1,
+                "summary": final_summary,
+                "references": [],
+                "success": True,
+            }]
+        else:
+            # Step 3: Create batches
+            batches = self._create_batches(data_df)
+            print(f"[{self.agent_name}] Processing {len(batches)} batches...")
 
-        # Step 4: Process batches in parallel
-        batch_results = await self._process_batches(batches, trigger_time)
+            # Step 4: Process batches in parallel
+            batch_results = await self._process_batches(batches, trigger_time)
 
-        # Step 5: Merge batch summaries
-        final_summary = await self._merge_summaries(batch_results, trigger_time)
+            # Step 5: Merge batch summaries
+            final_summary = await self._merge_summaries(batch_results, trigger_time)
 
         # Step 6: Collect references
         references = self._collect_references(data_df, batch_results, final_summary)
@@ -663,6 +673,30 @@ class DataAnalysisPipeline:
                 pass
 
         return None
+
+    def _build_passthrough_summary(self, data_df: pd.DataFrame) -> str:
+        """Use pre-formatted source content directly without LLM summarization."""
+        docs = []
+        for idx, row in enumerate(data_df.to_dict(orient="records"), start=1):
+            title = str(row.get("title") or "Untitled").strip()
+            pub_time = str(row.get("pub_time") or "").strip()
+            content = str(row.get("content") or "").strip()
+            relevance = row.get("market_relevance_score", "")
+            label = row.get("market_relevance_label", "")
+            event_type = row.get("signal_event_type", "")
+            direction = row.get("signal_direction", "")
+            confidence = row.get("signal_confidence", "")
+            docs.append(
+                f"<doc id={idx}> Title: {title}\n"
+                f"Publish Time: {pub_time}\n"
+                f"Relevance Score: {relevance}\n"
+                f"Relevance Label: {label}\n"
+                f"Event Type: {event_type}\n"
+                f"Direction: {direction}\n"
+                f"Signal Confidence: {confidence}\n"
+                f"Content: {content}</doc>\n"
+            )
+        return f"Batch 1 Documents:\n{''.join(docs)}"
 
     def _save_cache(self, trigger_time: str, result: Dict):
         """Save result to cache"""

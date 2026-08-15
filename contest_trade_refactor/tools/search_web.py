@@ -19,75 +19,80 @@ from tools.tool_utils import smart_tool
 
 sys.path.append(str(Path(__file__).parent.parent.resolve()))
 
-CWEI_SERVER_ENV_PATH = Path(
-    os.getenv("CWEI_SERVER_ENV_PATH", "/Users/wangxinyu/Desktop/web/cwei-server/.env")
-)
-
-
-def _load_cwei_env_file() -> dict:
-    """Load key-values from cwei-server .env file."""
-    values = {}
-    if not CWEI_SERVER_ENV_PATH.exists():
-        return values
-
-    try:
-        for line in CWEI_SERVER_ENV_PATH.read_text(encoding="utf-8").splitlines():
-            text = line.strip()
-            if not text or text.startswith("#") or "=" not in text:
-                continue
-            key, val = text.split("=", 1)
-            key = key.strip()
-            val = val.strip().strip('"').strip("'")
-            if key:
-                values[key] = val
-    except Exception as e:
-        logger.warning(f"Failed to read cwei-server env file: {e}")
-    return values
-
 
 def _get_volc_search_config() -> tuple[str, str]:
-    """Resolve Volcengine web search config with cwei-server priority."""
-    env_file = _load_cwei_env_file()
-    api_key = (
-        env_file.get("VOLC_WEB_SEARCH_API_KEY")
-        or os.getenv("VOLC_WEB_SEARCH_API_KEY")
-        or ""
-    ).strip()
-    base_url = (
-        env_file.get("VOLC_WEB_SEARCH_BASE_URL")
-        or os.getenv("VOLC_WEB_SEARCH_BASE_URL")
-        or "https://open.feedcoopapi.com/search_api/web_search"
-    ).strip()
-    return api_key, base_url
+    """Resolve Doubao/Volcengine web search config from environment variables."""
+    default_base_url = "https://open.feedcoopapi.com/search_api/web_search"
+    api_key = os.getenv("VOLC_WEB_SEARCH_API_KEY", "").strip()
+    base_url = os.getenv("VOLC_WEB_SEARCH_BASE_URL", default_base_url).strip()
+    return api_key, base_url or default_base_url
+
+
+def _normalize_search_query(query: str) -> str:
+    """Doubao Custom search supports a single query token; keep the first meaningful term."""
+    text = (query or "").strip()[:100]
+    if not text:
+        return text
+    # Prefer the first token when callers pass space-separated keywords.
+    parts = [part for part in text.replace("，", " ").replace(",", " ").split() if part]
+    return parts[0] if parts else text
 
 
 def ask_volcengine(payload: dict) -> list:
-    """Search using Volcengine web search API configured from cwei-server."""
+    """Search using Doubao/Volcengine Custom web search API."""
     api_key, base_url = _get_volc_search_config()
     if not api_key:
         return []
 
-    request_body = {
-        "Query": payload.get("query", "").strip()[:100],
-        "SearchType": "web_summary",
-        "Count": max(1, min(10, int(payload.get("topk", 3) or 3))),
-        "NeedSummary": True,
-        "Filter": {
-            "NeedUrl": True,
-            "NeedContent": False,
-        },
-        "QueryControl": {
-            "QueryRewrite": False,
-        },
-        "TimeRange": "OneYear",
-        "ContentFormats": "text",
-    }
+    start_date = payload.get("start_date")
+    end_date = payload.get("end_date")
+    time_range = "OneYear"
+    if start_date and end_date and len(start_date) == 8 and len(end_date) == 8:
+        time_range = (
+            f"{start_date[:4]}-{start_date[4:6]}-{start_date[6:8]}"
+            f"..{end_date[:4]}-{end_date[4:6]}-{end_date[6:8]}"
+        )
+
+    query = _normalize_search_query(payload.get("query", ""))
+    count = max(1, min(50, int(payload.get("topk", 3) or 3)))
+
+    def _build_request(industry: str | None) -> dict:
+        body = {
+            "Query": query,
+            "SearchType": "web",
+            "Count": count,
+            "Filter": {
+                "NeedUrl": True,
+                "NeedContent": False,
+            },
+            "QueryControl": {
+                "QueryRewrite": False,
+            },
+            "TimeRange": time_range,
+            "ContentFormats": "text",
+        }
+        if industry:
+            body["Industry"] = industry
+        return body
 
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
+        "X-Traffic-Tag": "skill_web_search_common",
     }
 
+    for industry in ("finance", None):
+        standardized_results = _post_volcengine_search(
+            base_url=base_url,
+            headers=headers,
+            request_body=_build_request(industry),
+        )
+        if standardized_results:
+            return standardized_results
+    return []
+
+
+def _post_volcengine_search(base_url: str, headers: dict, request_body: dict) -> list:
     try:
         response = requests.post(base_url, headers=headers, json=request_body, timeout=12)
         response.raise_for_status()
@@ -142,6 +147,16 @@ def ask_volcengine(payload: dict) -> list:
         if not isinstance(result, dict):
             result = data.get("result", {}) if isinstance(data, dict) else {}
 
+        metadata = data.get("ResponseMetadata") if isinstance(data, dict) else None
+        if isinstance(metadata, dict) and metadata.get("Error"):
+            error = metadata["Error"]
+            logger.warning(
+                "Doubao search API error: code=%s message=%s",
+                error.get("Code"),
+                error.get("Message"),
+            )
+            return []
+
         candidates = result.get("WebResults") or result.get("webResults") or result.get("results") or []
 
         standardized_results = []
@@ -151,6 +166,7 @@ def ask_volcengine(payload: dict) -> list:
                 item.get("Summary")
                 or item.get("Snippet")
                 or item.get("Content")
+                or item.get("Abstract")
                 or item.get("snippet")
                 or ""
             )
@@ -167,6 +183,7 @@ def ask_volcengine(payload: dict) -> list:
     except Exception as e:
         logger.warning(f"Volcengine search failed: {e}")
         return []
+
 
 def ask_bocha(payload: dict, BOCHA_API_KEY: str) -> list:
     """
@@ -332,14 +349,14 @@ async def search_web(query: str, topk: int = 5, trigger_time: str = None):
 
     if not volc_api_key and not serp_api_key and not bocha_api_key:
         logger.warning(
-            "No search API keys are configured. Checked Volcengine (cwei-server/.env), SERP, BOCHA."
+            "No search API keys are configured. Set VOLC_WEB_SEARCH_API_KEY in .env or env, or configure SERP/BOCHA."
         )
         return ""
 
-    # Priority 1: Volcengine Web Search via cwei-server .env
+    # Priority 1: 豆包搜索 Custom 版（火山引擎联网搜索）
     if volc_api_key:
         logger.info(
-            f"Attempting search with Volcengine (cwei-server) for query: '{query}', base_url='{volc_base_url}'"
+            f"Attempting search with Doubao/Volcengine for query: '{query}', base_url='{volc_base_url}'"
         )
         response = ask_volcengine(payload)
 

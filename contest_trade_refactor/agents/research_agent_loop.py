@@ -21,7 +21,7 @@ from agents.prompts import (
 )
 from models.llm_model import GLOBAL_LLM, GLOBAL_THINKING_LLM
 from tools.tool_utils import ToolManager, ToolManagerConfig
-from config.config import cfg, PROJECT_ROOT
+from config.config import cfg, WORKSPACE_ROOT
 from utils.llm_utils import count_tokens
 from utils.market_manager import GLOBAL_MARKET_MANAGER
 from utils.report_utils import generate_research_agent_report
@@ -83,7 +83,7 @@ class ResearchAgentLoopConfig(AgentLoopConfig):
         self.react_enabled = cfg.research_agent_config.get("react", True)
 
         # Setup workspace
-        self.workspace_dir = PROJECT_ROOT / "agents_workspace" / "reports" / agent_name
+        self.workspace_dir = WORKSPACE_ROOT / "reports" / agent_name
 
 
 class ResearchAgentLoop(ReactAgentLoop):

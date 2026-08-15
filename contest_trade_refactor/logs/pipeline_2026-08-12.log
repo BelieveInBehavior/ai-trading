@@ -1,0 +1,15 @@
+2026-08-12 18:44:07.197 | INFO     | utils.threshold_manager:load:125 - 阈值已从 /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/factor_thresholds.yaml 加载
+Loading config from: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/config.yaml (Market: CN-Stock)
+[sina_summary_agent] Loaded: data_source.sina_news_crawl.SinaNewsCrawl
+[thx_summary_agent] Loaded: data_source.thx_news_crawl.ThxNewsCrawl
+[price_market_agent] Loaded: data_source.price_market_akshare.PriceMarketAkshare
+[hot_money_agent] Loaded: data_source.hot_money_akshare.HotMoneyAkshare
+[northbound_flow_agent] Loaded: data_source.northbound_flow_akshare.NorthboundFlowAkshare
+[technical_indicators_agent] Loaded: data_source.technical_indicators_akshare.TechnicalIndicatorsAkshare
+[individual_fund_flow_agent] Loaded: data_source.individual_fund_flow_akshare.IndividualFundFlowAkshare
+[margin_trading_agent] Loaded: data_source.margin_trading_akshare.MarginTradingAkshare
+[block_trade_agent] Loaded: data_source.block_trade_akshare.BlockTradeAkshare
+[sector_fund_flow_trend_agent] Loaded: data_source.sector_fund_flow_trend_akshare.SectorFundFlowTrendAkshare
+[zt_seal_strength_agent] Loaded: data_source.zt_seal_strength_akshare.ZtSealStrengthAkshare
+[web_search_market_supplement_agent] Loaded: data_source.web_search_market_supplement.WebSearchMarketSupplement
+Starting pipeline trigger_time=2026-08-12 15:54:46

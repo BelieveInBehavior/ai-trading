@@ -18,6 +18,15 @@ import requests
 
 DEFAULT_AKSHARE_CACHE_DIR = Path(__file__).parent / "akshare_cache"
 
+# 历史 K 线按参数稳定缓存；实时类接口仍按小时失效
+STABLE_CACHE_FUNCS = frozenset(
+    {
+        "stock_zh_a_hist",
+        "stock_zh_index_daily",
+        "stock_info_a_code_name",
+    }
+)
+
 class CachedAksharePro:
     def __init__(self, cache_dir=None, max_retries: int = 10, timeout: float = 20.0):
         if not cache_dir:
@@ -34,12 +43,22 @@ class CachedAksharePro:
         return self.run_with_cache(func_name, func_kwargs_str, verbose)
 
     def _stock_zh_a_hist_tx_fallback(self, func_kwargs: dict, verbose: bool = False):
+        raw_symbol = str(func_kwargs.get("symbol") or "")
+        digits = "".join(ch for ch in raw_symbol if ch.isdigit())
+        if len(digits) < 6:
+            digits = digits.zfill(6)
+        else:
+            digits = digits[-6:]
+        if digits.startswith(("60", "68", "90", "92")):
+            tx_symbol = f"sh{digits}"
+        else:
+            tx_symbol = f"sz{digits}"
         tx_kwargs = {
-            "symbol": func_kwargs["symbol"],
+            "symbol": tx_symbol,
             "start_date": func_kwargs.get("start_date", "19700101"),
             "end_date": func_kwargs.get("end_date", "20500101"),
-            "adjust": func_kwargs.get("adjust", ""),
-            "timeout": self.timeout,
+            "adjust": func_kwargs.get("adjust", "") or "qfq",
+            "timeout": min(float(self.timeout), 8.0),
         }
         if verbose:
             print(f"akshare stock_zh_a_hist fallback to stock_zh_a_hist_tx with args: {tx_kwargs}")
@@ -57,67 +76,6 @@ class CachedAksharePro:
             "turnover": "换手率",
         })
         df["股票代码"] = func_kwargs["symbol"]
-        df["振幅"] = ((df["最高"] - df["最低"]) / df["收盘"].shift(1) * 100).round(2)
-        df["涨跌额"] = (df["收盘"] - df["收盘"].shift(1)).round(2)
-        df["涨跌幅"] = (df["涨跌额"] / df["收盘"].shift(1) * 100).round(2)
-        return df[["日期", "股票代码", "开盘", "收盘", "最高", "最低", "成交量", "成交额", "振幅", "涨跌幅", "涨跌额", "换手率"]]
-
-    def _stock_zh_a_hist_yahoo_fallback(self, func_kwargs: dict, verbose: bool = False):
-        try:
-            import yfinance as yf
-        except ImportError as e:
-            raise RuntimeError("yfinance is not installed") from e
-
-        symbol = str(func_kwargs["symbol"]).zfill(6)
-        suffix = ".SS" if symbol.startswith("6") else ".SZ"
-        ticker = f"{symbol}{suffix}"
-        start_date = datetime.strptime(func_kwargs.get("start_date", "19700101"), "%Y%m%d").strftime("%Y-%m-%d")
-        end_dt = datetime.strptime(func_kwargs.get("end_date", "20500101"), "%Y%m%d") + timedelta(days=1)
-        end_date = end_dt.strftime("%Y-%m-%d")
-
-        if verbose:
-            print(f"akshare stock_zh_a_hist fallback to Yahoo Finance with ticker: {ticker}")
-
-        df = yf.download(
-            ticker,
-            start=start_date,
-            end=end_date,
-            interval="1d",
-            auto_adjust=False,
-            progress=False,
-            timeout=self.timeout,
-        )
-        if df is None or df.empty:
-            return pd.DataFrame()
-
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-
-        df = df.reset_index()
-        adjust_ratio = None
-        if func_kwargs.get("adjust") == "qfq" and {"Adj Close", "Close"}.issubset(set(df.columns)):
-            adjust_ratio = pd.to_numeric(df["Adj Close"], errors="coerce") / pd.to_numeric(df["Close"], errors="coerce")
-
-        rename_map = {
-            "Date": "日期",
-            "Open": "开盘",
-            "Close": "收盘",
-            "High": "最高",
-            "Low": "最低",
-            "Volume": "成交量",
-        }
-        df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
-        for col in ["开盘", "收盘", "最高", "最低", "成交量"]:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
-        if adjust_ratio is not None:
-            for col in ["开盘", "收盘", "最高", "最低"]:
-                df[col] = (df[col] * adjust_ratio).round(4)
-
-        df["日期"] = pd.to_datetime(df["日期"]).dt.strftime("%Y-%m-%d")
-        df["股票代码"] = symbol
-        df["成交额"] = 0.0
-        df["换手率"] = 0.0
         df["振幅"] = ((df["最高"] - df["最低"]) / df["收盘"].shift(1) * 100).round(2)
         df["涨跌额"] = (df["收盘"] - df["收盘"].shift(1)).round(2)
         df["涨跌幅"] = (df["涨跌额"] / df["收盘"].shift(1) * 100).round(2)
@@ -221,11 +179,20 @@ class CachedAksharePro:
 
         last_error = None
         fallback_retry_limits = {
-            "stock_zh_a_hist": self.max_retries,
+            "stock_zh_a_hist": 1,
             "stock_zh_a_spot_em": 2,
             "stock_individual_fund_flow_rank": 2,
         }
         retry_limit = fallback_retry_limits.get(func_name, self.max_retries)
+        if func_name == "stock_zh_a_hist":
+            # Tencent is dramatically faster in this environment; try it first.
+            try:
+                tx_df = self._stock_zh_a_hist_tx_fallback(func_kwargs, verbose=verbose)
+                if tx_df is not None and not tx_df.empty:
+                    return tx_df
+            except Exception as e:
+                if verbose:
+                    print(f"akshare stock_zh_a_hist_tx fast path failed: {e}")
         for attempt in range(1, retry_limit + 1):
             try:
                 return func(**call_kwargs)
@@ -257,11 +224,12 @@ class CachedAksharePro:
             except Exception as fallback_error:
                 if verbose:
                     print(f"akshare stock_zh_a_hist_tx fallback failed: {fallback_error}")
-            try:
-                return self._stock_zh_a_hist_yahoo_fallback(func_kwargs, verbose=verbose)
-            except Exception as fallback_error:
-                if verbose:
-                    print(f"akshare Yahoo Finance fallback failed: {fallback_error}")
+            if verbose:
+                print(
+                    "akshare stock_zh_a_hist failed; skip Yahoo, "
+                    "return empty (use Agent-level web search for narrative data)"
+                )
+            return pd.DataFrame()
         if func_name == "stock_zh_a_spot_em":
             try:
                 return self._stock_zh_a_spot_tx_fallback(verbose=verbose)
@@ -283,8 +251,9 @@ class CachedAksharePro:
     def run_with_cache(self, func_name: str, func_kwargs: str, verbose: bool = False):
         func_kwargs = json.loads(func_kwargs)
         args_hash = hashlib.md5(str(func_kwargs).encode()).hexdigest()
-        trigger_time = datetime.now().strftime("%Y%m%d%H")
-        args_hash = f"{args_hash}_{trigger_time}"
+        if func_name not in STABLE_CACHE_FUNCS:
+            trigger_time = datetime.now().strftime("%Y%m%d%H")
+            args_hash = f"{args_hash}_{trigger_time}"
         func_cache_dir = self.cache_dir / func_name
         if not func_cache_dir.exists():
             func_cache_dir.mkdir(parents=True, exist_ok=True)

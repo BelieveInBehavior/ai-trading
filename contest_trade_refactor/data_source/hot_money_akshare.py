@@ -34,9 +34,16 @@ class HotMoneyAkshare(DataSourceBase):
             logger.info(f"获取 {trade_date} 的热钱市场数据")
 
             llm_summary_dict = await self.get_llm_summary(trade_date)
+            content = await self.maybe_web_search_supplement(
+                llm_summary_dict["llm_summary"],
+                query=f"A股龙虎榜涨停{trade_date}",
+                trigger_time=trigger_time,
+                section_title="热钱市场联网补充",
+                extra_markers=("当日无热钱市场数据", "LLM未配置"),
+            )
             data = [{
                 "title": f"{trade_date}:热钱市场数据汇总",
-                "content": llm_summary_dict["llm_summary"],
+                "content": content,
                 "pub_time": trigger_time,
                 "url": None
             }]
@@ -46,7 +53,13 @@ class HotMoneyAkshare(DataSourceBase):
                 
         except Exception as e:
             logger.error(f"获取热钱市场数据失败: {e}")
-            return pd.DataFrame()
+            trade_date = get_latest_completed_trading_date(trigger_time)
+            return await self.akshare_web_search_fallback(
+                title=f"{trade_date}:热钱市场数据汇总",
+                query=f"A股龙虎榜涨停{trade_date}",
+                trigger_time=trigger_time,
+                section_title="热钱市场联网补充",
+            )
 
     def get_zt_data(self, trade_date: str) -> pd.DataFrame:
         """获取涨停股票数据"""

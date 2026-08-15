@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Dict, List, Literal
+from typing import Any, Dict, List, Literal, Union
 
 from pydantic import BaseModel, Field
 
@@ -44,7 +44,7 @@ class EvidenceRecord(BaseModel):
 class ResearchSignal(BaseModel):
     """Validated signal emitted by a research agent."""
 
-    has_opportunity: str = ""
+    has_opportunity: Union[str, bool] = ""
     action: str = ""
     symbol_code: str = ""
     symbol_name: str = ""
@@ -86,6 +86,11 @@ def validate_research_signal(payload: Dict[str, Any], thinking: str = "") -> Dic
     normalized = dict(payload or {})
     normalized["thinking"] = thinking or normalized.get("thinking") or ""
     normalized["probability"] = parse_probability(normalized.get("probability"))
+    ho = normalized.get("has_opportunity")
+    if isinstance(ho, bool):
+        normalized["has_opportunity"] = "yes" if ho else "no"
+    elif ho is not None:
+        normalized["has_opportunity"] = str(ho)
 
     evidence = normalized.get("evidence_list") or []
     normalized["evidence_list"] = [

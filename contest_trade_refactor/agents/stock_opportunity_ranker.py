@@ -17,6 +17,7 @@ import math
 import re
 
 from agents.signal_schema import validate_buy_decision
+from loguru import logger
 
 
 @dataclass
@@ -37,8 +38,10 @@ class RankerConfig:
     max_evidence_points: int = 25
     limitation_penalty_cap: int = 15
     expected_return_floor_pct: float = 0.3
+    strong_trend_penalty_bias: float = 0.0
     reject_future_evidence: bool = True
     risk_veto_enabled: bool = True
+    enforce_financial_evidence_consistency: bool = True
     enforce_multi_timeframe: bool = False
     min_weekly_trend_score: float = 55.0
     min_relative_strength_score: float = 50.0
@@ -251,10 +254,13 @@ class StockOpportunityRanker:
         primary_catalyst = self._is_primary_catalyst(signal, evidence_list, catalyst_score)
         future_evidence_count = self._count_future_evidence(evidence_list, trigger_time)
 
-        total += (technical_score - 50.0) * 0.12
-        total += (weekly_trend_score - 50.0) * 0.16
-        total += (relative_strength_score - 50.0) * 0.16
-        total += (daily_entry_score - 50.0) * 0.08
+        total += (technical_score - 50.0) * 0.14
+        total += (weekly_trend_score - 50.0) * 0.18
+        total += (relative_strength_score - 50.0) * 0.20
+        total += (daily_entry_score - 50.0) * 0.10
+        total = max(0.0, min(100.0, total))
+
+        total += self._score_strong_trend_penalty(signal)
         total = max(0.0, min(100.0, total))
 
         expected_return_t1 = self._estimate_expected_return_t1(
@@ -332,6 +338,7 @@ class StockOpportunityRanker:
             capital_flow_score=capital_flow_score,
             market_regime_score=market_regime_score,
             flow_data_available=flow_data_available,
+            flow_data_marked_missing=bool((market_context or {}).get("has_sector_flow_data") is False),
             weekly_trend_score=weekly_trend_score,
             relative_strength_score=relative_strength_score,
             relative_strength_20d_pct=self._extract_relative_strength_20(signal),
@@ -501,10 +508,24 @@ class StockOpportunityRanker:
         evidence_text = " ".join(str(item.get("description") or "") for item in evidence_list)
         flow_hits = sum(1 for keyword in self.CAPITAL_FLOW_KEYWORDS if keyword in evidence_text)
 
+        # 更强调“资金已经确认”的表现，而不是只出现资金相关词
+        strong_confirm = [
+            "主力净流入", "连续主力资金流入", "融资净买入", "北向净买入",
+            "龙虎榜净买入", "机构净买入", "大宗交易溢价", "封单极强", "超大单净流入",
+        ]
+        weak_or_just_mention = [
+            "资金流入", "净流入", "板块资金净流入", "主力吸筹",
+        ]
+        strong_hits = sum(1 for keyword in strong_confirm if keyword in evidence_text)
+        weak_hits = sum(1 for keyword in weak_or_just_mention if keyword in evidence_text)
+
         source_text = " ".join(str(item.get("from_source") or "") for item in evidence_list)
         institutional_bonus = 8.0 if any(tag in source_text for tag in ["龙虎榜", "机构", "交易所", "深股通", "沪股通"]) else 0.0
-        score = min(100.0, 30.0 + flow_hits * 10.0 + institutional_bonus)
-        return score, f"flow_hits={flow_hits},institutional_bonus={institutional_bonus:.1f}"
+
+        # 基础分 + 强确认每个 +12，弱提及每个 +4；避免只靠“资金净流入”几个字就拿高分
+        score = 30.0 + strong_hits * 12.0 + weak_hits * 4.0 + institutional_bonus
+        score = min(100.0, score)
+        return score, f"strong_hits={strong_hits},weak_hits={weak_hits},institutional_bonus={institutional_bonus:.1f}"
 
     def _score_market_regime(self, market_context: Optional[Dict[str, Any]]) -> Tuple[float, str]:
         if not isinstance(market_context, dict):
@@ -559,6 +580,108 @@ class StockOpportunityRanker:
 
         score = max(0.0, min(100.0, score))
         return score, ",".join(reasons)
+
+    def _score_strong_trend_penalty(self, signal: Dict[str, Any]) -> float:
+        """Signal-quality delta for stocks in an uptrend but not overheated.
+
+        The goal is to select stocks that are in an established/started uptrend
+        BEFORE they become a crowded, already-pumped trade:
+        - below MA20: likely not in uptrend yet -> penalize
+        - mildly above MA20: good "in-trend early / mid leg"
+        - far above MA20: already extended -> penalize
+        - RSI 40-65: good; RSI >75 or deeply weak <35: penalize
+        - volume ratio 1-1.8: healthy participation; too dry or too hot: penalize
+
+        Returns a score delta in ~[-25, +8]. The caller clamps total to [0,100].
+        """
+        factor = self._technical_factor(signal)
+        if not factor:
+            # 没有量化因子时轻微惩罚，避免仅有新闻/资金关键词就占用名额
+            if signal.get("strong_trend_penalty_reasons") is None:
+                signal["strong_trend_penalty_reasons"] = ["missing_technical_factor"]
+            return -3.0
+
+        score_delta = 0.0
+        reasons = []
+
+        ma20_dist_raw = self._factor_value(signal, "ma20_deviation_pct")
+        try:
+            ma20_dist = float(ma20_dist_raw) if ma20_dist_raw is not None else None
+        except (TypeError, ValueError):
+            ma20_dist = None
+        if ma20_dist is not None:
+            if ma20_dist < 0:
+                # 还在 MA20 下方：尚未走出 20 日线上涨阶段
+                penalty = min(16.0, abs(ma20_dist) * 1.0)
+                score_delta -= penalty
+                reasons.append(f"below_ma20={ma20_dist:.1f}%")
+            elif 0.0 <= ma20_dist <= 6.0:
+                # 温和站上 20 日线：启动/中段健康
+                score_delta += 6.0
+                reasons.append(f"early_uptrend_ma20={ma20_dist:.1f}%")
+            elif ma20_dist <= 12.0:
+                # 已上涨但偏离可控，小加分
+                score_delta += 1.0
+                reasons.append(f"moderate_above_ma20={ma20_dist:.1f}%")
+            else:
+                # 偏离太大：已经涨过，追高风险
+                score_delta -= 8.0
+                reasons.append(f"extended_ma20={ma20_dist:.1f}%")
+
+        rsi_raw = self._factor_value(signal, "rsi")
+        try:
+            rsi = float(rsi_raw) if rsi_raw is not None else None
+        except (TypeError, ValueError):
+            rsi = None
+        if rsi is not None:
+            if rsi < 35:
+                score_delta -= 8.0
+                reasons.append(f"rsi_weak={rsi:.1f}")
+            elif 40.0 <= rsi <= 65.0:
+                score_delta += 4.0
+                reasons.append(f"rsi_healthy={rsi:.1f}")
+            elif rsi > 75.0:
+                score_delta -= 8.0
+                reasons.append(f"rsi_overbought={rsi:.1f}")
+
+        vol_ratio_raw = self._factor_value(signal, "volume_ratio")
+        try:
+            vol_ratio = float(vol_ratio_raw) if vol_ratio_raw is not None else None
+        except (TypeError, ValueError):
+            vol_ratio = None
+        if vol_ratio is not None:
+            if 1.0 <= vol_ratio < 1.8:
+                score_delta += 4.0
+                reasons.append(f"volume_healthy={vol_ratio:.2f}")
+            elif vol_ratio < 0.7:
+                score_delta -= 5.0
+                reasons.append(f"volume_dry={vol_ratio:.2f}")
+            elif vol_ratio >= 2.5:
+                score_delta -= 4.0
+                reasons.append(f"volume_hot={vol_ratio:.2f}")
+
+        macd_raw = self._factor_value(signal, "macd")
+        try:
+            macd = float(macd_raw) if macd_raw is not None else None
+        except (TypeError, ValueError):
+            macd = None
+        if macd is not None:
+            if macd < 0:
+                score_delta -= 6.0
+                reasons.append(f"macd_neg={macd:.3f}")
+            elif macd > 0:
+                score_delta += 2.0
+                reasons.append(f"macd_pos={macd:.3f}")
+
+        if signal.get("strong_trend_penalty_reasons"):
+            signal["strong_trend_penalty_reasons"] += reasons
+        else:
+            signal["strong_trend_penalty_reasons"] = reasons
+        logger.info("strong_trend_penalty: {} delta={:.1f}", reasons, score_delta)
+        # The strategy layer can soften the anti-chase penalty, e.g. momentum
+        # rewards hot candidates that are still inside the strongest main lines.
+        score_delta += float(self.config.strong_trend_penalty_bias or 0.0)
+        return max(-50.0, min(12.0, score_delta))
 
     def _score_risk_reward(
         self,
@@ -620,6 +743,14 @@ class StockOpportunityRanker:
         if future_evidence_count:
             score -= min(35.0, future_evidence_count * 15.0)
             reasons.append(f"future-evidence={future_evidence_count}")
+
+        if self.config.enforce_financial_evidence_consistency:
+            financial_check = self._financial_evidence_consistency(signal, evidence_list)
+            conflict_level = int(financial_check.get("conflict_level") or 0)
+            if conflict_level > 0:
+                penalty = min(30.0, conflict_level * 7.0)
+                score -= penalty
+                reasons.append(f"financial-conflict-level={conflict_level}")
 
         score = max(0.0, min(100.0, score))
         return score, ",".join(reasons) if reasons else "ok"
@@ -687,6 +818,15 @@ class StockOpportunityRanker:
         if future_evidence_count:
             add("future_evidence", "future_evidence")
 
+        if self.config.enforce_financial_evidence_consistency:
+            financial_check = self._financial_evidence_consistency(signal, evidence_list)
+            if not financial_check.get("passed", True):
+                for reason in (financial_check.get("reasons") or []):
+                    add(f"financial:{reason}", reason)
+                for flag in (financial_check.get("risk_flags") or []):
+                    if flag not in risk_flags:
+                        risk_flags.append(flag)
+
         text = " ".join(
             [
                 " ".join(str(item or "") for item in (signal.get("limitations") or [])),
@@ -702,6 +842,80 @@ class StockOpportunityRanker:
             "reasons": reasons,
             "risk_flags": risk_flags,
         }
+
+    def _financial_evidence_consistency(
+        self,
+        signal: Dict[str, Any],
+        evidence_list: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """
+        Rule-based consistency check between bullish financial claims in
+        evidence (e.g. news/summaries) and counter-signals from limitations or
+        official-statement caveats (e.g. "与公告口径差异,以正式财报为准").
+
+        Returns:
+            {"passed": bool, "reasons": [...], "risk_flags": [...], "conflict_level": int}
+        """
+        reasons: List[str] = []
+        risk_flags: List[str] = []
+
+        evidence_text = " ".join(
+            str(item.get("description") or "") for item in (evidence_list or [])
+        )
+        limitations_text = " ".join(
+            str(item or "") for item in (signal.get("limitations") or [])
+        )
+        combined = signal.get("data_quality_warnings") or []
+        for tag in combined:
+            limitations_text += " " + str(tag)
+
+        # 1) Detect a high-certainty financial-growth claim in evidence.
+        growth_pattern = re.compile(
+            r"(?:净利|利润|营收|收入|业绩)[^。；;]{0,30}?"
+            r"(?:同比增长|暴增|大增|增长|上修|预增)"
+            r"[^。；;]{0,30}?"
+            r"(\d+(?:\.\d+)?\s*%|\d+(?:\.\d+)?\s*倍)",
+            re.I,
+        )
+        growth_match = growth_pattern.search(evidence_text)
+
+        # 2) Detect a caveat that the claim may not match the official report
+        official_caveats = [
+            "口径差异", "以正式财报为准", "以公告为准", "需以正式财报为准",
+            "需以公告为准", "与公告存在差异", "公司公告", "统计口径",
+        ]
+        caveat_hits = [kw for kw in official_caveats if kw in limitations_text]
+        conflict_hits: List[str] = []
+
+        # 3) Detect a negative/declining figure in limitation/statement text.
+        negative_pattern = re.compile(
+            r"(?:净利|净利润|利润|营收|收入|同比)[^。；]{0,20}?"
+            r"(?:下滑|下降|减少|亏损|同比|-?\d+(?:\.\d+)?\s*%?)",
+            re.I,
+        )
+        if negative_pattern.search(limitations_text):
+            conflict_hits.append("negative_figure_in_limitations")
+
+        # 4) Explicit official-report YOY figures attached to signal (from akshare income statement).
+        report_yoy = signal.get("financial_report_net_profit_yoy")
+        if isinstance(report_yoy, (int, float)) and growth_match and report_yoy < -0.01:
+            reasons.append("financial_report_conflict")
+            risk_flags.append("financial_report_conflict")
+            conflict_hits.append("official_report_negative")
+
+        conflict_level = 0
+        if growth_match and caveat_hits:
+            reasons.append("financial_evidence_caveat")
+            risk_flags.append("financial_statement_conflict")
+            conflict_level += 2
+        if growth_match and conflict_hits:
+            reasons.append("financial_claim_conflict")
+            risk_flags.append("financial_claim_conflict")
+            conflict_level += 3
+
+        if not reasons:
+            return {"passed": True, "reasons": [], "risk_flags": [], "conflict_level": 0}
+        return {"passed": False, "reasons": reasons, "risk_flags": risk_flags, "conflict_level": conflict_level}
 
     def _estimate_expected_return_t1(
         self,
@@ -771,6 +985,7 @@ class StockOpportunityRanker:
         expected_return_t1: float,
         future_evidence_count: int,
         risk_veto_report: Dict[str, Any],
+        flow_data_marked_missing: bool = False,
     ) -> Dict[str, Any]:
         failed = []
         if buy_score < self.config.min_buy_score:
@@ -831,16 +1046,31 @@ class StockOpportunityRanker:
                 failed.append(f"flow<{self.config.min_flow_confirmation_score}")
             if market_regime_score < self.config.min_regime_confirmation_score:
                 failed.append(f"regime<{self.config.min_regime_confirmation_score}")
+        elif (
+            self.config.enforce_flow_confirmation_if_available
+            and flow_data_marked_missing
+        ):
+            # 板块资金数据明确缺失时不能静默放行：降至 watch，并给出明确原因。
+            failed.append("flow_data_missing")
 
         if expected_return_t1 < self.config.expected_return_floor_pct:
             failed.append(f"expected_t1<{self.config.expected_return_floor_pct}")
         if self.config.reject_future_evidence and future_evidence_count:
             failed.append(f"evidence_after_analysis>{future_evidence_count}")
+        financial_conflict_flags = [
+            f
+            for f in (risk_veto_report.get("risk_flags") or [])
+            if "financial" in str(f).lower()
+        ]
         if self.config.risk_veto_enabled and not risk_veto_report.get("passed", True):
-            failed.extend(
-                f"risk_veto:{reason}"
-                for reason in risk_veto_report.get("reasons", [])
-            )
+            # 财务一致性冲突只以 risk_flag 单独体现，避免 failed_reasons 重复刷屏。
+            if financial_conflict_flags:
+                failed.extend(financial_conflict_flags)
+            else:
+                failed.extend(
+                    f"risk_veto:{reason}"
+                    for reason in risk_veto_report.get("reasons", [])
+                )
         return {
             "passed": len(failed) == 0,
             "failed_reasons": failed,

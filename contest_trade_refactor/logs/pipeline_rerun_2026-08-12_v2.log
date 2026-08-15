@@ -1,0 +1,110 @@
+Loading config from: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/config.yaml (Market: CN-Stock)
+[sina_summary_agent] Loaded: data_source.sina_news_crawl.SinaNewsCrawl
+[thx_summary_agent] Loaded: data_source.thx_news_crawl.ThxNewsCrawl
+[price_market_agent] Loaded: data_source.price_market_akshare.PriceMarketAkshare
+[hot_money_agent] Loaded: data_source.hot_money_akshare.HotMoneyAkshare
+[northbound_flow_agent] Loaded: data_source.northbound_flow_akshare.NorthboundFlowAkshare
+[technical_indicators_agent] Loaded: data_source.technical_indicators_akshare.TechnicalIndicatorsAkshare
+2026-08-12 20:11:04.622 | INFO     | utils.threshold_manager:load:125 - 阈值已从 /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/factor_thresholds.yaml 加载
+[individual_fund_flow_agent] Loaded: data_source.individual_fund_flow_akshare.IndividualFundFlowAkshare
+[margin_trading_agent] Loaded: data_source.margin_trading_akshare.MarginTradingAkshare
+[block_trade_agent] Loaded: data_source.block_trade_akshare.BlockTradeAkshare
+[sector_fund_flow_trend_agent] Loaded: data_source.sector_fund_flow_trend_akshare.SectorFundFlowTrendAkshare
+[zt_seal_strength_agent] Loaded: data_source.zt_seal_strength_akshare.ZtSealStrengthAkshare
+[web_search_market_supplement_agent] Loaded: data_source.web_search_market_supplement.WebSearchMarketSupplement
+pipeline_start trigger_time=2026-08-12 15:54:46 provider=akshare max_symbols=800
+🚀 Starting Trade Company Analysis at 2026-08-12 15:54:46
+================================================================================
+
+🔎 Stage 0: Full-market quantitative screening...
+Loading config from: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/config.yaml (Market: CN-Stock)
+[sina_summary_agent] Loaded: data_source.sina_news_crawl.SinaNewsCrawl
+[thx_summary_agent] Loaded: data_source.thx_news_crawl.ThxNewsCrawl
+[price_market_agent] Loaded: data_source.price_market_akshare.PriceMarketAkshare
+[hot_money_agent] Loaded: data_source.hot_money_akshare.HotMoneyAkshare
+[northbound_flow_agent] Loaded: data_source.northbound_flow_akshare.NorthboundFlowAkshare
+[technical_indicators_agent] Loaded: data_source.technical_indicators_akshare.TechnicalIndicatorsAkshare
+2026-08-12 20:14:38.060 | INFO     | utils.threshold_manager:load:125 - 阈值已从 /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/factor_thresholds.yaml 加载
+[individual_fund_flow_agent] Loaded: data_source.individual_fund_flow_akshare.IndividualFundFlowAkshare
+[margin_trading_agent] Loaded: data_source.margin_trading_akshare.MarginTradingAkshare
+[block_trade_agent] Loaded: data_source.block_trade_akshare.BlockTradeAkshare
+[sector_fund_flow_trend_agent] Loaded: data_source.sector_fund_flow_trend_akshare.SectorFundFlowTrendAkshare
+[zt_seal_strength_agent] Loaded: data_source.zt_seal_strength_akshare.ZtSealStrengthAkshare
+[web_search_market_supplement_agent] Loaded: data_source.web_search_market_supplement.WebSearchMarketSupplement
+pipeline_start trigger_time=2026-08-12 15:54:46 quantitative_screen=off
+🚀 Starting Trade Company Analysis at 2026-08-12 15:54:46
+================================================================================
+
+🔎 Stage 0: Full-market quantitative screening...
+✅ Quantitative screen: universe=0, scanned=0, passed=0, research_candidates=0
+
+📊 Stage 1: Running Data Agents...
+[sina_summary_agent] Starting analysis for 2026-08-12 15:54:46
+[thx_summary_agent] Starting analysis for 2026-08-12 15:54:46
+[price_market_agent] Starting analysis for 2026-08-12 15:54:46
+[price_market_agent] Fetched 1 from PriceMarketAkshare
+[price_market_agent] High-value selection: 1 docs kept
+[price_market_agent] Processing 1 batches...
+[hot_money_agent] Starting analysis for 2026-08-12 15:54:46
+[hot_money_agent] Fetched 1 from HotMoneyAkshare
+[hot_money_agent] High-value selection: 1 docs kept
+[hot_money_agent] Processing 1 batches...
+[northbound_flow_agent] Starting analysis for 2026-08-12 15:54:46
+[northbound_flow_agent] Fetched 1 from NorthboundFlowAkshare
+[northbound_flow_agent] High-value selection: 1 docs kept
+[northbound_flow_agent] Completed: 3221 chars
+[technical_indicators_agent] Starting analysis for 2026-08-12 15:54:46
+[technical_indicators_agent] Fetched 1 from TechnicalIndicatorsAkshare
+[technical_indicators_agent] High-value selection: 1 docs kept
+[technical_indicators_agent] Processing 1 batches...
+[individual_fund_flow_agent] Starting analysis for 2026-08-12 15:54:46
+[individual_fund_flow_agent] Fetched 1 from IndividualFundFlowAkshare
+[individual_fund_flow_agent] High-value selection: 1 docs kept
+[individual_fund_flow_agent] Processing 1 batches...
+[margin_trading_agent] Starting analysis for 2026-08-12 15:54:46
+2026-08-12 20:14:38.084 | INFO     | data_source.margin_trading_akshare:get_data:40 - 获取 20260812 的融资融券数据
+2026-08-12 20:14:38.365 | WARNING  | data_source.margin_trading_akshare:_get_margin_detail:216 - sh市融资融券明细为空 (20260812)
+2026-08-12 20:14:38.607 | WARNING  | data_source.margin_trading_akshare:_get_margin_detail:216 - sz市融资融券明细为空 (20260812)
+[block_trade_agent] Starting analysis for 2026-08-12 15:54:46
+[block_trade_agent] Fetched 1 from BlockTradeAkshare
+[block_trade_agent] High-value selection: 1 docs kept
+[block_trade_agent] Processing 1 batches...
+[sector_fund_flow_trend_agent] Starting analysis for 2026-08-12 15:54:46
+[sector_fund_flow_trend_agent] Fetched 1 from SectorFundFlowTrendAkshare
+[sector_fund_flow_trend_agent] High-value selection: 1 docs kept
+[sector_fund_flow_trend_agent] Processing 1 batches...
+[zt_seal_strength_agent] Starting analysis for 2026-08-12 15:54:46
+[zt_seal_strength_agent] Fetched 1 from ZtSealStrengthAkshare
+[zt_seal_strength_agent] High-value selection: 1 docs kept
+[zt_seal_strength_agent] Processing 1 batches...
+[web_search_market_supplement_agent] Starting analysis for 2026-08-12 15:54:46
+[web_search_market_supplement_agent] Fetched 1 from WebSearchMarketSupplement
+[web_search_market_supplement_agent] High-value selection: 1 docs kept
+[web_search_market_supplement_agent] Completed: 5462 chars
+2026-08-12 20:14:38.649 | INFO     | tools.search_web:search_web:358 - Attempting search with Doubao/Volcengine for query: 'A股融资融券20260812', base_url='https://open.feedcoopapi.com/search_api/web_search'
+2026-08-12 20:14:39.067 | INFO     | tools.search_web:search_web:378 - Search successful. Returning 4 results.
+[margin_trading_agent] Fetched 1 from MarginTradingAkshare
+[margin_trading_agent] High-value selection: 1 docs kept
+[margin_trading_agent] Completed: 1928 chars
+[price_market_agent] Completed: 1611 chars
+[hot_money_agent] Completed: 1114 chars
+[technical_indicators_agent] Completed: 2189 chars
+[individual_fund_flow_agent] Completed: 2217 chars
+[block_trade_agent] Completed: 309 chars
+[sector_fund_flow_trend_agent] Completed: 2217 chars
+[zt_seal_strength_agent] Completed: 2176 chars
+2026-08-12 20:14:39.481 | ERROR    | data_source.thx_news_crawl:crawl_frontend_pages:222 - ❌ Frontend crawling failed: BrowserType.launch: Executable doesn't exist at /var/folders/bv/tvt24kx551v4qd_z_50bh7kc0000gp/T/cursor-sandbox-cache/c8f0955ef9306f9dcde4ed51d63f85d3/playwright/chromium_headless_shell-1234/chrome-headless-shell-mac-arm64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+2026-08-12 20:14:39.632 | INFO     | data_source.sina_news_crawl:crawl_all_pages:524 - Sina crawl completed: pages=1-50, total_items=2500, enrich_success=0, enrich_failed=0, elapsed=1.57s
+2026-08-12 20:14:39.632 | INFO     | data_source.sina_news_crawl:get_data:552 - 📊 Processing 2500 collected items...
+2026-08-12 20:14:39.653 | INFO     | data_source.sina_news_crawl:get_data:592 - get sina news until 2026-08-12 15:54:46 success. Total 2143 rows
+[sina_summary_agent] Fetched 2129 from SinaNewsCrawl
+[sina_summary_agent] High-value selection: 220 docs kept
+[sina_summary_agent] Processing 6 batches...

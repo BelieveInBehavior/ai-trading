@@ -1,0 +1,223 @@
+Loading config from: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/config.yaml (Market: CN-Stock)
+[sina_summary_agent] Loaded: data_source.sina_news_crawl.SinaNewsCrawl
+[thx_summary_agent] Loaded: data_source.thx_news_crawl.ThxNewsCrawl
+[price_market_agent] Loaded: data_source.price_market_akshare.PriceMarketAkshare
+[hot_money_agent] Loaded: data_source.hot_money_akshare.HotMoneyAkshare
+[northbound_flow_agent] Loaded: data_source.northbound_flow_akshare.NorthboundFlowAkshare
+[technical_indicators_agent] Loaded: data_source.technical_indicators_akshare.TechnicalIndicatorsAkshare
+2026-08-12 19:47:07.389 | INFO     | utils.threshold_manager:load:125 - 阈值已从 /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/factor_thresholds.yaml 加载
+[individual_fund_flow_agent] Loaded: data_source.individual_fund_flow_akshare.IndividualFundFlowAkshare
+[margin_trading_agent] Loaded: data_source.margin_trading_akshare.MarginTradingAkshare
+[block_trade_agent] Loaded: data_source.block_trade_akshare.BlockTradeAkshare
+[sector_fund_flow_trend_agent] Loaded: data_source.sector_fund_flow_trend_akshare.SectorFundFlowTrendAkshare
+[zt_seal_strength_agent] Loaded: data_source.zt_seal_strength_akshare.ZtSealStrengthAkshare
+[web_search_market_supplement_agent] Loaded: data_source.web_search_market_supplement.WebSearchMarketSupplement
+pipeline_start trigger_time=2026-08-12 15:54:46 at 2026-08-12 19:47:07.396018
+🚀 Starting Trade Company Analysis at 2026-08-12 15:54:46
+================================================================================
+
+🔎 Stage 0: Full-market quantitative screening...
+  0%|          | 0/27 [00:00<?, ?it/s]  4%|▎         | 1/27 [00:00<00:05,  5.10it/s]  7%|▋         | 2/27 [00:00<00:04,  5.15it/s] 11%|█         | 3/27 [00:00<00:05,  4.50it/s] 15%|█▍        | 4/27 [00:00<00:05,  4.27it/s] 19%|█▊        | 5/27 [00:01<00:05,  4.34it/s] 22%|██▏       | 6/27 [00:01<00:04,  4.33it/s] 26%|██▌       | 7/27 [00:01<00:04,  4.61it/s] 30%|██▉       | 8/27 [00:01<00:03,  4.86it/s] 33%|███▎      | 9/27 [00:01<00:03,  4.68it/s] 37%|███▋      | 10/27 [00:02<00:03,  4.64it/s] 41%|████      | 11/27 [00:02<00:03,  4.76it/s] 44%|████▍     | 12/27 [00:02<00:03,  4.65it/s] 48%|████▊     | 13/27 [00:02<00:03,  4.66it/s] 52%|█████▏    | 14/27 [00:03<00:03,  4.01it/s] 56%|█████▌    | 15/27 [00:03<00:02,  4.10it/s] 59%|█████▉    | 16/27 [00:03<00:02,  4.24it/s] 63%|██████▎   | 17/27 [00:03<00:02,  4.57it/s] 67%|██████▋   | 18/27 [00:03<00:01,  4.62it/s] 70%|███████   | 19/27 [00:04<00:01,  4.69it/s] 74%|███████▍  | 20/27 [00:04<00:01,  4.77it/s] 78%|███████▊  | 21/27 [00:04<00:01,  4.63it/s] 81%|████████▏ | 22/27 [00:04<00:01,  4.48it/s] 85%|████████▌ | 23/27 [00:05<00:00,  4.41it/s] 89%|████████▉ | 24/27 [00:05<00:00,  4.60it/s] 93%|█████████▎| 25/27 [00:05<00:00,  4.41it/s] 96%|█████████▋| 26/27 [00:05<00:00,  4.46it/s]100%|██████████| 27/27 [00:05<00:00,  4.44it/s]                                               auth success 
+2026-08-12 19:47:25.938 | INFO     | utils.jqdata_utils:ensure_jqdata_auth:47 - JQData auth success
+auth success 
+auth success 
+auth success 
+auth success 
+auth success 
+auth success 
+auth success 
+2026-08-12 19:47:27.198 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.198 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.202 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 688808 (20250718-20260511): 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.204 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.206 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.209 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.218 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.232 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.234 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.240 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.242 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.246 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.258 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.269 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 688072 (20250718-20260812): 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.269 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 688072, falling back to AkShare only
+2026-08-12 19:47:27.271 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 688256 (20250718-20260812): 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.271 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 688256, falling back to AkShare only
+2026-08-12 19:47:27.276 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 600519 (20250718-20260812): 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.277 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 600519, falling back to AkShare only
+2026-08-12 19:47:27.283 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 002371 (20250718-20260812): 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.284 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 002371, falling back to AkShare only
+2026-08-12 19:47:27.299 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 688802 (20250718-20260812): 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.299 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 688802, falling back to AkShare only
+2026-08-12 19:47:27.303 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 688498 (20250718-20260812): 您的账号最多只能开启 1 个连接
+2026-08-12 19:47:27.303 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 688498, falling back to AkShare only
+  0%|          | 0/2 [00:00<?, ?it/s] 50%|█████     | 1/2 [00:00<00:00,  2.76it/s]100%|██████████| 2/2 [00:00<00:00,  3.31it/s]                                               0%|          | 0/2 [00:00<?, ?it/s]
+  0%|          | 0/2 [00:00<?, ?it/s][A 50%|█████     | 1/2 [00:00<00:00,  3.91it/s]
+
+  0%|          | 0/2 [00:00<?, ?it/s][A[A
+
+
+  0%|          | 0/2 [00:00<?, ?it/s][A[A[A
+
+
+
+  0%|          | 0/1 [00:00<?, ?it/s][A[A[A[A100%|██████████| 2/2 [00:00<00:00,  3.99it/s]                                             
+ 50%|█████     | 1/2 [00:00<00:00,  2.96it/s][A
+
+ 50%|█████     | 1/2 [00:00<00:00,  3.48it/s][A[A
+
+
+
+100%|██████████| 1/1 [00:00<00:00,  3.91it/s][A[A[A[A
+
+
+
+                                             [A[A[A[A
+
+
+ 50%|█████     | 1/2 [00:00<00:00,  3.15it/s][A[A[A
+100%|██████████| 2/2 [00:00<00:00,  3.53it/s][A
+                                             [A
+
+100%|██████████| 2/2 [00:00<00:00,  3.47it/s][A[A
+
+                                             [A[A
+
+
+100%|██████████| 2/2 [00:00<00:00,  3.46it/s][A[A[A
+
+
+                                             [A[A[A2026-08-12 19:48:20.097 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:48:20.138 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 301717 (20250718-20260812): 您的账号最多只能开启 1 个连接
+2026-08-12 19:48:20.272 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:48:20.308 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:48:20.342 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 688627 (20250718-20260812): 您的账号最多只能开启 1 个连接
+2026-08-12 19:48:20.343 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 688627, falling back to AkShare only
+  0%|          | 0/2 [00:00<?, ?it/s] 50%|█████     | 1/2 [00:00<00:00,  5.28it/s]100%|██████████| 2/2 [00:00<00:00,  5.39it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.83it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  5.26it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  6.51it/s]                                             2026-08-12 19:49:11.367 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 301717.SZ 技术因子: insufficient_rows<20
+  0%|          | 0/2 [00:00<?, ?it/s]
+  0%|          | 0/1 [00:00<?, ?it/s][A 50%|█████     | 1/2 [00:00<00:00,  3.84it/s]
+100%|██████████| 1/1 [00:00<00:00,  4.38it/s][A
+                                             [A100%|██████████| 2/2 [00:00<00:00,  3.76it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  6.37it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.58it/s]                                             2026-08-12 19:49:12.982 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 603986 (20250718-20260511): 您的账号最多只能开启 1 个连接
+  0%|          | 0/1 [00:00<?, ?it/s]
+  0%|          | 0/1 [00:00<?, ?it/s][A100%|██████████| 1/1 [00:00<00:00,  4.67it/s]                                             
+100%|██████████| 1/1 [00:00<00:00,  3.59it/s][A
+                                             [A2026-08-12 19:49:15.678 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:49:15.738 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:49:15.773 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 001309 (20250718-20260812): 您的账号最多只能开启 1 个连接
+2026-08-12 19:49:15.775 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 001309, falling back to AkShare only
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.68it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.68it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.01it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]
+  0%|          | 0/1 [00:00<?, ?it/s][A100%|██████████| 1/1 [00:00<00:00,  3.24it/s]                                             
+100%|██████████| 1/1 [00:00<00:00,  3.28it/s][A
+                                             [A  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.41it/s]                                             2026-08-12 19:50:04.943 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:50:04.980 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:50:05.017 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 688012 (20250718-20260812): 您的账号最多只能开启 1 个连接
+2026-08-12 19:50:05.018 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 688012, falling back to AkShare only
+2026-08-12 19:50:05.695 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 920045 (20250718-20260511): 无效的证券代码 '920045.XSHE'
+  0%|          | 0/1 [00:00<?, ?it/s]
+  0%|          | 0/2 [00:00<?, ?it/s][A100%|██████████| 1/1 [00:00<00:00,  3.86it/s]                                             
+ 50%|█████     | 1/2 [00:00<00:00,  3.81it/s][A
+100%|██████████| 2/2 [00:00<00:00,  3.90it/s][A
+                                             [A  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.41it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.00it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.62it/s]                                               0%|          | 0/2 [00:00<?, ?it/s] 50%|█████     | 1/2 [00:00<00:00,  3.90it/s]100%|██████████| 2/2 [00:00<00:00,  1.96it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]
+  0%|          | 0/1 [00:00<?, ?it/s][A100%|██████████| 1/1 [00:00<00:00,  3.97it/s]                                             
+100%|██████████| 1/1 [00:00<00:00,  4.11it/s][A
+                                             [A  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.88it/s]                                             2026-08-12 19:50:58.290 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 603061 (20250718-20260511): 您的账号最多只能开启 1 个连接
+
+1 Failed download:
+['920045.SZ']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+2026-08-12 19:50:59.573 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 920045, falling back to AkShare only
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  6.43it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.91it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]
+  0%|          | 0/1 [00:00<?, ?it/s][A100%|██████████| 1/1 [00:00<00:00,  3.79it/s]                                             
+100%|██████████| 1/1 [00:00<00:00,  3.52it/s][A
+                                             [A  0%|          | 0/1 [00:00<?, ?it/s]
+  0%|          | 0/1 [00:00<?, ?it/s][A100%|██████████| 1/1 [00:00<00:00,  4.12it/s]                                             
+100%|██████████| 1/1 [00:00<00:00,  3.43it/s][A
+                                             [A2026-08-12 19:51:49.802 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:51:49.840 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:51:49.878 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 688048 (20250718-20260812): 您的账号最多只能开启 1 个连接
+2026-08-12 19:51:49.878 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 688048, falling back to AkShare only
+
+1 Failed download:
+['920045.SZ']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.87it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.51it/s]                                               0%|          | 0/2 [00:00<?, ?it/s] 50%|█████     | 1/2 [00:00<00:00,  3.80it/s]100%|██████████| 2/2 [00:00<00:00,  3.10it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.84it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  6.25it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.49it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.55it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.81it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.85it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.23it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  6.25it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]
+  0%|          | 0/1 [00:00<?, ?it/s][A100%|██████████| 1/1 [00:00<00:00,  4.07it/s]                                             
+100%|██████████| 1/1 [00:00<00:00,  3.65it/s][A
+                                             [A2026-08-12 19:53:34.075 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:53:34.109 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:53:34.143 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 301629 (20250718-20260812): 您的账号最多只能开启 1 个连接
+2026-08-12 19:53:34.144 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 301629, falling back to AkShare only
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.78it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]
+  0%|          | 0/1 [00:00<?, ?it/s][A100%|██████████| 1/1 [00:00<00:00,  3.95it/s]                                             
+100%|██████████| 1/1 [00:00<00:00,  3.95it/s][A
+                                             [A  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.95it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  5.71it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.80it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.85it/s]                                               0%|          | 0/2 [00:00<?, ?it/s] 50%|█████     | 1/2 [00:00<00:00,  5.13it/s]100%|██████████| 2/2 [00:00<00:00,  5.25it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.86it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.56it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.63it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.84it/s]                                             2026-08-12 19:55:15.497 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 688692 (20250718-20260511): 您的账号最多只能开启 1 个连接
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.16it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.90it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.32it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.80it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]
+  0%|          | 0/1 [00:00<?, ?it/s][A100%|██████████| 1/1 [00:00<00:00,  3.95it/s]                                             
+100%|██████████| 1/1 [00:00<00:00,  3.40it/s][A
+                                             [A  0%|          | 0/1 [00:00<?, ?it/s]
+  0%|          | 0/1 [00:00<?, ?it/s][A100%|██████████| 1/1 [00:00<00:00,  3.94it/s]                                             
+100%|██████████| 1/1 [00:00<00:00,  3.45it/s][A
+                                             [A  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.69it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.06it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.53it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.21it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.92it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.99it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.03it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.81it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.71it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.72it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.52it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.67it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.90it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.20it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.95it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.81it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.68it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.92it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  5.10it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.69it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.91it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]
+  0%|          | 0/1 [00:00<?, ?it/s][A100%|██████████| 1/1 [00:00<00:00,  7.55it/s]                                             2026-08-12 19:58:41.070 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 001232.SZ 技术因子: insufficient_rows<20
+
+100%|██████████| 1/1 [00:00<00:00,  4.00it/s][A
+                                             [A  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.91it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.97it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.75it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.71it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.82it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]
+  0%|          | 0/1 [00:00<?, ?it/s][A100%|██████████| 1/1 [00:00<00:00,  3.27it/s]                                             
+100%|██████████| 1/1 [00:00<00:00,  3.53it/s][A
+                                             [A  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.69it/s]                                             2026-08-12 19:59:33.495 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.87it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  6.60it/s]                                             2026-08-12 19:59:35.871 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 19:59:35.908 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 603259 (20250718-20260812): 您的账号最多只能开启 1 个连接
+2026-08-12 19:59:35.910 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 603259, falling back to AkShare only
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.89it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.79it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]
+  0%|          | 0/1 [00:00<?, ?it/s][A100%|██████████| 1/1 [00:00<00:00,  2.93it/s]                                             
+100%|██████████| 1/1 [00:00<00:00,  3.10it/s][A
+                                             [A  0%|          | 0/1 [00:00<?, ?it/s]2026-08-12 20:00:24.701 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+2026-08-12 20:00:24.741 | WARNING  | utils.jqdata_utils:get_jqdata_account_info:67 - JQData get_account_info failed: 您的账号最多只能开启 1 个连接
+100%|██████████| 1/1 [00:00<00:00,  3.74it/s]                                             2026-08-12 20:00:24.797 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 688515 (20250718-20260812): 您的账号最多只能开启 1 个连接
+2026-08-12 20:00:24.797 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 688515, falling back to AkShare only
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.53it/s]                                               0%|          | 0/2 [00:00<?, ?it/s] 50%|█████     | 1/2 [00:00<00:00,  3.99it/s]
+  0%|          | 0/1 [00:00<?, ?it/s][A100%|██████████| 2/2 [00:00<00:00,  3.80it/s]                                             
+100%|██████████| 1/1 [00:00<00:00,  3.85it/s][A
+                                             [A2026-08-12 20:00:27.562 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 300835 (20250718-20260511): 您的账号最多只能开启 1 个连接
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.72it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.08it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]
+  0%|          | 0/2 [00:00<?, ?it/s][A100%|██████████| 1/1 [00:00<00:00,  4.08it/s]                                             
+ 50%|█████     | 1/2 [00:00<00:00,  3.66it/s][A
+100%|██████████| 2/2 [00:00<00:00,  3.64it/s][A
+                                             [A  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.06it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.80it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.85it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.89it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.16it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.88it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.88it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.91it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.80it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.70it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.83it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.06it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.80it/s]                                             2026-08-12 20:02:12.939 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 920982 (20250718-20260511): 无效的证券代码 '920982.XSHE'
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.76it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.97it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  5.66it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  5.04it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.62it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.72it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]2026-08-12 20:03:02.137 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 920125 (20250718-20260511): 无效的证券代码 '920125.XSHE'
+100%|██████████| 1/1 [00:00<00:00,  3.81it/s]                                             
+1 Failed download:
+['920982.SZ']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+2026-08-12 20:03:04.589 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 920982, falling back to AkShare only
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  5.08it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.05it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.93it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  5.99it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.79it/s]                                             
+1 Failed download:
+['920125.SZ']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+2026-08-12 20:03:53.725 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 920125, falling back to AkShare only
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.48it/s]                                             
+1 Failed download:
+['920982.SZ']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.70it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  5.38it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.77it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]
+  0%|          | 0/1 [00:00<?, ?it/s][A100%|██████████| 1/1 [00:00<00:00,  3.89it/s]                                             
+100%|██████████| 1/1 [00:00<00:00,  3.22it/s][A
+                                             [A
+1 Failed download:
+['920125.SZ']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.86it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.80it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.48it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.93it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.77it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.77it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.71it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]
+  0%|          | 0/1 [00:00<?, ?it/s][A100%|██████████| 1/1 [00:00<00:00,  4.17it/s]                                             
+100%|██████████| 1/1 [00:00<00:00,  4.56it/s][A
+                                             [A2026-08-12 20:05:38.666 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 920493 (20250718-20260511): 您的账号最多只能开启 1 个连接
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.25it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.05it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.82it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.81it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.95it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.66it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.47it/s]                                             
+1 Failed download:
+['920493.SZ']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+2026-08-12 20:06:30.222 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 920493, falling back to AkShare only
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.10it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.74it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.93it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.02it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.08it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.97it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.09it/s]                                             
+1 Failed download:
+['920493.SZ']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+2026-08-12 20:07:21.735 | WARNING  | utils.cn_price_provider:_fetch_jqdata_hist:117 - JQData get_price failed for 920438 (20250718-20260511): 无效的证券代码 '920438.XSHE'
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.98it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.91it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  6.04it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.98it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.91it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  6.58it/s]                                             2026-08-12 20:08:11.465 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:387 - 拒绝 688828.SH 技术因子: insufficient_rows<20
+  0%|          | 0/1 [00:00<?, ?it/s]
+1 Failed download:
+['920438.SZ']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+100%|██████████| 1/1 [00:00<00:00,  3.67it/s]                                             2026-08-12 20:08:13.291 | WARNING  | utils.cn_price_provider:get_stock_zh_a_hist:173 - JQData+AkShare merge empty for 920438, falling back to AkShare only
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  2.05it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.82it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.50it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.95it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.57it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.41it/s]                                             
+1 Failed download:
+['920438.SZ']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.88it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.60it/s]                                             

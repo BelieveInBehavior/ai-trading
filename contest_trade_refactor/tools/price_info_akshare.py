@@ -5,7 +5,7 @@ Price Info Tools
 import asyncio
 import pandas as pd
 from pydantic import BaseModel, Field
-from utils.akshare_utils import akshare_cached
+from utils.cn_price_provider import get_stock_zh_a_hist
 from utils.date_utils import get_latest_completed_trading_date, get_trading_date_range
 from tools.tool_utils import smart_tool
 
@@ -35,19 +35,15 @@ async def price_info(market: str, symbol: str, trigger_time: str=None) -> str:
             # Normalize symbol like 600519.SH -> 600519
             base_symbol = symbol.split(".")[0]
             # Fetch via akshare with caching
-            df = akshare_cached.run(
-                func_name="stock_zh_a_hist",
-                func_kwargs={
-                    "symbol": base_symbol,
-                    "period": "daily",
-                    "start_date": start_date,
-                    "end_date": end_date,
-                    "adjust": "qfq"
-                },
-                verbose=False
+            df = get_stock_zh_a_hist(
+                symbol=base_symbol,
+                start_date=start_date,
+                end_date=end_date,
+                adjust="qfq",
+                verbose=False,
             )
             if df is None or len(df) == 0:
-                return {"error": "No data returned from akshare."}
+                return {"error": "No price data returned."}
             # Rename columns like test.py
             rename_map = {
                 "日期": "date",

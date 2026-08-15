@@ -11,16 +11,19 @@ from datetime import datetime, timedelta
 from typing import List, Dict
 
 from loguru import logger
-from config.config import PROJECT_ROOT
-from utils.akshare_utils import akshare_cached
+from config.config import WORKSPACE_ROOT
+from utils.cn_price_provider import get_stock_zh_a_hist
 from utils.date_utils import get_previous_trading_date
+
+def _normalize_compact_date(dt) -> str:
+    return dt.strftime("%Y%m%d")
 
 
 class PerformanceTracker:
     """Tracks and evaluates the historical performance of trading signals."""
 
     def __init__(self):
-        self.workspace_dir = PROJECT_ROOT / "agents_workspace" / "performance"
+        self.workspace_dir = WORKSPACE_ROOT / "performance"
         self.workspace_dir.mkdir(parents=True, exist_ok=True)
 
         self.pending_file = self.workspace_dir / "pending_signals.json"
@@ -51,10 +54,8 @@ class PerformanceTracker:
         """
         Store signals with their predictions for later evaluation.
 
-        Args:
-            trigger_time: The time the signal was triggered (format: "YYYY-MM-DD HH:MM:SS")
-            best_signals: List of signal dicts from the trading decision system.
-                Only passed-gate buy decisions are persisted.
+        Returns the number of signals recorded so callers can use it for downstream
+        tracking (including non-buy watchlist signals if desired).
         """
         try:
             def is_tradable_buy(signal: Dict) -> bool:
@@ -76,7 +77,18 @@ class PerformanceTracker:
                     "action": signal.get("action", "buy"),
                     "buy_decision": signal.get("buy_decision", ""),
                     "probability": signal.get("probability_value", signal.get("probability", 0)),
+                    "probability_value": signal.get("probability_value", None),
+                    "buy_score": signal.get("buy_score", 0),
+                    "expected_return_t1_pct": signal.get("expected_return_t1_pct", 0),
+                    "gate_report": signal.get("next_day_gate_report") or {},
                     "agent_name": signal.get("agent_name", ""),
+                    "scorecard": signal.get("next_day_factor_scorecard") or {},
+                    "metadata": {
+                        "strategy": signal.get("strategy"),
+                        "market_trend": signal.get("market_trend"),
+                        "risk_sentiment": signal.get("risk_sentiment"),
+                        "source": "performance_tracker",
+                    },
                 }
                 self.pending_signals.append(record)
 
@@ -86,107 +98,174 @@ class PerformanceTracker:
                 f"Recorded {len(tradable_signals)} buy signals for trigger_time={trigger_time}; "
                 f"skipped {skipped} watchlist candidates"
             )
+            return len(tradable_signals)
         except Exception as e:
             logger.error(f"Error recording signals: {e}")
+            return 0
 
     async def evaluate_pending(self):
         """
         Evaluate pending signals that are at least 1 trading day old.
 
         For each eligible signal:
-        - Fetch actual price on trigger day (open) and next day (close) via akshare
-        - Calculate actual return
-        - Classify as hit or miss
-        - Move from pending to history
+        - Fetch future prices from trigger trade-date onwards.
+        - Determine the actual next trading day (entry) open and day N close/returns.
+        - Store t1/t3/t5/max_gain/max_loss categories (entry basis: next-day open).
+        - Move from pending to history when the requested horizon is fully observable.
         """
-        still_pending = []
-        now = datetime.now()
+        from utils.market_manager import GLOBAL_MARKET_MANAGER
 
+        market_name = "CN-Stock"
+        now = datetime.now()
+        trade_dates = GLOBAL_MARKET_MANAGER.get_trade_date(market_name=market_name, verbose=False)
+        trade_dates = [str(td).replace("-", "").replace("/", "") for td in trade_dates]
+        trade_date_set = set(trade_dates)
+
+        def _next_trading_dates(trigger_compact: str, count: int) -> List[str]:
+            out = []
+            for td in trade_dates:
+                if td > trigger_compact:
+                    out.append(td)
+                    if len(out) >= count:
+                        break
+            return out
+
+        still_pending = []
         for signal in self.pending_signals:
             try:
-                trigger_time = signal["trigger_time"]
+                trigger_time = signal.get("trigger_time")
+                if not trigger_time:
+                    continue
                 trigger_dt = datetime.strptime(trigger_time, "%Y-%m-%d %H:%M:%S")
+                trigger_compact = _normalize_compact_date(trigger_dt)
+                # If trigger day isn't in trade calendar, evaluate from the next trading day.
+                if trade_dates and trigger_compact not in trade_date_set:
+                    upcoming = _next_trading_dates(trigger_compact, 1)
+                    if not upcoming:
+                        still_pending.append(signal)
+                        continue
+                    trigger_compact = upcoming[0]
 
-                # Must be at least 2 calendar days old to ensure next trading day data is available
-                if (now - trigger_dt) < timedelta(days=2):
+                nxt = _next_trading_dates(trigger_compact, 6)
+                if len(nxt) < 6:
+                    # Not enough history yet; keep pending.
                     still_pending.append(signal)
                     continue
 
-                symbol_code = signal["symbol_code"]
-                action = signal.get("action", "buy")
+                entry_date = nxt[0]
+                horizon_dates = nxt[:5]  # T1..T5 close dates
+                ak_symbol = str(signal["symbol_code"]).split(".")[0]
 
-                # Determine date range for akshare query
-                trigger_date = trigger_dt.strftime("%Y%m%d")
+                start_compact = trigger_compact
+                end_compact = horizon_dates[-1]
 
-                # Convert symbol code from tushare format (600519.SH) to akshare format (600519)
-                ak_symbol = symbol_code.split(".")[0] if "." in symbol_code else symbol_code
-
-                # Fetch historical data covering trigger day and next day
-                # Use a window to ensure we capture at least 2 trading days
-                start_date = trigger_dt.strftime("%Y%m%d")
-                end_date = (trigger_dt + timedelta(days=10)).strftime("%Y%m%d")
-
-                df = akshare_cached.run(
-                    func_name="stock_zh_a_hist",
-                    func_kwargs={
-                        "symbol": ak_symbol,
-                        "period": "daily",
-                        "start_date": start_date,
-                        "end_date": end_date,
-                        "adjust": "qfq",
-                    },
+                df = get_stock_zh_a_hist(
+                    symbol=ak_symbol,
+                    start_date=start_compact,
+                    end_date=end_compact,
+                    adjust="qfq",
                     verbose=False,
                 )
-
                 if df is None or len(df) < 2:
-                    # Not enough data yet, keep pending
                     still_pending.append(signal)
                     continue
 
-                # Sort by date ascending
-                df = df.sort_values(by="日期", ascending=True).reset_index(drop=True)
+                df["日期"] = pd.to_datetime(df["日期"], errors="coerce").dt.strftime("%Y%m%d")
+                df = df.drop_duplicates("日期", keep="last").sort_values("日期").reset_index(drop=True)
+                row_map = {str(r["日期"]): r for _, r in df.iterrows()}
 
-                # Get open price on trigger day and close on next trading day
-                open_price = float(df.iloc[0]["开盘"])
-                next_close = float(df.iloc[1]["收盘"])
+                # Entry = next-day open. If missing, keep pending.
+                if entry_date not in row_map:
+                    still_pending.append(signal)
+                    continue
+                entry_open = float(row_map[entry_date]["开盘"])
 
-                # Calculate actual return percentage
-                actual_return = (next_close - open_price) / open_price * 100
+                def _close(d: str):
+                    r = row_map.get(d)
+                    if r is None:
+                        return None
+                    return float(r["收盘"])
 
-                # Determine hit/miss
-                if action.lower() == "buy":
-                    hit = actual_return > 0
-                else:  # sell
-                    hit = actual_return < 0
+                closes = {d: _close(d) for d in horizon_dates}
+                if not all(closes.values()):
+                    still_pending.append(signal)
+                    continue
 
-                # Build history record
+                t1_close = closes[horizon_dates[0]]
+                t3_close = closes[horizon_dates[2]]
+                t5_close = closes[horizon_dates[4]]
+
+                high_col = "最高" if "最高" in df.columns else None
+                low_col = "最低" if "最低" in df.columns else None
+                max_high = entry_open
+                min_low = entry_open
+                for hd in horizon_dates:
+                    r = row_map.get(hd)
+                    if r is None:
+                        continue
+                    if high_col:
+                        try:
+                            max_high = max(max_high, float(r[high_col]))
+                        except Exception:
+                            pass
+                    if low_col:
+                        try:
+                            min_low = min(min_low, float(r[low_col]))
+                        except Exception:
+                            pass
+
+                def pct(a: float, b: float) -> float:
+                    return (b - a) / a * 100.0 if a else 0.0
+
+                t1_return = pct(entry_open, t1_close)
+                t3_return = pct(entry_open, t3_close)
+                t5_return = pct(entry_open, t5_close)
+                max_gain = pct(entry_open, max_high)
+                max_loss = pct(entry_open, min_low)
+
+                action = str(signal.get("action", "buy")).lower()
+                hit = t1_return > 0 if action == "buy" else t1_return < 0
+
                 history_record = {
                     "trigger_time": trigger_time,
-                    "symbol_code": symbol_code,
+                    "trigger_date": trigger_compact,
+                    "entry_date": entry_date,
+                    "symbol_code": signal["symbol_code"],
                     "symbol_name": signal.get("symbol_name", ""),
                     "action": action,
+                    "buy_decision": signal.get("buy_decision", ""),
                     "probability": signal.get("probability", 0),
                     "agent_name": signal.get("agent_name", ""),
-                    "open_price": open_price,
-                    "next_close": next_close,
-                    "actual_return_pct": round(actual_return, 4),
+                    "buy_score": signal.get("buy_score", 0),
+                    "expected_return_t1_pct": signal.get("expected_return_t1_pct", 0),
+                    "gate_report": signal.get("gate_report") or {},
+                    "scorecard": signal.get("scorecard") or {},
+                    "entry_price": round(entry_open, 3),
+                    "t1_close": round(t1_close, 3),
+                    "t3_close": round(t3_close, 3),
+                    "t5_close": round(t5_close, 3),
+                    "t1_return_pct": round(t1_return, 3),
+                    "t3_return_pct": round(t3_return, 3),
+                    "t5_return_pct": round(t5_return, 3),
+                    "max_gain_pct": round(max_gain, 3),
+                    "max_loss_pct": round(max_loss, 3),
+                    "actual_return_pct": round(t1_return, 4),
                     "hit": hit,
                     "evaluated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
                 }
 
                 self.performance_history.append(history_record)
                 logger.info(
-                    f"Evaluated {symbol_code}: return={actual_return:.2f}%, hit={hit}"
+                    f"Evaluated {signal['symbol_code']} entry={entry_date} "
+                    f"t1={t1_return:.2f}% t3={t3_return:.2f}% t5={t5_return:.2f}% hit={hit}"
                 )
 
             except Exception as e:
-                # If evaluation fails (e.g., akshare fetch error), keep signal pending
                 logger.warning(
                     f"Failed to evaluate signal {signal.get('symbol_code', '?')}: {e}"
                 )
                 still_pending.append(signal)
 
-        # Update files
         self.pending_signals = still_pending
         self._save_json(self.pending_file, self.pending_signals)
         self._save_json(self.history_file, self.performance_history)

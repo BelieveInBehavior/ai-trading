@@ -40,6 +40,12 @@ class MarginTradingAkshare(DataSourceBase):
             logger.info(f"获取 {trade_date} 的融资融券数据")
 
             report = self._build_margin_report(trade_date)
+            report = await self.maybe_web_search_supplement(
+                report,
+                query=f"A股融资融券{trade_date}",
+                trigger_time=trigger_time,
+                section_title="融资融券联网补充",
+            )
 
             data = [{
                 "title": f"{trade_date}:融资融券异动分析",
@@ -59,7 +65,17 @@ class MarginTradingAkshare(DataSourceBase):
         except Exception as e:
             traceback.print_exc()
             logger.error(f"获取融资融券数据失败: {e}")
-            return pd.DataFrame()
+            return await self.akshare_web_search_fallback(
+                title=f"{get_latest_completed_trading_date(trigger_time)}:融资融券异动分析",
+                query=f"A股融资融券{get_latest_completed_trading_date(trigger_time)}",
+                trigger_time=trigger_time,
+                section_title="融资融券联网补充",
+                market_relevance_score=7,
+                market_relevance_label="high",
+                signal_event_type="margin_trading",
+                signal_direction="neutral",
+                signal_confidence=0.65,
+            )
 
     def _build_margin_report(self, trade_date: str) -> str:
         """构建融资融券分析报告"""

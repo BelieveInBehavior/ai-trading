@@ -15,6 +15,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from main_loop import SimpleTradeCompany
+from config.strategies import get_strategy, get_strategies
 
 app = FastAPI(title="AI Trading System API")
 
@@ -42,10 +43,12 @@ class SseTradeCompany(SimpleTradeCompany):
     async def run_with_queue(self, queue: asyncio.Queue, trigger_time: str):
         await self._emit(queue, "system", {"message": f"Starting analysis at {trigger_time}", "stage": "init"})
 
+        strategy = self.strategy or {}
         await self._emit(queue, "stage", {
-            "message": "Stage 1: Running Data Agents...",
+            "message": f"[{strategy.get('short_name','')}] Stage 1: Running Data Agents...",
             "stage": "data_agents",
             "total": len(self.data_agents),
+            "strategy": strategy,
         })
         data_factors = await self._run_data_agents_sse(queue, trigger_time)
         await self._emit(queue, "stage_complete", {
@@ -124,6 +127,7 @@ class SseTradeCompany(SimpleTradeCompany):
             "best_signals": buy_signals,
             "market_context": market_context,
             "system_health": self.system_health,
+            "strategy": self.strategy,
             "research_rounds": selection["research_rounds"],
             "require_min_buys": selection["require_min_buys"],
             "require_min_buys_met": selection["require_min_buys_met"],
@@ -262,16 +266,27 @@ async def startup_event():
 
 class StartRequest(BaseModel):
     trigger_time: str = ""
+    strategy: str = "momentum"
 
 
 @app.post("/api/start")
 async def start_analysis(body: StartRequest):
+    global company
     session_id = str(uuid.uuid4())
     queue: asyncio.Queue = asyncio.Queue()
     streams[session_id] = queue
     trigger_time = body.trigger_time or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Rebuild company with selected strategy so all agents/gates use that config.
+    strategy = get_strategy(body.strategy)
+    company = SseTradeCompany(strategy=body.strategy)
+    await company._emit(queue, "system", {
+        "message": f"Strategy: {strategy.get('name')} · {strategy.get('short_name')}",
+        "stage": "init",
+        "strategy_id": strategy.get("id"),
+        "strategy": strategy,
+    })
     asyncio.create_task(company.run_with_queue(queue, trigger_time))
-    return {"session_id": session_id}
+    return {"session_id": session_id, "strategy": strategy.get("id")}
 
 
 @app.get("/api/stream/{session_id}")
@@ -308,6 +323,12 @@ async def stream_events(session_id: str):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@app.get("/api/strategies")
+async def list_strategies():
+    """Return both trading strategies (swing / momentum) for the UI."""
+    return {"strategies": get_strategies()}
 
 
 @app.get("/api/health")

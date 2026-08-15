@@ -41,8 +41,19 @@ class NorthboundFlowAkshare(DataSourceBase):
             # 获取资金流向汇总
             summary_df = self._get_fund_flow_summary()
 
+            # 防止 future leak：只保留 trade_date 及之前的数据
+            hu_hist_df = self._filter_asof(hu_hist_df, trade_date)
+            shen_hist_df = self._filter_asof(shen_hist_df, trade_date)
+            summary_df = self._filter_summary_asof(summary_df, trade_date)
+
             # 生成文本摘要
             summary = self._build_summary(trade_date, hu_hist_df, shen_hist_df, summary_df)
+            summary = await self.maybe_web_search_supplement(
+                summary,
+                query=f"北向资金{trade_date}",
+                trigger_time=trigger_time,
+                section_title="北向资金联网补充",
+            )
 
             data = [{
                 "title": f"{trade_date}:北向资金数据汇总",
@@ -57,7 +68,13 @@ class NorthboundFlowAkshare(DataSourceBase):
         except Exception as e:
             traceback.print_exc()
             logger.error(f"获取北向资金数据失败: {e}")
-            return pd.DataFrame()
+            trade_date = get_latest_completed_trading_date(trigger_time)
+            return await self.akshare_web_search_fallback(
+                title=f"{trade_date}:北向资金数据汇总",
+                query=f"北向资金{trade_date}",
+                trigger_time=trigger_time,
+                section_title="北向资金联网补充",
+            )
 
     def _get_hsgt_hist(self, symbol: str) -> pd.DataFrame:
         """获取沪股通/深股通历史数据"""
@@ -92,6 +109,24 @@ class NorthboundFlowAkshare(DataSourceBase):
         except Exception as e:
             logger.error(f"获取北向资金流向汇总失败: {e}")
             return pd.DataFrame()
+
+    def _filter_asof(self, df: pd.DataFrame, trade_date: str, date_col: str = "日期") -> pd.DataFrame:
+        """仅保留日期列 <= trade_date 的历史数据，防止 future leak。"""
+        if df is None or df.empty or date_col not in df.columns:
+            return df
+        work = df.copy()
+        work[date_col] = pd.to_datetime(work[date_col], errors="coerce")
+        asof = pd.to_datetime(trade_date, format="%Y%m%d")
+        return work[work[date_col].notna() & (work[date_col] <= asof)]
+
+    def _filter_summary_asof(self, df: pd.DataFrame, trade_date: str, date_col: str = "交易日") -> pd.DataFrame:
+        """仅保留资金流向汇总中交易日 <= trade_date 的行。"""
+        if df is None or df.empty or date_col not in df.columns:
+            return df
+        work = df.copy()
+        work[date_col] = pd.to_datetime(work[date_col], errors="coerce")
+        as_of = pd.to_datetime(trade_date, format="%Y%m%d")
+        return work[work[date_col].notna() & (work[date_col] <= as_of)]
 
     def _build_summary(self, trade_date: str, hu_hist_df: pd.DataFrame,
                        shen_hist_df: pd.DataFrame, summary_df: pd.DataFrame) -> str:
