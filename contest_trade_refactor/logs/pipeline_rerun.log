@@ -1,0 +1,1051 @@
+Loading config from: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/config.yaml (Market: CN-Stock)
+[sina_summary_agent] Loaded: data_source.sina_news_crawl.SinaNewsCrawl
+[thx_summary_agent] Loaded: data_source.thx_news_crawl.ThxNewsCrawl
+[price_market_agent] Loaded: data_source.price_market_akshare.PriceMarketAkshare
+[hot_money_agent] Loaded: data_source.hot_money_akshare.HotMoneyAkshare
+[northbound_flow_agent] Loaded: data_source.northbound_flow_akshare.NorthboundFlowAkshare
+[technical_indicators_agent] Loaded: data_source.technical_indicators_akshare.TechnicalIndicatorsAkshare
+2026-08-18 18:15:43.018 | INFO     | utils.threshold_manager:load:125 - 阈值已从 /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/factor_thresholds.yaml 加载
+[individual_fund_flow_agent] Loaded: data_source.individual_fund_flow_akshare.IndividualFundFlowAkshare
+[margin_trading_agent] Loaded: data_source.margin_trading_akshare.MarginTradingAkshare
+[block_trade_agent] Loaded: data_source.block_trade_akshare.BlockTradeAkshare
+[sector_fund_flow_trend_agent] Loaded: data_source.sector_fund_flow_trend_akshare.SectorFundFlowTrendAkshare
+[zt_seal_strength_agent] Loaded: data_source.zt_seal_strength_akshare.ZtSealStrengthAkshare
+[web_search_market_supplement_agent] Loaded: data_source.web_search_market_supplement.WebSearchMarketSupplement
+pipeline_start strategy=momentum trigger_time=2026-08-18 18:15:43 quantitative_screen=on max_symbols=0 concurrency=4
+🚀 Starting Trade Company Analysis at 2026-08-18 18:15:43
+================================================================================
+
+🔎 Stage 0: Full-market quantitative screening...
+2026-08-18 18:15:43.067 | INFO     | utils.sector_enrichment:build_sector_snapshot_from_factor_store:239 - 从 factor_store 构建板块快照: 90 个行业, trade_date=20260818
+2026-08-18 18:15:43.068 | INFO     | agents.quantitative_universe_screener:screen:135 - 板块富化映射启用: 2370 只股票有行业板块字段
+Stage 0 progress: 1/5006 scanned
+2026-08-18 18:15:43.100 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:420 - 拒绝 688826.SH 技术因子: insufficient_rows<20
+2026-08-18 18:15:43.147 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:420 - 拒绝 301717.SZ 技术因子: insufficient_rows<20
+2026-08-18 18:15:43.659 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:420 - 拒绝 001232.SZ 技术因子: insufficient_rows<20
+Stage 0 progress: 200/5006 scanned
+2026-08-18 18:15:44.532 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:420 - 拒绝 688828.SH 技术因子: insufficient_rows<20
+2026-08-18 18:15:44.798 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:420 - 拒绝 301707.SZ 技术因子: insufficient_rows<20
+Stage 0 progress: 400/5006 scanned
+2026-08-18 18:15:45.925 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:420 - 拒绝 301677.SZ 技术因子: insufficient_rows<20
+2026-08-18 18:15:46.005 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:420 - 拒绝 688825.SH 技术因子: insufficient_rows<20
+Stage 0 progress: 600/5006 scanned
+Stage 0 progress: 800/5006 scanned
+Stage 0 progress: 1000/5006 scanned
+Stage 0 progress: 1200/5006 scanned
+Stage 0 progress: 1400/5006 scanned
+2026-08-18 18:15:51.873 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:420 - 拒绝 603468.SH 技术因子: insufficient_rows<20
+Stage 0 progress: 1600/5006 scanned
+Stage 0 progress: 1800/5006 scanned
+Stage 0 progress: 2000/5006 scanned
+Stage 0 progress: 2200/5006 scanned
+Stage 0 progress: 2400/5006 scanned
+Stage 0 progress: 2600/5006 scanned
+Stage 0 progress: 2800/5006 scanned
+Stage 0 progress: 3000/5006 scanned
+Stage 0 progress: 3200/5006 scanned
+Stage 0 progress: 3400/5006 scanned
+Stage 0 progress: 3600/5006 scanned
+Stage 0 progress: 3800/5006 scanned
+Stage 0 progress: 4000/5006 scanned
+Stage 0 progress: 4200/5006 scanned
+Stage 0 progress: 4400/5006 scanned
+Stage 0 progress: 4600/5006 scanned
+Stage 0 progress: 4800/5006 scanned
+Stage 0 progress: 5000/5006 scanned
+Stage 0 progress: 5006/5006 scanned
+✅ Quantitative screen: universe=5006, scanned=4998, passed=4920, research_candidates=4920
+
+📊 Stage 1: Running Data Agents...
+[sina_summary_agent] Starting analysis for 2026-08-18 18:15:43
+[thx_summary_agent] Starting analysis for 2026-08-18 18:15:43
+[price_market_agent] Starting analysis for 2026-08-18 18:15:43
+2026-08-18 18:16:13.404 | INFO     | data_source.price_market_akshare:get_data:38 - 获取 20260818 的价格市场数据
+2026-08-18 18:16:13.404 | INFO     | data_source.price_market_akshare:get_llm_summary:411 - 获取 20260818 的价格市场LLM分析总结
+2026-08-18 18:16:13.409 | INFO     | data_source.price_market_akshare:get_kline_data:130 - 获取 上证指数 K线数据成功，87 条记录
+2026-08-18 18:16:13.413 | INFO     | data_source.price_market_akshare:get_kline_data:130 - 获取 创业板指 K线数据成功，87 条记录
+2026-08-18 18:16:13.416 | INFO     | data_source.price_market_akshare:get_kline_data:130 - 获取 科创50 K线数据成功，87 条记录
+2026-08-18 18:16:13.418 | INFO     | data_source.price_market_akshare:get_current_day_data:207 - 获取 上证指数 当日数据成功
+2026-08-18 18:16:13.419 | INFO     | data_source.price_market_akshare:get_current_day_data:207 - 获取 创业板指 当日数据成功
+2026-08-18 18:16:13.420 | INFO     | data_source.price_market_akshare:get_current_day_data:207 - 获取 科创50 当日数据成功
+2026-08-18 18:16:18.246 | WARNING  | utils.sector_flow_provider:_first_available:179 - akshare:stock_board_industry_name_em 获取失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+2026-08-18 18:16:18.344 | WARNING  | utils.sector_flow_provider:_first_available:179 - tushare:moneyflow_ind_dc 获取失败: 抱歉，您没有接口(moneyflow_ind_dc)访问权限，权限的具体详情访问：https://tushare.pro/document/1?doc_id=108。
+  0%|          | 0/2 [00:00<?, ?it/s]100%|██████████| 2/2 [00:00<00:00, 15.93it/s]                                             2026-08-18 18:16:18.689 | INFO     | utils.sector_flow_provider:_first_available:175 - akshare:stock_fund_flow_industry 获取成功，90 条
+findfont: Failed to find font weight bold, now using 400.
+2026-08-18 18:16:18.893 | INFO     | data_source.price_market_akshare:generate_kline_charts_base64:400 - 成功生成上证指数K线图，大小: 191544 字符
+2026-08-18 18:16:19.152 | INFO     | data_source.price_market_akshare:generate_kline_charts_base64:400 - 成功生成创业板指K线图，大小: 204224 字符
+2026-08-18 18:16:19.305 | INFO     | data_source.price_market_akshare:generate_kline_charts_base64:400 - 成功生成科创50K线图，大小: 193800 字符
+2026-08-18 18:16:19.305 | INFO     | data_source.price_market_akshare:generate_kline_charts_base64:402 - 成功生成3张K线图
+[hot_money_agent] Starting analysis for 2026-08-18 18:15:43
+2026-08-18 18:16:19.489 | INFO     | data_source.hot_money_akshare:get_data:34 - 获取 20260818 的热钱市场数据
+2026-08-18 18:16:19.490 | INFO     | data_source.hot_money_akshare:get_llm_summary:194 - 获取 20260818 的热钱市场LLM分析总结
+2026-08-18 18:16:19.491 | INFO     | data_source.hot_money_akshare:get_zt_data:77 - 获取 20260818 涨停数据成功，79 条记录
+2026-08-18 18:16:19.491 | INFO     | data_source.hot_money_akshare:get_dt_data:97 - 获取 20260818 跌停数据成功，5 条记录
+2026-08-18 18:16:19.493 | INFO     | data_source.hot_money_akshare:get_lhb_data:120 - 获取 20260804到20260818 龙虎榜数据成功，853 条记录
+2026-08-18 18:16:19.500 | INFO     | data_source.hot_money_akshare:get_lhb_jg_data:143 - 获取 20260804到20260818 龙虎榜机构数据成功，514 条记录
+2026-08-18 18:16:35.248 | WARNING  | utils.sector_flow_provider:_first_available:179 - akshare:stock_board_concept_name_em 获取失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+2026-08-18 18:16:36.102 | WARNING  | utils.sector_flow_provider:_first_available:179 - tushare:moneyflow_ind_dc 获取失败: 抱歉，您没有接口(moneyflow_ind_dc)访问权限，权限的具体详情访问：https://tushare.pro/document/1?doc_id=108。
+  0%|          | 0/8 [00:00<?, ?it/s] 38%|███▊      | 3/8 [00:00<00:00, 22.65it/s] 75%|███████▌  | 6/8 [00:00<00:00, 22.10it/s]                                             2026-08-18 18:16:36.527 | INFO     | utils.sector_flow_provider:_first_available:175 - akshare:stock_fund_flow_concept 获取成功，387 条
+2026-08-18 18:16:36.527 | INFO     | data_source.hot_money_akshare:get_concept_data:164 - 获取概念板块数据成功，387 条记录，来源: akshare:stock_fund_flow_concept
+2026-08-18 18:16:36.528 | INFO     | data_source.hot_money_akshare:get_yyb_data:184 - 获取游资营业部数据成功，223 条记录
+[northbound_flow_agent] Starting analysis for 2026-08-18 18:15:43
+2026-08-18 18:16:36.536 | INFO     | data_source.northbound_flow_akshare:get_data:35 - 获取 20260818 的北向资金数据
+2026-08-18 18:16:36.537 | INFO     | data_source.northbound_flow_akshare:_get_hsgt_hist:90 - 获取沪股通历史数据成功，2733 条记录
+2026-08-18 18:16:36.539 | INFO     | data_source.northbound_flow_akshare:_get_hsgt_hist:90 - 获取深股通历史数据成功，2257 条记录
+2026-08-18 18:16:36.539 | INFO     | data_source.northbound_flow_akshare:_get_fund_flow_summary:107 - 获取北向资金流向汇总成功，4 条记录
+[technical_indicators_agent] Starting analysis for 2026-08-18 18:15:43
+2026-08-18 18:16:36.562 | INFO     | data_source.technical_indicators_akshare:get_data:694 - 获取 20260818 的技术指标数据
+[technical_indicators_agent] Fetched 1 from TechnicalIndicatorsAkshare
+[technical_indicators_agent] High-value selection: 1 docs kept
+[technical_indicators_agent] Processing 1 batches...
+[individual_fund_flow_agent] Starting analysis for 2026-08-18 18:15:43
+2026-08-18 18:16:36.731 | INFO     | data_source.individual_fund_flow_akshare:get_data:35 - 获取 20260818 的个股资金流数据
+2026-08-18 18:16:36.733 | INFO     | data_source.individual_fund_flow_akshare:_get_fund_flow_rank:173 - 获取个股资金流排名(今日)成功，5204条
+2026-08-18 18:16:36.734 | INFO     | data_source.individual_fund_flow_akshare:_get_fund_flow_rank:173 - 获取个股资金流排名(3日)成功，5204条
+2026-08-18 18:16:36.735 | INFO     | data_source.individual_fund_flow_akshare:_get_fund_flow_rank:173 - 获取个股资金流排名(5日)成功，5204条
+2026-08-18 18:16:36.816 | INFO     | utils.factor_store:save:62 - [FactorStore] 保存 individual_fund_flow @ 20260818: 5204 条
+[individual_fund_flow_agent] Fetched 1 from IndividualFundFlowAkshare
+[individual_fund_flow_agent] High-value selection: 1 docs kept
+[individual_fund_flow_agent] Processing 1 batches...
+[margin_trading_agent] Starting analysis for 2026-08-18 18:15:43
+2026-08-18 18:16:36.824 | INFO     | data_source.margin_trading_akshare:get_data:40 - 获取 20260818 的融资融券数据
+2026-08-18 18:16:36.824 | WARNING  | data_source.margin_trading_akshare:_get_margin_detail:231 - sh市融资融券明细为空 (20260818)
+2026-08-18 18:16:36.824 | WARNING  | data_source.margin_trading_akshare:_get_margin_detail:231 - sz市融资融券明细为空 (20260818)
+[block_trade_agent] Starting analysis for 2026-08-18 18:15:43
+2026-08-18 18:16:36.825 | INFO     | data_source.block_trade_akshare:get_data:39 - 获取 20260818 的大宗交易数据
+2026-08-18 18:16:36.826 | INFO     | data_source.block_trade_akshare:_get_daily_summary:210 - 获取大宗交易每日统计成功，31条
+2026-08-18 18:16:36.826 | INFO     | data_source.block_trade_akshare:_get_detail_data:228 - 获取大宗交易明细成功，53条
+2026-08-18 18:16:36.835 | INFO     | utils.factor_store:save:62 - [FactorStore] 保存 block_trade @ 20260818: 31 条
+[block_trade_agent] Fetched 1 from BlockTradeAkshare
+[block_trade_agent] High-value selection: 1 docs kept
+[block_trade_agent] Processing 1 batches...
+[sector_fund_flow_trend_agent] Starting analysis for 2026-08-18 18:15:43
+2026-08-18 18:16:36.836 | INFO     | data_source.sector_fund_flow_trend_akshare:get_data:35 - 获取 20260818 的板块资金流向趋势数据
+2026-08-18 18:16:41.743 | WARNING  | utils.sector_flow_provider:_first_available:179 - akshare:stock_board_industry_name_em 获取失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+2026-08-18 18:16:42.534 | WARNING  | utils.sector_flow_provider:_first_available:179 - tushare:moneyflow_ind_dc 获取失败: 抱歉，您没有接口(moneyflow_ind_dc)访问权限，权限的具体详情访问：https://tushare.pro/document/1?doc_id=108。
+  0%|          | 0/2 [00:00<?, ?it/s]100%|██████████| 2/2 [00:00<00:00, 15.79it/s]                                             2026-08-18 18:16:42.766 | INFO     | utils.sector_flow_provider:_first_available:175 - akshare:stock_fund_flow_industry 获取成功，90 条
+2026-08-18 18:16:42.766 | INFO     | data_source.sector_fund_flow_trend_akshare:_get_industry_fund_flow:200 - 获取行业板块数据成功，90条，来源: akshare:stock_fund_flow_industry
+2026-08-18 18:16:59.693 | WARNING  | utils.sector_flow_provider:_first_available:179 - akshare:stock_board_concept_name_em 获取失败: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+2026-08-18 18:16:59.798 | WARNING  | utils.sector_flow_provider:_first_available:179 - tushare:moneyflow_ind_dc 获取失败: 抱歉，您没有接口(moneyflow_ind_dc)访问权限，权限的具体详情访问：https://tushare.pro/document/1?doc_id=108。
+  0%|          | 0/8 [00:00<?, ?it/s] 38%|███▊      | 3/8 [00:00<00:00, 22.39it/s] 75%|███████▌  | 6/8 [00:00<00:00, 18.64it/s]100%|██████████| 8/8 [00:00<00:00, 13.18it/s]                                             2026-08-18 18:17:00.421 | INFO     | utils.sector_flow_provider:_first_available:175 - akshare:stock_fund_flow_concept 获取成功，387 条
+2026-08-18 18:17:00.421 | INFO     | data_source.sector_fund_flow_trend_akshare:_get_concept_fund_flow:218 - 获取概念板块数据成功，387条，来源: akshare:stock_fund_flow_concept
+2026-08-18 18:17:00.436 | INFO     | utils.factor_store:save:62 - [FactorStore] 保存 sector_fund_flow @ 20260818: 90 条
+[sector_fund_flow_trend_agent] Fetched 1 from SectorFundFlowTrendAkshare
+[sector_fund_flow_trend_agent] High-value selection: 1 docs kept
+[sector_fund_flow_trend_agent] Processing 1 batches...
+[zt_seal_strength_agent] Starting analysis for 2026-08-18 18:15:43
+2026-08-18 18:17:00.442 | INFO     | data_source.zt_seal_strength_akshare:get_data:37 - 获取 20260818 的涨停封单强度数据
+2026-08-18 18:17:00.443 | INFO     | data_source.zt_seal_strength_akshare:_get_zt_pool:204 - 获取涨停池成功，79条
+2026-08-18 18:17:00.451 | INFO     | utils.factor_store:save:62 - [FactorStore] 保存 zt_seal_strength @ 20260818: 79 条
+[zt_seal_strength_agent] Fetched 1 from ZtSealStrengthAkshare
+[zt_seal_strength_agent] High-value selection: 1 docs kept
+[zt_seal_strength_agent] Processing 1 batches...
+[web_search_market_supplement_agent] Starting analysis for 2026-08-18 18:15:43
+2026-08-18 18:17:00.495 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '北向资金20260818'
+2026-08-18 18:17:00.670 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:00.796 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:00.797 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+2026-08-18 18:17:00.800 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: 'A股融资融券20260818'
+2026-08-18 18:17:00.967 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:01.081 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:01.083 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+2026-08-18 18:17:01.088 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: 'A股龙虎榜20260818'
+2026-08-18 18:17:01.203 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:01.313 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:01.315 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[northbound_flow_agent] Fetched 1 from NorthboundFlowAkshare
+[northbound_flow_agent] High-value selection: 1 docs kept
+[northbound_flow_agent] Completed: 1061 chars
+[margin_trading_agent] Fetched 1 from MarginTradingAkshare
+[margin_trading_agent] High-value selection: 1 docs kept
+[margin_trading_agent] Completed: 226 chars
+[technical_indicators_agent] Completed: 2189 chars
+[individual_fund_flow_agent] Completed: 2217 chars
+[block_trade_agent] Completed: 459 chars
+[sector_fund_flow_trend_agent] Completed: 2000 chars
+[zt_seal_strength_agent] Completed: 2165 chars
+2026-08-18 18:17:01.373 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: 'A股涨停20260818'
+2026-08-18 18:17:01.455 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:01.634 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:01.634 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+2026-08-18 18:17:01.637 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: 'A股大宗交易20260818'
+2026-08-18 18:17:01.742 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:01.857 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:01.858 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+2026-08-18 18:17:01.858 | WARNING  | data_source.web_search_market_supplement:get_data:52 - Web search market supplement returned no results
+[web_search_market_supplement_agent] No data fetched
+2026-08-18 18:17:01.900 | ERROR    | data_source.thx_news_crawl:crawl_frontend_pages:222 - ❌ Frontend crawling failed: BrowserType.launch: Executable doesn't exist at /Users/ruby/Library/Caches/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-mac-arm64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+2026-08-18 18:17:02.271 | INFO     | data_source.sina_news_crawl:crawl_all_pages:524 - Sina crawl completed: pages=1-50, total_items=2500, enrich_success=0, enrich_failed=0, elapsed=48.87s
+2026-08-18 18:17:02.271 | INFO     | data_source.sina_news_crawl:get_data:552 - 📊 Processing 2500 collected items...
+2026-08-18 18:17:02.294 | INFO     | data_source.sina_news_crawl:get_data:592 - get sina news until 2026-08-18 18:15:43 success. Total 1888 rows
+[sina_summary_agent] Fetched 1875 from SinaNewsCrawl
+[sina_summary_agent] High-value selection: 220 docs kept
+[sina_summary_agent] Processing 6 batches...
+[price_market_agent] Fetched 1 from PriceMarketAkshare
+[price_market_agent] High-value selection: 1 docs kept
+[price_market_agent] Processing 1 batches...
+[price_market_agent] Completed: 1061 chars
+[hot_money_agent] Fetched 1 from HotMoneyAkshare
+[hot_money_agent] High-value selection: 1 docs kept
+[hot_money_agent] Processing 1 batches...
+[hot_money_agent] Completed: 1103 chars
+2026-08-18 18:17:09.674 | INFO     | data_source.thx_news_crawl:get_data:237 - ✅ API crawling completed successfully: 1000 records
+2026-08-18 18:17:09.674 | INFO     | data_source.thx_news_crawl:get_data:248 - ✅ Frontend crawling completed successfully: 0 records
+2026-08-18 18:17:09.674 | INFO     | data_source.thx_news_crawl:get_data:258 - 📈 Data collection summary:
+2026-08-18 18:17:09.674 | INFO     | data_source.thx_news_crawl:get_data:259 -   - API records: 1000
+2026-08-18 18:17:09.674 | INFO     | data_source.thx_news_crawl:get_data:260 -   - Frontend records: 0
+2026-08-18 18:17:09.674 | INFO     | data_source.thx_news_crawl:get_data:261 -   - Combined total: 1000
+2026-08-18 18:17:09.684 | INFO     | data_source.thx_news_crawl:get_data:291 - 时间筛选后剩余 521 条数据（区间: 2026-08-17 18:15:43 至 2026-08-18 18:15:43）
+2026-08-18 18:17:09.686 | INFO     | data_source.thx_news_crawl:get_data:310 - 🎉 Successfully collected data from API only until 2026-08-18 18:15:43
+2026-08-18 18:17:09.686 | INFO     | data_source.thx_news_crawl:get_data:314 - Final result: 521 rows after deduplication and time filtering
+[thx_summary_agent] Fetched 521 from ThxNewsCrawl
+[thx_summary_agent] High-value selection: 182 docs kept
+[thx_summary_agent] Processing 6 batches...
+[sina_summary_agent] Completed: 5181 chars
+
+============================================================
+✅ [sina_summary_agent] Data Factor Ready
+============================================================
+# 市场信息综合摘要（2026-08-18）
+
+## 一、宏观政策与货币环境
+
+### 1. 中国央行政策动态
+
+中国人民银行近期在公开市场操作上出现显著变化。8月17日，央行发布的公开市场业务交易公告显示，7天期逆回购操作量为零，而隔夜逆回购操作则开展了5655亿元[1032]。这一变化被市场解读为利率换锚信号渐明——自8月11日起，公开市场7天期逆回购连续零操作，而此前7月20日全国首单DR基准利率贷款落地，显示货币政策框架正在向新的利率传导机制过渡[1130]。央行报告同时定调加大逆周期调节力度[24]，为市场提供了流动性支撑预期。
+
+### 2. 美联储政策预期与美债市场
+
+当前全球金
+...
+============================================================
+
+[thx_summary_agent] Completed: 6991 chars
+
+============================================================
+✅ [thx_summary_agent] Data Factor Ready
+============================================================
+## 市场信息综合摘要
+
+**2026年8月18日**
+
+
+### 一、宏观政策与经济动态
+
+**国务院部署下半年经济工作。** 国务院总理李强8月17日主持召开国务院第十二次全体会议，强调要扎实做好各项工作，努力完成全年经济社会发展目标任务，实现"十五五"良好开局。会议指出，当前内需不足问题仍然突出，一些行业企业困难增多，外部环境不确定性上升，要锚定发展目标，充分发挥存量政策效能，及时谋划出台务实管用的增量政策，推动经济持续向好。要着力扩大内需，加快落实"六张网"建设实施方案，创新投融资机制吸引社会资本，促进民间投资，对新兴领域、新型基础设施、消费升级等方面给予更多支持，同时加大新兴支柱产业
+...
+============================================================
+
+
+============================================================
+✅ [price_market_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260818:市场宏观数据汇总
+Publish Time: 2026-08-18 18:15:43
+Relevance Score: 
+Relevance Label: 
+Event Type: 
+Direction: 
+Signal Confidence: 
+Content: ## 2026年8月18日A股宏观市场综合报告
+
+**一、三大指数收盘情况**
+
+2026年8月18日，A股三大指数集体收跌。上证指数收报3926.97点，较前一交易日下跌19.71点，跌幅0.50%；创业板指收报3586.04点，下跌16.
+...
+============================================================
+
+
+============================================================
+✅ [hot_money_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260818:热钱市场数据汇总
+Publish Time: 2026-08-18 18:15:43
+Relevance Score: 
+Relevance Label: 
+Event Type: 
+Direction: 
+Signal Confidence: 
+Content: ## 20260818 热钱市场分析报告
+
+**一、涨跌停与市场情绪**
+
+当日涨停79只，跌停5只，涨停跌停比15.8:1，市场做多情绪占优。连板结构呈金字塔形：4板1只、3板4只、2板13只、首板61只，连板晋级率偏低，资金高度集中在低位
+...
+============================================================
+
+
+============================================================
+✅ [northbound_flow_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260818:北向资金数据汇总
+Publish Time: 2026-08-18 18:15:43
+Relevance Score: 
+Relevance Label: 
+Event Type: 
+Direction: 
+Signal Confidence: 
+Content: ## 20260818 北向资金数据汇总
+
+### 一、当日北向资金汇总
+- **沪股通** (2026-08-18 00:00:00): 成交净买额0.00元, 资金净流入0.00元, 上涨624/下跌976, 上证指数 +0.19%（盘中
+...
+============================================================
+
+
+============================================================
+✅ [technical_indicators_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260818:技术指标分析报告
+Publish Time: 2026-08-18 18:15:43
+Relevance Score: 
+Relevance Label: 
+Event Type: 
+Direction: 
+Signal Confidence: 
+Content: <!-- cache_version:technical_indicators_akshare_v5_volratio_fix -->
+
+## 技术指标分析报告 (20260818)
+
+### 大盘指数技术面
+上证指数: 收盘3926.97,
+...
+============================================================
+
+
+============================================================
+✅ [individual_fund_flow_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260818:个股主力资金流分析
+Publish Time: 2026-08-18 18:15:43
+Relevance Score: 8
+Relevance Label: high
+Event Type: capital_flow
+Direction: neutral
+Signal Confidence: 0.7
+Content: ## 20260818 个股主力资金流分析
+
+### 一、主力吸筹信号（主力大幅净流入 + 涨幅偏低）
+逻辑：主力资金大量流入但股价未明显上涨，可能在吸筹阶段
+
+- 工商银行(60139
+...
+============================================================
+
+
+============================================================
+✅ [margin_trading_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260818:融资融券异动分析
+Publish Time: 2026-08-18 18:15:43
+Relevance Score: 7
+Relevance Label: high
+Event Type: margin_trading
+Direction: neutral
+Signal Confidence: 0.65
+Content: 融资融券数据获取失败</doc>
+
+============================================================
+
+
+============================================================
+✅ [block_trade_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260818:大宗交易折溢价分析
+Publish Time: 2026-08-18 18:15:43
+Relevance Score: 7
+Relevance Label: high
+Event Type: block_trade
+Direction: neutral
+Signal Confidence: 0.6
+Content: ## 20260818 大宗交易折溢价分析
+
+
+### 五、近5日连续大宗交易标的
+逻辑：连续出现大宗交易，可能有系统性建仓或出货行为
+
+- 华夏深国际REIT(180302): 近5日出
+...
+============================================================
+
+
+============================================================
+✅ [sector_fund_flow_trend_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260818:板块资金流向趋势分析
+Publish Time: 2026-08-18 18:15:43
+Relevance Score: 8
+Relevance Label: high
+Event Type: sector_flow
+Direction: neutral
+Signal Confidence: 0.7
+Content: ## 20260818 板块资金流向趋势分析
+
+### 一、行业板块资金净流入 TOP15
+逻辑：行业板块整体资金持续流入，板块内标的有轮动补涨机会
+
+- 银行: 涨跌幅+0.24%, 
+...
+============================================================
+
+
+============================================================
+✅ [zt_seal_strength_agent] Data Factor Ready
+============================================================
+Batch 1 Documents:
+<doc id=1> Title: 20260818:涨停封单强度分析
+Publish Time: 2026-08-18 18:15:43
+Relevance Score: 9
+Relevance Label: high
+Event Type: limit_up
+Direction: bullish
+Signal Confidence: 0.7
+Content: ## 20260818 涨停封单强度分析
+
+
+### 三、连板股封单情况
+逻辑：连板股封单强度决定是否能继续打板
+
+- 神奇制药(600613): 封单强度0.00%, 封单额0.00亿, 连板4
+...
+============================================================
+
+✅ Data Agents completed: 11 factors generated
+
+🎯 Stage 2+3: Research and buy selection (strict gates)...
+
+🔍 Stage 2 (round 1/3): Running Research Agents...
+[agent_2] Plan created:
+1. 从量化候选池中筛选出与当前市场热点（农业种植、半导体、通信设备等）相关的股票，优先关注已涨停或近期放量突破的标的，如聚灿光电、移为通信、传艺科技、国城矿业、浙富控股等。
+2. 使用search_web工具逐一搜索上述候选股的最新新闻，重点查找未来1-3个交易日内的具体事件催化，如订单公告、业绩预告、产品涨价、并购重组进展、限售解禁、股东增持/回购等。
+3. 使用price_info和stoc...
+[agent_2] Iteration 1/10
+[agent_3] Plan created:
+1. 使用search_web工具，针对卧龙电驱、浙江东方、正泰电器、三一重工、厦门钨业等候选股，逐一搜索其最近3个交易日的新闻、公告、业绩预告、订单合同等催化剂信息
+2. 使用price_info工具，查询量化分靠前的10-15只候选股（卧龙电驱、南宁百货、浙江东方、中工国际、中科环保、深南电A、纳百川、利欧股份、菲沃泰、国投中鲁等）的最新价格和涨跌数据
+3. 使用stock_summary工具...
+[agent_3] Iteration 1/10
+[agent_1] Plan created:
+1. 从量化候选池中优先选取前80只股票（如锦浪科技、中兴通讯、北方华帝、华大九天、生益电子、沪硅产业等），逐一查询其最新价格、涨跌幅、量比、资金流向等数据，标记出量比>=1.2且资金净流入靠前的标的
+2. 对筛选出的高动量标的，逐一搜索近期新闻（关键词：公司名称+最新公告/业绩预告/订单/涨价/并购等），确认是否存在T+1~T+3日内可落地的公司级催化剂事件
+3. 对存在潜在催化剂的标的，使用s...
+[agent_1] Iteration 1/10
+llm_response <Output>
+{
+    "tool_name": "final_report",
+    "properties": {}
+}
+</Output>
+[agent_1] Selected tool: final_report
+[agent_1] Generating final report...
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "聚灿光电 300708 最新消息 2026",
+        "topk": 5
+    }
+}
+</Output>
+[agent_2] Selected tool: search_web
+[agent_2] Executing tool: search_web
+call tool search_web {'query': '聚灿光电 300708 最新消息 2026', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "卧龙电驱 600580 最新公告 订单",
+        "topk": 5
+    }
+}
+</Output>
+[agent_3] Selected tool: search_web
+[agent_3] Executing tool: search_web
+call tool search_web {'query': '卧龙电驱 600580 最新公告 订单', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:17:43.380 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '聚灿光电 300708 最新消息 2026'
+2026-08-18 18:17:43.505 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:43.746 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:43.749 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+2026-08-18 18:17:43.750 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '卧龙电驱 600580 最新公告 订单'
+2026-08-18 18:17:43.897 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:44.058 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:44.059 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_2] Tool result: {'success': True, 'data': ''}...
+[agent_2] Iteration 2/10
+[agent_3] Tool result: {'success': True, 'data': ''}...
+[agent_3] Iteration 2/10
+[agent_0] Plan created:
+1. 对量化候选池前20只股票（德石股份、金健米业、华英农业、罗牛山、地铁设计、京基智农、嘉华股份、华菱精工、京粮控股、远大控股、勘设股份、杰瑞股份、冠农股份、深粮控股、华业香料、依顿电子、中原内配、路维光电、兴欣新材、威马农机）逐一调用stock_summary获取技术面与量价确认信息，筛选出量比>1.5、5日涨幅>8%且当日放量突破的标的。
+2. 对技术面确认的候选股（重点金健米业、深粮控股、...
+[agent_0] Iteration 1/10
+llm_response <Output>
+{
+    "tool_name": "stock_summary",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "301158.SZ"
+    }
+}
+</Output>
+[agent_0] Selected tool: stock_summary
+[agent_0] Executing tool: stock_summary
+call tool stock_summary {'market': 'CN-Stock', 'symbol': '301158.SZ', 'trigger_time': '2026-08-18 18:15:43'}
+📊  Fetching K-line & indicators via Akshare...
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  2.61it/s]                                             ✅  Data fetching complete.
+2026-08-18 18:17:45.924 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '德石股份'
+2026-08-18 18:17:46.012 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:46.129 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:46.129 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+✅  News fetching complete.
+🤖  Starting LLM technical analysis...
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "浙江东方 600120 公告 事件",
+        "topk": 5
+    }
+}
+</Output>
+[agent_3] Selected tool: search_web
+[agent_3] Executing tool: search_web
+call tool search_web {'query': '浙江东方 600120 公告 事件', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "聚灿光电 300708 公告 2026年8月",
+        "topk": 5
+    }
+}
+</Output>
+[agent_2] Selected tool: search_web
+[agent_2] Executing tool: search_web
+call tool search_web {'query': '聚灿光电 300708 公告 2026年8月', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:17:46.144 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '浙江东方 600120 公告 事件'
+2026-08-18 18:17:46.262 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:46.388 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:46.389 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+2026-08-18 18:17:46.389 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '聚灿光电 300708 公告 2026年8月'
+2026-08-18 18:17:46.591 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:46.712 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:46.715 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_3] Tool result: {'success': True, 'data': ''}...
+[agent_3] Iteration 3/10
+[agent_2] Tool result: {'success': True, 'data': ''}...
+[agent_2] Iteration 3/10
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "正泰电器 601877 公告 事件",
+        "topk": 5
+    }
+}
+</Output>
+[agent_3] Selected tool: search_web
+[agent_3] Executing tool: search_web
+call tool search_web {'query': '正泰电器 601877 公告 事件', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:17:48.052 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '正泰电器 601877 公告 事件'
+2026-08-18 18:17:48.174 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:48.286 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:48.287 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_3] Tool result: {'success': True, 'data': ''}...
+[agent_3] Iteration 4/10
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "恒源煤电 600971 公告 2026",
+        "topk": 5
+    }
+}
+</Output>
+[agent_2] Selected tool: search_web
+[agent_2] Executing tool: search_web
+call tool search_web {'query': '恒源煤电 600971 公告 2026', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:17:48.322 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '恒源煤电 600971 公告 2026'
+2026-08-18 18:17:48.432 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:48.553 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:48.554 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_2] Tool result: {'success': True, 'data': ''}...
+[agent_2] Iteration 4/10
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "卧龙电驱 600580 公告 2026",
+        "topk": 5
+    }
+}
+</Output>
+[agent_3] Selected tool: search_web
+[agent_3] Executing tool: search_web
+call tool search_web {'query': '卧龙电驱 600580 公告 2026', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:17:49.415 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '卧龙电驱 600580 公告 2026'
+2026-08-18 18:17:49.546 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:49.678 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:49.680 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_3] Tool result: {'success': True, 'data': ''}...
+[agent_3] Iteration 5/10
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "恒源煤电 600971 涨价 业绩 2026",
+        "topk": 5
+    }
+}
+</Output>
+[agent_2] Selected tool: search_web
+[agent_2] Executing tool: search_web
+call tool search_web {'query': '恒源煤电 600971 涨价 业绩 2026', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:17:49.719 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '恒源煤电 600971 涨价 业绩 2026'
+2026-08-18 18:17:49.894 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:50.011 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:50.013 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_2] Tool result: {'success': True, 'data': ''}...
+[agent_2] Iteration 5/10
+llm_response <Output>
+{
+    "tool_name": "price_info",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "600580.SH"
+    }
+}
+</Output>
+[agent_3] Selected tool: price_info
+[agent_3] Executing tool: price_info
+call tool price_info {'market': 'CN-Stock', 'symbol': '600580.SH', 'trigger_time': '2026-08-18 18:15:43'}
+[agent_3] Tool result: {'success': True, 'data': '{\n  "result": "|    | date                |   股票代码 |   open |   close |   high |   low |      volume |    turnover |   amplitude |   change_percent |   change_amount |   tu...
+[agent_3] Iteration 6/10
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "聚灿光电 300708 涨停 2026年8月",
+        "topk": 5
+    }
+}
+</Output>
+[agent_2] Selected tool: search_web
+[agent_2] Executing tool: search_web
+call tool search_web {'query': '聚灿光电 300708 涨停 2026年8月', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:17:50.879 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '聚灿光电 300708 涨停 2026年8月'
+2026-08-18 18:17:50.992 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:51.123 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:51.125 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_2] Tool result: {'success': True, 'data': ''}...
+[agent_2] Iteration 6/10
+[agent_1] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_1/2026-08-18_18-15-43.md
+[agent_1] Completed after 1 iterations
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "移为通信 300590 最新公告 2026",
+        "topk": 5
+    }
+}
+</Output>
+[agent_2] Selected tool: search_web
+[agent_2] Executing tool: search_web
+call tool search_web {'query': '移为通信 300590 最新公告 2026', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:17:51.975 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '移为通信 300590 最新公告 2026'
+2026-08-18 18:17:52.169 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:52.275 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:52.276 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_2] Tool result: {'success': True, 'data': ''}...
+[agent_2] Iteration 7/10
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "宇树科技 上市 首日",
+        "topk": 5
+    }
+}
+</Output>
+[agent_3] Selected tool: search_web
+[agent_3] Executing tool: search_web
+call tool search_web {'query': '宇树科技 上市 首日', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:17:52.310 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '宇树科技 上市 首日'
+2026-08-18 18:17:52.415 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:52.527 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:52.527 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_3] Tool result: {'success': True, 'data': ''}...
+[agent_3] Iteration 7/10
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "卧龙电驱 机器人 公告",
+        "topk": 5
+    }
+}
+</Output>
+[agent_3] Selected tool: search_web
+[agent_3] Executing tool: search_web
+call tool search_web {'query': '卧龙电驱 机器人 公告', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "南京银行 601009 最新消息 2026",
+        "topk": 5
+    }
+}
+</Output>
+[agent_2] Selected tool: search_web
+[agent_2] Executing tool: search_web
+call tool search_web {'query': '南京银行 601009 最新消息 2026', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:17:53.381 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '卧龙电驱 机器人 公告'
+2026-08-18 18:17:53.506 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:53.710 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:53.711 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+2026-08-18 18:17:53.712 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '南京银行 601009 最新消息 2026'
+2026-08-18 18:17:53.916 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:54.101 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:54.103 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_3] Tool result: {'success': True, 'data': ''}...
+[agent_3] Iteration 8/10
+[agent_2] Tool result: {'success': True, 'data': ''}...
+[agent_2] Iteration 8/10
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "传艺科技 002866 最新公告 2026",
+        "topk": 5
+    }
+}
+</Output>
+[agent_2] Selected tool: search_web
+[agent_2] Executing tool: search_web
+call tool search_web {'query': '传艺科技 002866 最新公告 2026', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "三一重工 600031 公告 订单",
+        "topk": 5
+    }
+}
+</Output>
+[agent_3] Selected tool: search_web
+[agent_3] Executing tool: search_web
+call tool search_web {'query': '三一重工 600031 公告 订单', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:17:55.026 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '传艺科技 002866 最新公告 2026'
+2026-08-18 18:17:55.159 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:55.301 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:55.303 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+2026-08-18 18:17:55.303 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '三一重工 600031 公告 订单'
+2026-08-18 18:17:55.416 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:55.587 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:55.588 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_2] Tool result: {'success': True, 'data': ''}...
+[agent_2] Iteration 9/10
+[agent_3] Tool result: {'success': True, 'data': ''}...
+[agent_3] Iteration 9/10
+[agent_0] Tool result: {'success': True, 'data': '好的，以下是根据您提供的数据，为德石股份（301158.SZ）生成的股票技术分析报告。\n\n---\n\n### 德石股份（301158.SZ）技术分析报告\n\n**分析时间：** 2026-08-18 18:15:43\n**最新交易日：** 2026-08-18\n\n#### 一、近期价格走势与波动特征概述\n\n截至2026年8月1...
+[agent_0] Iteration 2/10
+llm_response <Output>
+{
+    "tool_name": "final_report",
+    "properties": {}
+}
+</Output>
+[agent_2] Selected tool: final_report
+[agent_2] Generating final report...
+llm_response <Output>
+{
+    "tool_name": "stock_summary",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "600127.SH"
+    }
+}
+</Output>
+[agent_0] Selected tool: stock_summary
+[agent_0] Executing tool: stock_summary
+call tool stock_summary {'market': 'CN-Stock', 'symbol': '600127.SH', 'trigger_time': '2026-08-18 18:15:43'}
+📊  Fetching K-line & indicators via Akshare...
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.18it/s]                                             ✅  Data fetching complete.
+2026-08-18 18:17:57.144 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '金健米业'
+2026-08-18 18:17:57.286 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:57.389 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:57.390 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+✅  News fetching complete.
+🤖  Starting LLM technical analysis...
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "南宁百货 600712 公告 事件",
+        "topk": 5
+    }
+}
+</Output>
+[agent_3] Selected tool: search_web
+[agent_3] Executing tool: search_web
+call tool search_web {'query': '南宁百货 600712 公告 事件', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:17:57.398 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '南宁百货 600712 公告 事件'
+2026-08-18 18:17:57.540 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:57.664 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:57.665 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_3] Tool result: {'success': True, 'data': ''}...
+[agent_3] Iteration 10/10
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "厦门钨业 600549 公告 事件",
+        "topk": 5
+    }
+}
+</Output>
+[agent_3] Selected tool: search_web
+[agent_3] Executing tool: search_web
+call tool search_web {'query': '厦门钨业 600549 公告 事件', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:17:58.815 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '厦门钨业 600549 公告 事件'
+2026-08-18 18:17:59.025 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:59.148 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:17:59.149 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_3] Tool result: {'success': True, 'data': ''}...
+[agent_3] Max iterations (10) reached
+[agent_3] Generating final report...
+[agent_2] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_2/2026-08-18_18-15-43.md
+[agent_2] Completed after 9 iterations
+[agent_3] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_3/2026-08-18_18-15-43.md
+[agent_3] Completed after 10 iterations
+[agent_0] Tool result: {'success': True, 'data': '# 金健米业（600127.SH）技术分析报告\n\n**报告日期：** 2026-08-18\n\n\n## 一、近期价格走势与波动特征\n\n### 1. 价格走势概述\n\n截至2026年8月18日收盘，金健米业报收 **7.11元**，当日上涨 **3.80%**（以开盘价6.85元计算）。日内走势呈现明显的**单边上攻形态**——开盘...
+[agent_0] Iteration 3/10
+llm_response <Output>
+{
+    "tool_name": "stock_summary",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "000735.SZ"
+    }
+}
+</Output>
+[agent_0] Selected tool: stock_summary
+[agent_0] Executing tool: stock_summary
+call tool stock_summary {'market': 'CN-Stock', 'symbol': '000735.SZ', 'trigger_time': '2026-08-18 18:15:43'}
+[agent_0] Tool result: {'success': True, 'data': '# 罗牛山（000735.SZ）技术分析报告\n\n**报告日期：** 2026-08-18\n\n\n## 一、近期价格走势与波动特征\n\n最新交易日（2026-08-18）股价收于 **6.18元**，当日涨幅显著，开盘5.72元，最高触及6.18元（即收盘价），最低5.71元，**收于全天最高点**，显示多头力量占据绝对主导。\n\n从...
+[agent_0] Iteration 4/10
+llm_response <Output>
+{
+    "tool_name": "stock_summary",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "002321.SZ"
+    }
+}
+</Output>
+[agent_0] Selected tool: stock_summary
+[agent_0] Executing tool: stock_summary
+call tool stock_summary {'market': 'CN-Stock', 'symbol': '002321.SZ', 'trigger_time': '2026-08-18 18:15:43'}
+📊  Fetching K-line & indicators via Akshare...
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.53it/s]                                             ✅  Data fetching complete.
+2026-08-18 18:18:07.825 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '华英农业'
+2026-08-18 18:18:07.987 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:18:08.216 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:18:08.218 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+✅  News fetching complete.
+🤖  Starting LLM technical analysis...
+[agent_0] Tool result: {'success': True, 'data': '# 华英农业（002321.SZ）技术分析报告\n\n**报告时间：** 2026年8月18日 18:15\n\n\n## 一、近期价格走势与波动特征\n\n华英农业近期呈现**强势上攻格局**。最新收盘价2.09元，当日上涨约4%（以开盘价2.01元计），盘中最高触及2.11元，最低2.01元，振幅约5%，多头占据绝对主导。\n\n从均线系统...
+[agent_0] Iteration 5/10
+llm_response I need to continue researching the candidate stocks from the quantitative screener. Let me search for news and catalysts on the key candidates identified so far - particularly the agriculture sector stocks (金健米业, 罗牛山, 华英农业) and other candidates. Let me search for recent news and catalysts.</think>
+
+<Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "金健米业 600127 涨停 粮食 农业",
+        "topk": 5
+    }
+}
+</Output>
+[agent_0] Selected tool: search_web
+[agent_0] Executing tool: search_web
+call tool search_web {'query': '金健米业 600127 涨停 粮食 农业', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:18:14.502 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '金健米业 600127 涨停 粮食 农业'
+2026-08-18 18:18:14.613 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:18:14.732 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:18:14.734 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_0] Tool result: {'success': True, 'data': ''}...
+[agent_0] Iteration 6/10
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "农业板块 涨停 粮食安全 转基因 政策",
+        "topk": 5
+    }
+}
+</Output>
+[agent_0] Selected tool: search_web
+[agent_0] Executing tool: search_web
+call tool search_web {'query': '农业板块 涨停 粮食安全 转基因 政策', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:18:15.504 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '农业板块 涨停 粮食安全 转基因 政策'
+2026-08-18 18:18:15.627 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:18:15.743 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:18:15.744 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_0] Tool result: {'success': True, 'data': ''}...
+[agent_0] Iteration 7/10
+llm_response {
+  "tool_name": "search_web",
+  "properties": {
+    "query": "深粮控股 京粮控股 罗牛山 农业 涨停",
+    "topk": 5
+  }
+}
+llm_response {
+  "tool_name": "search_web",
+  "properties": {
+    "query": "深粮控股 京粮控股 涨停",
+    "topk": 5
+  }
+}
+llm_response {
+  "tool_name": "search_web",
+  "properties": {
+    "query": "粮食概念股 涨停 原因",
+    "topk": 5
+  }
+}
+[agent_0] Selected tool: unknown
+2026-08-18 18:18:17.796 | WARNING  | agents.research_agent_loop:execute_tool:188 - Tool selection error: Failed to call tool 3 times with error: 'NoneType' object has no attribute 'group'
+[agent_0] Iteration 8/10
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "金健米业 600127 粮食 农业 涨停",
+        "topk": 5
+    }
+}
+</Output>
+[agent_0] Selected tool: search_web
+[agent_0] Executing tool: search_web
+call tool search_web {'query': '金健米业 600127 粮食 农业 涨停', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:18:18.603 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '金健米业 600127 粮食 农业 涨停'
+2026-08-18 18:18:18.724 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:18:18.925 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:18:18.925 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_0] Tool result: {'success': True, 'data': ''}...
+[agent_0] Iteration 9/10
+llm_response I need to continue researching the candidate stocks from the quantitative screener. Let me analyze the situation:
+
+1. I've already checked technical summaries for 德石股份, 金健米业, 罗牛山, and 华英农业
+2. My web searches for agricultural sector catalysts returned empty results
+3. I need to check more stocks and search for more specific catalysts
+
+Let me continue researching the remaining top candidates and search for specific catalysts for the agricultural sector stocks that showed strong technical signals.
+
+<Output>
+{
+    "tool_name": "stock_summary",
+    "properties": {
+        "market": "CN-Stock",
+        "symbol": "000019.SZ"
+    }
+}
+</Output>
+[agent_0] Selected tool: stock_summary
+[agent_0] Executing tool: stock_summary
+call tool stock_summary {'market': 'CN-Stock', 'symbol': '000019.SZ', 'trigger_time': '2026-08-18 18:15:43'}
+📊  Fetching K-line & indicators via Akshare...
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.45it/s]                                             ✅  Data fetching complete.
+2026-08-18 18:18:20.667 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '深粮控股'
+2026-08-18 18:18:20.768 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:18:20.873 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:18:20.874 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+✅  News fetching complete.
+🤖  Starting LLM technical analysis...
+[agent_0] Tool result: {'success': True, 'data': '# 深粮控股（000019.SZ）技术分析报告\n\n**报告日期：** 2026-08-18\n\n\n## 一、近期价格走势与波动特征\n\n最新交易日（2026-08-18）深粮控股呈现**强势放量上攻**态势，收盘价6.96元即为当日最高价，涨幅约9.8%（以开盘价6.34元计算），日内振幅达10.9%（最低6.27元 → 最高6.96...
+[agent_0] Iteration 10/10
+llm_response <Output>
+{
+    "tool_name": "search_web",
+    "properties": {
+        "query": "深粮控股 000019 粮食 涨停 消息",
+        "topk": 5
+    }
+}
+</Output>
+[agent_0] Selected tool: search_web
+[agent_0] Executing tool: search_web
+call tool search_web {'query': '深粮控股 000019 粮食 涨停 消息', 'topk': 5, 'trigger_time': '2026-08-18 18:15:43'}
+2026-08-18 18:18:29.668 | INFO     | tools.search_web:search_web:352 - Attempting search with Doubao (Volcengine) for query: '深粮控股 000019 粮食 涨停 消息'
+2026-08-18 18:18:29.795 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:18:30.022 | WARNING  | tools.search_web:_post_volcengine_search:153 - Doubao search API error: code=%s message=%s
+2026-08-18 18:18:30.024 | WARNING  | tools.search_web:search_web:367 - All configured search providers failed to return results.
+[agent_0] Tool result: {'success': True, 'data': ''}...
+[agent_0] Max iterations (10) reached
+[agent_0] Generating final report...
+[agent_0] Report generated: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace/results/research_reports/agent_0/2026-08-18_18-15-43.md
+[agent_0] Completed after 10 iterations
+使用股票基本信息缓存: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/utils/cache/market_manager/stock_basic_cache.json
+
+============================================================
+✅ [agent_1] Research Signals Ready
+============================================================
+1. 沪硅产业 | buy
+2. 生益电子 | buy
+============================================================
+
+  0%|          | 0/2 [00:00<?, ?it/s] 50%|█████     | 1/2 [00:00<00:00,  3.98it/s]100%|██████████| 2/2 [00:00<00:00,  5.08it/s]                                               0%|          | 0/11 [00:00<?, ?it/s]  9%|▉         | 1/11 [00:00<00:06,  1.50it/s] 18%|█▊        | 2/11 [00:00<00:03,  2.34it/s] 27%|██▋       | 3/11 [00:01<00:02,  2.91it/s] 36%|███▋      | 4/11 [00:01<00:02,  3.22it/s] 45%|████▌     | 5/11 [00:01<00:02,  2.96it/s] 55%|█████▍    | 6/11 [00:02<00:01,  2.67it/s] 64%|██████▎   | 7/11 [00:02<00:01,  3.08it/s] 73%|███████▎  | 8/11 [00:02<00:00,  3.17it/s] 82%|████████▏ | 9/11 [00:02<00:00,  3.53it/s] 91%|█████████ | 10/11 [00:03<00:00,  3.80it/s]100%|██████████| 11/11 [00:03<00:00,  4.05it/s]                                               ✅ Research round 1: 2 new signals, 2 total
+
+市场���境识���: bull (置信���: 69.2%)
+  - 指数5日收益0.68%
+  - 涨跌停比15.80
+  - 风险偏好上升
+2026-08-18 18:18:37.612 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:772 - strong_trend_penalty: ['early_uptrend_ma20=5.3%', 'rsi_healthy=56.5', 'volume_ratio_healthy=1.22', 'macd_pos=0.826'] delta=16.0
+2026-08-18 18:18:37.614 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:772 - strong_trend_penalty: ['moderate_above_ma20=10.0%', 'macd_pos=4.560'] delta=3.0
+============================================================
+前瞻机会与风险分级
+============================================================
+A级: 2个
+  沪硅产业(688126.SH) | 机会分99.5 | 仓位15.0%
+  生益电子(688183.SH) | 机会分99.5 | 仓位15.0%
+B级: 0个
+C级: 0个
+reject级: 0个
+2026-08-18 18:18:37.615 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:772 - strong_trend_penalty: ['early_uptrend_ma20=5.3%', 'rsi_healthy=56.5', 'volume_ratio_healthy=1.22', 'macd_pos=0.826'] delta=16.0
+2026-08-18 18:18:37.615 | INFO     | agents.stock_opportunity_ranker:_score_strong_trend_penalty:772 - strong_trend_penalty: ['moderate_above_ma20=10.0%', 'macd_pos=4.560'] delta=3.0
+✅ Selected 2 buy signals and 0 watchlist candidates
+✅ require_min_buys=0 satisfied after round 1
+
+================================================================================
+✅ Trade Company Analysis Completed
+
+���� Stage 4: Performance tracking...
+2026-08-18 18:18:38.316 | INFO     | utils.performance_tracker:record_signals:97 - Recorded 2 buy signals for trigger_time=2026-08-18 18:15:43; skipped 0 watchlist candidates
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  4.21it/s]                                               0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  3.18it/s]                                             2026-08-18 18:18:39.158 | INFO     | utils.performance_tracker:evaluate_pending:272 - Evaluation complete. Pending: 19, Total history: 0
+   📊 Recorded 2 signals for tier-based tracking
+pipeline_done
+strategy=momentum
+data_factors=11
+research_signals=2
+best_signals=2
+research_rounds=1
+require_min_buys_met=True

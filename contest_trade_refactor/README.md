@@ -236,7 +236,53 @@ PY
 
 > 注意：目前 `signal_performance.jsonl` 同时保留成熟与 pending，便于后续续跑。
 
+## 新独立策略包：Strong Diverge（强势分歧龙头战法）
+
+项目已新增一个**完全独立策略包**：`strategies/strong_diverge/`。
+
+它不复用旧 `main_loop` / `ResearchAgent` / `ConsensusAggregator` 流程，而是按以下流程独立运行：
+
+```mermaid
+flowchart TD
+    A[A股全市场] --> B[基础过滤]
+    B --> C[强势行为计算]
+    C --> D{类型分流}
+    D --> D1[连板型]
+    D --> D2[突破型]
+    D --> D3[趋势启动型]
+    D1 --> P[分层Top K + 板块去重]
+    D2 --> P
+    D3 --> P
+    P --> W[强势观察池]
+    W --> E[等待分歧]
+    E --> F1[首阴模式]
+    E --> F2[断板模式]
+    F1 --> G1[首阴企稳确认]
+    F2 --> G2[弱转强确认]
+    G1 --> H[T1 买入判断]
+    G2 --> H
+    H --> I[T+1~T+3管理]
+    I --> J[卖出]
+```
+
+运行方式：
+
+```bash
+# 独立运行（推荐）
+.venv/bin/python scripts/strong_diverge_backtest.py --date 2026-08-18 --symbols-limit 200
+
+# 统一策略回测入口（会自动分发到独立脚本，不走旧 replay）
+.venv/bin/python scripts/strategy_backtest.py --strategy strong_diverge --run-replay \
+  --start 2026-06-01 --end 2026-08-18
+
+# 测试
+.venv/bin/python -m unittest test_strategy_strong_diverge -v
+```
+
+更多见 `strategies/strong_diverge/README.md`。
+
 ## 运行测试
+
 
 ```bash
 # 测试完整流程

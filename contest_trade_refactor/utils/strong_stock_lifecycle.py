@@ -5,7 +5,8 @@ plans. This module turns those inputs into a single lifecycle view:
 
 - strong stock discovery: 连板 / 突破 / 趋势强股
 - divergence quality: 首阴 / 断板
-- weak-to-strong confirmation: entry quality + reclaim structure
+- weak-to-strong confirmation: VWAP / MA5 / 量价 / 回踩 / 短线结构（不重复 entry_quality）
+- entry quality: 价格/风险/止损空间/RR/板块拥挤（不重复转强信号）
 
 The functions are deliberately rule-based. LLMs can explain the result, but do
 not decide it.
@@ -372,25 +373,20 @@ def score_entry_quality(
     identity: Optional[Dict[str, Any]] = None,
     market_context: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Score the actual actionable entry quality."""
+    """Score the actual actionable entry quality.
+
+    只回答“这个价格值不值得买”。
+    不允许放 VWAP / MA5 / 量比 / EMA 这些“资金转强确认”类信号，避免与
+    weak_to_strong 重复计权；这些因子统一留给 weak_to_strong。
+    """
     market_context = market_context or {}
     identity = identity or {}
     strong_identity = str(identity.get("strong_identity") or "观察股")
-    strong_identity_score = _num(identity.get("strong_identity_score"), 0.0) or 0.0
-    divergence_score = _num(factor.get("divergence_score"), 0.0) or 0.0
-
     sector_score = _num(factor.get("sector_score"), 50.0) or 50.0
     crowding_score = _num(factor.get("crowding_score"), 0.0) or 0.0
-    volume_ratio = _num(factor.get("volume_ratio"))
-    amount_ratio = _num(factor.get("amount_ratio"))
-    rsi = _num(factor.get("rsi"))
     ma20_dev = _num(factor.get("ma20_deviation_pct"))
-    daily_entry_score = _num(factor.get("daily_entry_score"), 50.0) or 50.0
-    short_setup_score = _num(factor.get("short_setup_score"), 50.0) or 50.0
-    close_above_ma5 = _bool(factor.get("close_above_ma5"))
-    ma5_slope = _num(factor.get("ma5_slope_pct"))
-    ret3 = _num(factor.get("ret_3d_pct"))
-    ret5 = _num(factor.get("ret_5d_pct"))
+    change_pct = _num(factor.get("change_pct"))
+    close_vs_20h = _num(factor.get("close_vs_20d_high_pct"))
 
     score = 50.0
     reasons: List[str] = []
@@ -399,36 +395,33 @@ def score_entry_quality(
         plan = trade_plan.get("plan") or {}
         inds = trade_plan.get("indicators") or {}
         close = _num(trade_plan.get("close"))
-        vwap20 = _num(inds.get("vwap_20"))
-        ema8 = _num(inds.get("ema8"))
-        ema13 = _num(inds.get("ema13"))
-        ema21 = _num(inds.get("ema21"))
         rr1 = _num(plan.get("rr_1"))
         stop_loss_pct = _num(plan.get("stop_loss_pct"))
         entry_low = _num(plan.get("entry_zone_low"))
         entry_high = _num(plan.get("entry_zone_high"))
         take_profit_1 = _num(plan.get("take_profit_1"))
-        if close is not None and vwap20 is not None:
-            if close >= vwap20:
-                score += 12
-                reasons.append("站上VWAP")
+        if entry_low is not None and entry_high is not None and close is not None:
+            if entry_low <= close <= entry_high:
+                score += 8
+                reasons.append("位于入场区")
             else:
                 score -= 6
-                reasons.append("VWAP下方")
-        if ema8 and ema13 and ema21 and ema8 >= ema13 >= ema21:
-            score += 10
-            reasons.append("EMA多头")
-        if entry_low is not None and entry_high is not None and entry_low <= close <= entry_high:
-            score += 8
-            reasons.append("位于入场区")
+                reasons.append("不在入场区")
         if rr1 is not None and rr1 >= 1.5:
             score += 12
+            reasons.append(f"RR={rr1:.2f}")
         elif rr1 is not None and rr1 >= 1.2:
             score += 8
+            reasons.append(f"RR={rr1:.2f}")
         elif rr1 is not None and rr1 < 1.0:
             score -= 12
+            reasons.append(f"RR过低={rr1:.2f}")
         if stop_loss_pct is not None and -6.5 <= stop_loss_pct <= -2.5:
             score += 8
+            reasons.append(f"止损合理{stop_loss_pct:.1f}%")
+        elif stop_loss_pct is not None and stop_loss_pct < -8.0:
+            score -= 6
+            reasons.append(f"止损过宽{stop_loss_pct:.1f}%")
         if take_profit_1 is not None and close is not None:
             room_pct = (take_profit_1 / close - 1.0) * 100.0
             if 3 <= room_pct <= 12:
@@ -436,48 +429,92 @@ def score_entry_quality(
                 reasons.append(f"目标空间{room_pct:.1f}%")
             elif room_pct < 2:
                 score -= 8
+                reasons.append("目标空间过近")
             elif room_pct > 20:
                 score -= 4
-        if volume_ratio is not None and 0.9 <= volume_ratio <= 1.8:
-            score += 8
-        elif volume_ratio is not None and volume_ratio < 0.8:
-            score -= 8
-        if amount_ratio is not None and amount_ratio >= 1.0:
-            score += 5
+                reasons.append(f"目标空间过大{room_pct:.1f}%")
+        rsi = _num(inds.get("rsi"))
+        if rsi is not None and 45 <= rsi <= 70:
+            score += 4
+            reasons.append(f"RSI={rsi:.0f}")
+        elif rsi is not None and rsi > 80:
+            score -= 6
+            reasons.append("RSI过热")
+        # 板块/拥挤是环境风险（不交给 weak_to_strong）
         if crowding_score >= 70:
             score -= 8
             reasons.append("板块拥挤")
         elif sector_score >= 60:
             score += 8
+            reasons.append("板块强势")
+        # 价格位置：涨幅、距前高、MA20偏离
+        if change_pct is not None:
+            if 0 <= change_pct <= 7:
+                score += 6
+                reasons.append(f"涨幅适中{change_pct:.1f}%")
+            elif 7 < change_pct <= 9.5:
+                score -= 5
+                reasons.append("临近涨停再去追")
+            elif change_pct > 9.5:
+                score -= 10
+                reasons.append("涨停附近买入风险大")
+            elif change_pct < -2:
+                score -= 8
+                reasons.append("当日转弱")
+        if close_vs_20h is not None and close_vs_20h <= -8:
+            score -= 12
+            reasons.append("距前高过远")
+        elif close_vs_20h is not None and close_vs_20h >= -2:
+            score += 8
+            reasons.append("贴近前高")
+        if ma20_dev is not None:
+            if -3 <= ma20_dev <= 18:
+                score += 6
+                reasons.append(f"MA20偏离健康{ma20_dev:.1f}%")
+            elif ma20_dev > 35:
+                score -= 8
+                reasons.append(f"MA20偏离过大{ma20_dev:.1f}%")
+    else:
+        # 无交易计划时仍要回答“价格值不值得买”，不含 VWAP/MA5/量比
+        change_pct = change_pct or _num(factor.get("ret_1d_pct"))
+        if change_pct is not None:
+            if 0 <= change_pct <= 7:
+                score += 6
+                reasons.append(f"涨幅适中{change_pct:.1f}%")
+            elif 7 < change_pct <= 9.5:
+                score -= 5
+                reasons.append("临近涨停再去追")
+            elif change_pct > 9.5:
+                score -= 10
+                reasons.append("涨停附近追高")
+            elif change_pct < -2:
+                score -= 8
+                reasons.append("当日弱势")
+        if close_vs_20h is not None and close_vs_20h <= -8:
+            score -= 12
+            reasons.append("距前高过远")
+        elif close_vs_20h is not None and close_vs_20h >= -2:
+            score += 8
+            reasons.append("贴近前高")
+        if ma20_dev is not None:
+            if -3 <= ma20_dev <= 18:
+                score += 6
+                reasons.append(f"MA20偏离正常{ma20_dev:.1f}%")
+            elif ma20_dev > 35:
+                score -= 8
+                reasons.append(f"MA20偏离过大{ma20_dev:.1f}%")
+        if crowding_score >= 70:
+            score -= 8
+            reasons.append("板块拥挤")
+        elif sector_score >= 60:
+            score += 6
+            reasons.append("板块强势")
         if strong_identity == "连板股" and _int(identity.get("board_count"), 0) >= 2:
             score += 4
         if market_context.get("risk_sentiment") == "risk_off":
             score -= 5
         if market_context.get("market_trend") == "down":
             score -= 4
-    else:
-        if close_above_ma5:
-            score += 10
-        if ma5_slope is not None and ma5_slope > 0:
-            score += 8
-        if volume_ratio is not None and 0.9 <= volume_ratio <= 1.6:
-            score += 8
-        if amount_ratio is not None and amount_ratio >= 1.0:
-            score += 5
-        if 45 <= (rsi or 50) <= 70:
-            score += 8
-        if ma20_dev is not None and -2 <= ma20_dev <= 18:
-            score += 8
-        if 0 <= daily_entry_score <= 100:
-            score += (daily_entry_score - 50.0) * 0.20
-        if short_setup_score >= 65:
-            score += 8
-        if strong_identity_score >= 65:
-            score += 5
-        if divergence_score >= 60:
-            score += 8
-        if ret3 is not None and ret5 is not None and ret3 > -2 and ret5 > -2:
-            score += 4
 
     score = _clamp(score)
     return {
@@ -493,25 +530,23 @@ def score_weak_to_strong(
     identity: Optional[Dict[str, Any]] = None,
     divergence: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Score the weak-to-strong confirmation after the divergence setup."""
-    identity = identity or {}
-    divergence = divergence or {}
-    identity_score = _num(identity.get("strong_identity_score"), 0.0) or 0.0
-    divergence_score = _num(divergence.get("divergence_score"), 0.0) or 0.0
-    entry_quality = _num(factor.get("entry_quality_score"), 50.0) or 50.0
+    """Score the weak-to-strong confirmation after the divergence setup.
 
-    score = 0.3 * identity_score + 0.35 * divergence_score + 0.35 * entry_quality
+    只回答“分歧后资金有没有重新转强”。
+    不允许再引入 entry_quality / RR / 止损 / 目标空间 / 入场区这些
+    “值不值得买”因子，避免与 entry_quality 重复计权。
+    """
     reasons: List[str] = []
-
     volume_ratio = _num(factor.get("volume_ratio"))
     amount_ratio = _num(factor.get("amount_ratio"))
     close_above_ma5 = _bool(factor.get("close_above_ma5"))
     ma5_slope = _num(factor.get("ma5_slope_pct"))
     short_setup_score = _num(factor.get("short_setup_score"), 50.0) or 50.0
-    daily_entry_score = _num(factor.get("daily_entry_score"), 50.0) or 50.0
-    ret1 = _num(factor.get("ret_1d_pct"))
-    ret3 = _num(factor.get("ret_3d_pct"))
-    ret5 = _num(factor.get("ret_5d_pct"))
+    hh_hl_strict = _bool(factor.get("hh_hl_strict")) or _bool(factor.get("hh_hl"))
+    pullback_shrink = _bool(factor.get("pullback_shrink"))
+    rising_volume = _bool(factor.get("rising_volume"))
+
+    score = 50.0
 
     if trade_plan and str(trade_plan.get("status") or "").lower() == "ok":
         plan = trade_plan.get("plan") or {}
@@ -520,64 +555,56 @@ def score_weak_to_strong(
         vwap20 = _num(inds.get("vwap_20"))
         ema13 = _num(inds.get("ema13"))
         ema21 = _num(inds.get("ema21"))
-        entry_low = _num(plan.get("entry_zone_low"))
-        entry_high = _num(plan.get("entry_zone_high"))
-        rr1 = _num(plan.get("rr_1"))
+        entry_trigger = str(plan.get("entry_trigger") or "")
         if close is not None and vwap20 is not None:
             if close >= vwap20:
-                score += 10
+                score += 18
                 reasons.append("站上VWAP")
             else:
-                score -= 8
+                score -= 12
+                reasons.append("VWAP下方")
         if close is not None and ema13 is not None and close >= ema13:
-            score += 5
-        if close is not None and ema21 is not None and close >= ema21:
-            score += 4
-        if entry_low is not None and entry_high is not None and close is not None and entry_low <= close <= entry_high:
-            score += 8
-            reasons.append("在可执行区间")
-        if rr1 is not None and rr1 >= 1.5:
             score += 10
-        elif rr1 is not None and rr1 >= 1.2:
-            score += 6
-        elif rr1 is not None and rr1 < 1.0:
-            score -= 10
-        stop_loss_pct = _num(plan.get("stop_loss_pct"))
-        if stop_loss_pct is not None and -6.5 <= stop_loss_pct <= -2.5:
-            score += 5
-        entry_trigger = str(plan.get("entry_trigger") or "")
+            reasons.append("站上EMA13")
+        if close is not None and ema21 is not None and close >= ema21:
+            score += 8
+            reasons.append("站上EMA21")
         if "回踩" in entry_trigger or "企稳" in entry_trigger:
-            score += 4
+            score += 8
+            reasons.append("回踩企稳触发")
         if "VWAP" in entry_trigger:
-            score += 3
+            score += 6
+            reasons.append("VWAP回踩触发")
     else:
         if close_above_ma5:
-            score += 8
+            score += 10
         if ma5_slope is not None and ma5_slope > 0:
-            score += 8
+            score += 10
         if volume_ratio is not None and 0.85 <= volume_ratio <= 1.8:
-            score += 8
+            score += 10
+            reasons.append(f"量比健康{volume_ratio:.2f}")
         if amount_ratio is not None and amount_ratio >= 1.0:
-            score += 4
-        if short_setup_score >= 65:
+            score += 5
+            reasons.append("额比充足")
+        if rising_volume and volume_ratio is not None and volume_ratio >= 1.0:
             score += 8
-        if daily_entry_score >= 60:
-            score += 6
-        if ret1 is not None and -2 <= ret1 <= 6:
-            score += 4
-        if ret3 is not None and ret3 > -2:
-            score += 3
-        if ret5 is not None and ret5 > -2:
-            score += 3
+            reasons.append("上涨放量")
+        if pullback_shrink:
+            score += 8
+            reasons.append("缩量回踩")
+        if hh_hl_strict:
+            score += 8
+            reasons.append("HH/HL结构强")
 
-    if close_above_ma5:
+    if short_setup_score >= 65:
+        score += 8
+        reasons.append("短线结构强")
+    if close_above_ma5 or _bool(factor.get("close_above_ma5")):
         reasons.append("MA5之上")
     if ma5_slope is not None and ma5_slope > 0:
         reasons.append("MA5上行")
     if volume_ratio is not None and volume_ratio < 1.0:
         reasons.append("缩量回踩")
-    if short_setup_score >= 65:
-        reasons.append("短线结构强")
 
     score = _clamp(score)
     return {

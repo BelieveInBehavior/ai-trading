@@ -1,0 +1,129 @@
+# Strong Diverge 强势分歧龙头战法策略包
+# 完全独立的新系统，不复用旧 momentum/swing 的子流程。
+# 流程：A股全市场 -> 强势股票发现池（连板/突破/趋势启动 三池分流）
+#       -> 强势观察池 -> 等待分歧 -> 首阴/断板
+#       -> 企稳/弱转强确认 -> T+1买入判断 -> T+1~T+3管理 -> 卖出
+id: strong_diverge
+name: 强势分歧龙头战法
+short_name: Strong·分歧
+description: >-
+  独立重构的 A股短线策略：先全市场发现连板股/突破股/趋势启动型，
+  连板型第一优先级、突破型第二、趋势型降权；
+  三类分别评分后进入分层观察池，等待首阴/断板并确认弱转强后再买入。
+  本策略不依赖旧 momentum/swing 的研究/共识链路。
+horizon: 短线 1~3 交易日
+style: 强势分歧 / 首阴断板 / 弱转强
+risk_note: 高波动、严格止损；只交易强势后分歧的转强确认
+tags: [连板, 突破, 趋势启动, 首阴, 断板, 弱转强, T+1]
+
+# Stage 0 强势股票发现池
+discovery:
+  universe: all_a
+  filter_st: true
+  filter_new: true
+  filter_one_word_limit_up: false      # 一字板可进观察池，但不会直接买入
+  min_amount_rank: 0
+  limit_count_top_k: 300
+  breakout_20d: true
+  breakout_60d: true
+  weekly_trend_min_score: 56
+  relative_strength_min_score: 52
+  strong_identity_min_score: 55
+
+# 强势观察池：按候选类型分层，而非单一 Top K
+watchlist:
+  top_k: 200
+  max_lianban: 20          # 连板型配比
+  max_tupo: 15             # 突破型配比
+  max_qushi: 10            # 趋势启动型配比（降权）
+  max_per_concept: 3       # 每个概念/板块最多保留 3 只
+  min_strong_watch_score: 45
+  require_strong_tag: true
+  keep_days: 5
+  min_flow_confirm_score: 50
+
+# 市场情绪温度计 / 周期前置闸门（宏观漏洞：必须放最前面，温度低于阈值直接空仓）
+market:
+  enabled: true
+  min_limit_up_count: 40        # 全市场涨停家数下限；<40 视为退潮期
+  max_break_ratio: 0.35         # 炸板率上限；>=35% 视为情绪转弱
+  min_top_limit: 3              # 最高连板下限；<3 视为空间被压制
+  min_real_zt_ratio: 0.4        # 实体涨停占比下限；<40% 视为一字板抱团、接力不健康
+  # 短线接力确认（T+1 Gate 附加证据，供 hot_money/技术指标提供）
+  require_sector_confirmation: false   # 板块联动 T+1 确认：≥3只同板块跟涨才PASS（数据缺失时不算FAIL）
+  require_auction_volume_ratio: false # T+1 竞价量/开盘30min额强制确认
+  auction_volume_ratio_min: 0.05        # 竞价成交量 ≥ 分歧日成交量 5%
+  open_amount_ratio_min: 1.2            # 开盘30min成交额 ≥ 分歧日同期 1.2 倍
+
+# 等待分歧 -> 首阴/断板
+divergence:
+  min_score: 60
+  allow_shouyin: true
+  allow_duanban: true
+  min_board_count_for_shouyin: 1
+  min_board_count_for_duanban: 1
+  max_break_count: 1
+  max_first_break_down_pct: -5.0       # 首阴当日跌幅下限
+  max_duanban_gain_pct: 8.0            # 断板当日涨幅上限
+  require_strength_phase: true         # 必须已进入强势生命周期才允许产生分歧事件
+  min_strength_board_for_divergence: 1 # 强势阶段至少 1 次涨停才支持首阴/断板
+  # 断板质量分级（A类健康断板 / B类中性断板 / C类弱断板）
+  break_grade_A_min_change_pct: 1.0    # A类断板：涨幅>该值
+  break_grade_A_max_volume_ratio: 1.0  # A类断板：缩量阈值
+  break_grade_B_min_change_pct: -3.0   # B类断板：跌幅不低于该值
+  break_grade_B_max_change_pct: 1.0    # B类断板：涨幅不高于该值
+  break_grade_B_min_volume_ratio: 0.8  # B类断板：量比下限
+  break_grade_B_max_volume_ratio: 1.8  # B类断板：量比上限
+  break_C_key_broken_close_vs_20d_high_pct: -8.0  # C类弱分歧：跌破前高判定
+
+# 首阴企稳 / 弱转强确认（改为硬条件 Gate + 评分，gate 不过不能买）
+confirmation:
+  min_entry_quality_score: 70
+  min_weak_to_strong_score: 80
+  max_vol_shrink: 1.8
+  min_close_above_ma5: false      # MA5只做背景确认，不作为硬Gate
+  require_risk_reward: 1.2
+  fail_if_overextended_ma20: 45
+  # 状态机：首次分歧发生后，至少经过 1 个交易日再次被市场确认才能进入 T+1 候选
+  min_confirm_days_after_divergence: 1
+  # Weak-to-Strong 硬条件（5 个条件至少满足 required 个，严格 Gate 语义）
+  weak_to_strong_gates_required: 4
+  gate_columns:
+    - 站上开盘价           # 收盘 >= 开盘
+    - 站上VWAP             # 收盘 >= VWAP（缺失时不得退化为 MA5）
+    - 回踩VWAP成功          # 盘中 low<=VWAP 且收盘>=VWAP 且 low 距 VWAP 在容差内
+    - HH/HL短线结构         # 最近两个已完成交易日高点抬高 AND 低点抬高
+    - 量价健康             # 上涨放量 OR 回踩缩量+站上MA5
+
+# T+1 买入判断
+t1_buy:
+  enabled: true
+  min_buy_score: 70
+  require_trade_plan_pass: true
+  allow_open_buy: true
+  allow_pullback_buy: false
+  max_position_pct: 50
+  risk_per_trade_pct: 1.2
+
+# T+1~T+3 管理 / 卖出（HOLD / REDUCE / EXIT）
+holding:
+  horizon_days: 3
+  stop_loss_pct: -6.0
+  take_profit_pct: 6.0
+  trailing_trigger_pct: 4.0
+  trailing_distance_pct: 5.0
+  fast_exit_after: 3
+  use_technical_deterioration: true
+  # 回撤过大先减仓观察，而不是立刻清仓；满足 hard-exit（>50分）仍 EXIT
+  reduce_drawdown_pct: -3.0
+  reduce_after_days: 2
+
+# 与统一策略回测入口兼容的字段
+backtest:
+  mode: replay
+  default_start: "2026-06-01"
+  default_end: "2026-08-18"
+  symbols_limit: 0
+  concurrency: 4
+  horizons: [1, 3, 5]
+  rule_pipeline: true

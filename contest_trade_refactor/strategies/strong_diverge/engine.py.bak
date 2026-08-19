@@ -1,0 +1,757 @@
+"""Strong Diverge 强势分歧龙头战法 - 独立策略引擎。
+
+不依赖旧 main_loop / ResearchAgent / ConsensusAggregator / StockOpportunityRanker，
+只复用底层 A 股数据抓取（akshare_cached / get_index_daily / get_stock_zh_a_hist /
+compute_stock_technical_factor_from_history）和交易日历。
+
+流程：
+  A股全市场 -> 强势股票发现池（连板/突破/趋势强）
+  -> 强势观察池 -> 等待分歧（首阴/断板）
+  -> 首阴企稳/弱转强确认 -> T+1买入判断
+  -> T+1~T+3管理 -> 卖出
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import pandas as pd
+
+from data_source.technical_indicators_akshare import compute_stock_technical_factor_from_history
+from utils.akshare_utils import akshare_cached
+from utils.cn_price_provider import get_index_daily, get_stock_zh_a_hist
+from utils.date_utils import get_latest_completed_trading_date, get_trading_date_range
+from utils.factor_store import ZT_SEAL_STORE
+
+from strategies.strong_diverge.schemas import (
+    BuySignal,
+    DivergenceSignal,
+    ExitDecision,
+    Holding,
+    StrongStockCandidate,
+    WatchlistItem,
+)
+
+try:
+    _BASE_DIR = Path(__file__).resolve().parent
+except Exception:
+    _BASE_DIR = Path("strategies/strong_diverge")
+
+
+# ---------------------------------------------------------------------------
+# 基础工具（策略包内部自带，不引用旧流程）
+# ---------------------------------------------------------------------------
+def _num(value: Any, default: Optional[float] = None) -> Optional[float]:
+    try:
+        if value is None:
+            return default
+        if isinstance(value, str):
+            value = value.strip().replace("%", "")
+        result = float(value)
+        if result != result:
+            return default
+        return result
+    except (TypeError, ValueError):
+        return default
+
+
+def _int(value: Any, default: int = 0) -> int:
+    try:
+        if value is None:
+            return default
+        if isinstance(value, str):
+            value = value.strip()
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def _bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    text = str(value or "").strip().lower()
+    return text in {"1", "true", "yes", "y", "是", "有", "ok", "passed"}
+
+
+def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
+    return max(low, min(high, float(value)))
+
+
+def _normalize_code(value: Any) -> str:
+    digits = "".join(ch for ch in str(value or "") if ch.isdigit())
+    if len(digits) < 6:
+        return ""
+    code = digits[-6:]
+    suffix = ".SH" if code.startswith("6") else ".SZ"
+    return f"{code}{suffix}"
+
+
+def _reasons(items) -> List[str]:
+    return [str(item).strip() for item in items or [] if str(item).strip()]
+
+
+# ---------------------------------------------------------------------------
+# 配置
+# ---------------------------------------------------------------------------
+@dataclass
+class StrongDivergeConfig:
+    """策略包配置。"""
+    id: str = "strong_diverge"
+    discovery: Dict[str, Any] = field(default_factory=dict)
+    watchlist: Dict[str, Any] = field(default_factory=dict)
+    divergence: Dict[str, Any] = field(default_factory=dict)
+    confirmation: Dict[str, Any] = field(default_factory=dict)
+    t1_buy: Dict[str, Any] = field(default_factory=dict)
+    holding: Dict[str, Any] = field(default_factory=dict)
+    backtest: Dict[str, Any] = field(default_factory=dict)
+    quantitative_concurrency: int = 4
+    benchmark_symbol: str = "sh000300"
+
+    @classmethod
+    def from_dict(cls, cfg: Dict[str, Any]) -> "StrongDivergeConfig":
+        return cls(
+            id=str(cfg.get("id") or "strong_diverge"),
+            discovery=dict(cfg.get("discovery") or {}),
+            watchlist=dict(cfg.get("watchlist") or {}),
+            divergence=dict(cfg.get("divergence") or {}),
+            confirmation=dict(cfg.get("confirmation") or {}),
+            t1_buy=dict(cfg.get("t1_buy") or {}),
+            holding=dict(cfg.get("holding") or {}),
+            backtest=dict(cfg.get("backtest") or {}),
+            quantitative_concurrency=int(cfg.get("quantitative_screen_concurrency", 4) or 4),
+            benchmark_symbol=str(cfg.get("benchmark_symbol") or "sh000300"),
+        )
+
+    @classmethod
+    def from_yaml(cls) -> "StrongDivergeConfig":
+        import yaml
+        with open(_BASE_DIR / "strategy.yaml", "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        return cls.from_dict(data)
+
+
+# ---------------------------------------------------------------------------
+# 引擎
+# ---------------------------------------------------------------------------
+class StrongDivergeEngine:
+    """Strong Diverge 规则引擎。"""
+
+    def __init__(self, config: StrongDivergeConfig | None = None):
+        self.config = config or StrongDivergeConfig.from_yaml()
+
+    # ================= 主入口 =================
+    async def run_day(
+        self,
+        trigger_time: str,
+        watchlist: Optional[List[WatchlistItem]] = None,
+        holdings: Optional[List[Holding]] = None,
+        output_dir: Optional[str] = None,
+        max_symbols: int = 0,
+    ) -> Dict[str, Any]:
+        trade_date = get_latest_completed_trading_date(trigger_time)
+
+        discovery = await self.discover(trigger_time, max_symbols=max_symbols)
+        watchlist = self.merge_watchlist(
+            discovery, prev_watchlist=watchlist, trade_date=trade_date
+        )
+        divergences = self.detect_divergence(watchlist, trade_date)
+        confirmed = self.confirm_buy(divergences)
+        buy_signals = self.build_t1_buy_plan(confirmed)
+        exits = self.evaluate_exits(holdings or [])
+        result = {
+            "trade_date": trade_date,
+            "trigger_time": trigger_time,
+            "discovery": discovery,
+            "watchlist": watchlist,
+            "divergence_signals": divergences,
+            "confirmed_signals": confirmed,
+            "buy_signals": buy,
+            "exit_decisions": exits,
+        }
+        if output_dir:
+            self._write_result(result, output_dir)
+        return result
+
+    # ================= 1. 强势股票发现池 =================
+    async def discover(
+        self,
+        trigger_time: str,
+        max_symbols: int = 0,
+    ) -> Dict[str, Any]:
+        trade_date = get_latest_completed_trading_date(trigger_time)
+        start_date, end_date = get_trading_date_range(
+            end_date=trade_date, count=260, include_end=True
+        )
+        universe = await asyncio.to_thread(self._load_universe, max_symbols)
+        benchmark = await asyncio.to_thread(
+            self._load_benchmark, self.config.benchmark, start_date, end_date
+        )
+        zt_snapshot = self._safe_zt_snapshot(trade_date)
+
+        sem = asyncio.Semaphore(max(1, int(self.config.quantitative_concurrency) or 4))
+        all_strong: List[StrongStockCandidate] = []
+        errors: List[str] = []
+
+        async def _score(row: Dict[str, Any]) -> None:
+            async with sem:
+                await asyncio.to_thread(
+                    self._discover_one,
+                    row,
+                    start_date,
+                    end_date,
+                    trade_date,
+                    benchmark,
+                    zt_snapshot,
+                    all_strong,
+                )
+
+        total = len(universe)
+        batch_size = max(1, int(self.config.quantitative_concurrency) * 30)
+        for offset in range(0, total, batch_size):
+            batch = universe[offset: offset + batch_size]
+            await asyncio.gather(*[_one(row) for row in batch])
+
+        # 只保留有强势身份/标签的
+        strong = [c for c in all_strong if c.strong_tags and c.strong_identity != "观察股"]
+        strong.sort(key=lambda c: c.strong_identity_score, reverse=True)
+        top_k = int(self.config.discovery.get("limit_count_top_k", self.config.discovery.get("discovery_top_k", 300)) or 300)
+        if top_k > 0:
+            strong = strong[:top_k]
+
+        return {
+            "trade_date": trade_date,
+            "candidates": strong,
+            "universe_count": total,
+            "scan_errors": errors,
+            "context_string": self._discovery_context(strong, total),
+        }
+
+    def _discover_one(
+        self,
+        row: Dict[str, Any],
+        start_date: str,
+        end_date: str,
+        trade_date: str,
+        benchmark: pd.DataFrame,
+        zt_snapshot: Dict[str, Dict[str, Any]],
+        out: list,
+    ) -> None:
+        try:
+            code = str(row.get("symbol_code") or "").strip()
+            hist = get_stock_zh_a_hist(
+                symbol=code[:6],
+                start_date=start_date,
+                end_date=end_date,
+                adjust="qfq",
+                verbose=False,
+            )
+            factor = compute_stock_technical_factor_from_history(
+                hist_df=hist,
+                symbol_code=code,
+                symbol_name=str(row.get("symbol_name") or code[:6]),
+                trade_date=trade_date,
+                relative_strength_benchmark=self.config.benchmark,
+                benchmark_frame=benchmark,
+            )
+            if not factor:
+                return
+            cand = self._classify_strong(factor, zt_snapshot)
+            if cand:
+                out.append(cand)
+        except Exception:
+            return
+
+    def _load_universe(self, max_symbols: int = 0) -> list:
+        try:
+            raw = akshare_cached.run("stock_zh_a_spot_em", {}, False)
+        except Exception:
+            raw = akshare_cached.run("stock_info_a_code_name", {}, False)
+        if raw is None or raw.empty:
+            return []
+        code_col = next((c for c in ("代码", "code", "ts_code") if c in raw.columns), None)
+        name_col = next((c for c in ("名称", "name") if c in raw.columns), None)
+        amount_col = next((c for c in ("成交额", "amount") if c in raw.columns), None)
+        if not code_col:
+            return []
+        rows: list[dict] = []
+        for _, row in raw.iterrows():
+            code = _normalize_code(row.get(code_col))
+            if not code:
+                continue
+            name = str(row.get(name_col) if name_col else row.get(code_col)).strip()
+            if not name or name.upper().find("ST") >= 0 or "退" in name:
+                continue
+            if code.startswith(("4", "8", "920")):
+                continue
+            item: Dict[str, Any] = {"symbol_code": code, "symbol_name": name}
+            if amount_col:
+                try:
+                    item["amount"] = float(row.get(amount_col) or 0.0)
+                except Exception:
+                    item["amount"] = 0.0
+            else:
+                item["amount"] = 0.0
+            rows.append(item)
+        if max_symbols and max_symbols > 0:
+            rows.sort(key=lambda r: r.get("amount", 0.0), reverse=True)
+            rows = rows[:max_symbols]
+        return rows
+
+    def _load_benchmark(self, symbol: str, start: str, end: str) -> pd.DataFrame:
+        try:
+            raw = get_index_daily(symbol, start, end, False)
+            from data_source.technical_indicators_akshare import _prepare_price_frame
+            return _prepare_price_frame(raw, date_columns=("date",), close_columns=("close",))
+        except Exception:
+            return pd.DataFrame()
+
+    def _safe_zt_snapshot(self, trade_date: str) -> Dict[str, Dict[str, Any]]:
+        """从通用因子存储读取当日涨停封单快照（数据层复用，规则引擎保持独立）。"""
+        if not trade_date:
+            return {}
+        try:
+            df = ZT_SEAL_STORE.load(trade_date)
+        except Exception:
+            return {}
+        if df is None or df.empty:
+            return {}
+        snapshot: Dict[str, Dict[str, Any]] = {}
+        for _, row in df.iterrows():
+            code = _normalize_code(row.get("symbol_code"))
+            if not code:
+                continue
+            meta: Dict[str, Any] = {}
+            try:
+                meta = json.loads(row.get("metadata_json") or "{}")
+            except Exception:
+                meta = {}
+            factor_value = _num(row.get("factor_value"), 0.0) or 0.0
+            board = _int(meta.get("continuous_board", meta.get("limit_times", 1)), 1)
+            breaks = _int(meta.get("break_count", meta.get("open_times", 0)), 0)
+            amount = _num(meta.get("seal_amount"), 0.0) or 0.0
+            turnover = _num(meta.get("turnover"), 0.0) or 0.0
+            one_word = _bool(meta.get("one_word_limit_up")) or (
+                board >= 1 and breaks == 0 and factor_value >= 5.0 and turnover <= 1.0
+            )
+            snapshot[code] = {
+                "symbol_code": code,
+                "seal_strength": round(factor_value, 3),
+                "continuous_board": board,
+                "break_count": breaks,
+                "seal_amount": round(amount, 3),
+                "turnover": round(turnover, 3),
+                "one_word_limit_up": one_word,
+            }
+            snapshot[code.split(".")[0]] = snapshot[code]
+        return snapshot
+
+    def _classify_strong(
+        self, factor: Dict[str, Any], zt_snapshot: Dict[str, Dict[str, Any]]
+    ) -> StrongStockCandidate | None:
+        code = _normalize_code(factor.get("symbol_code"))
+        if not code:
+            return None
+        zt = zt_snapshot.get(code) or zt_snapshot.get(code.split(".")[0]) if code else None
+        board = _int((zt or {}).get("continuous_board", factor.get("continuous_board")), 0)
+        break_count = _int((zt or {}).get("break_count", factor.get("break_count")), 0)
+        seal = _num((zt or {}).get("seal_strength", factor.get("seal_strength")), 0.0) or 0.0
+        one_word = _bool((zt or {}).get("one_word_limit_up", factor.get("one_word_limit_up")))
+
+        hard_failed: list[str] = []
+        if not _bool(factor.get("data_quality_valid", True)) or str(factor.get("data_quality_status") or "ok") != "ok":
+            hard_failed.append("data_quality")
+        if str(factor.get("symbol_name") or "").upper().find("ST") >= 0:
+            hard_failed.append("st_name")
+        ma20_dev = _num(factor.get("ma20_deviation_pct"))
+        breakout60 = _bool(factor.get("breakout_60d"))
+        if ma20_dev is not None and ma20_dev > 45 and not breakout60:
+            hard_failed.append("ma20_overextended")
+        change = _num(factor.get("change_pct"))
+        if change is not None and change > 18 and not (board >= 2 or breakout60):
+            hard_failed.append("too_hot")
+
+        strong_tags: list[str] = []
+        identity = "观察股"
+        score = 0.0
+        reasons: list[str] = []
+
+        if board >= 3:
+            strong_tags.append("连板股")
+            identity = "连板股"
+            score += 42 + min(18, (board - 3) * 6)
+            reasons.append(f"{board}连板")
+        elif board == 2:
+            strong_tags.append("连板股")
+            identity = "连板股"
+            score += 36
+            reasons.append("2连板")
+        elif board == 1 and seal >= 2.0:
+            strong_tags.append("连板股")
+            identity = "连板股"
+            score += 28
+            reasons.append(f"首板封单{seal:.1f}%")
+
+        if _bool(factor.get("breakout_20d")):
+            strong_tags.append("突破股")
+            score += 18
+            reasons.append("20日突破")
+        if breakout60:
+            strong_tags.append("突破股")
+            score += 12
+            reasons.append("60日突破")
+
+        weekly = _num(factor.get("weekly_trend_score"))
+        rs = _num(factor.get("relative_strength_score"))
+        if weekly is not None and rs is not None and weekly >= 65 and rs >= 60:
+            strong_tags.append("趋势强股")
+            score += 18
+            reasons.append(f"周线{weekly:.1f}/RS{rs:.1f}")
+        elif weekly is not None and rs is not None and weekly >= 60 and rs >= 55:
+            strong_tags.append("趋势强股")
+            score += 12
+            reasons.append("趋势确认")
+
+        if _bool(factor.get("close_above_ma5")):
+            score += 8
+        if _num(factor.get("ma5_slope_pct")) is not None and _num(factor.get("ma5_slope_pct")) > 0:
+            score += 6
+        vol = _num(factor.get("volume_ratio"))
+        if vol is not None and vol >= 1.2:
+            score += 8
+        amount = _num(factor.get("amount_ratio"))
+        if amount is not None and amount >= 1.2:
+            score += 4
+
+        if hard_failed:
+            score *= 0.5
+        score = _clamp(score)
+
+        if not strong_tags:
+            if score >= 60:
+                strong_tags.append("趋势强股")
+                identity = "趋势强股"
+            else:
+                identity = "观察股"
+        else:
+            priority = ("连板股", "突破股", "趋势强股")
+            identity = next((t for t in priority if t in strong_tags), identity)
+
+        return StrongStockCandidate(
+            symbol_code=code,
+            symbol_name=str(factor.get("symbol_name") or "")[:8],
+            trade_date=str(factor.get("report_date") or ""),
+            strong_tags=strong_tags,
+            strong_identity=identity,
+            strong_identity_score=round(score, 2),
+            strong_identity_reasons=reasons,
+            board_count=board,
+            break_count=break_count,
+            seal_strength=round(seal, 3),
+            one_word_limit_up=one_word,
+            technical_factor=factor,
+        )
+
+    def _discovery_context(self, rows: List[StrongStockCandidate], total: int) -> str:
+        if not rows:
+            return "强势股票发现池：无候选"
+        lines = [f"强势股票发现池：{len(rows)} 只（扫描 {total} 只，展示前 20）", ""]
+        for c in rows[:20]:
+            lines.append(
+                f"- {c.symbol_name}({c.symbol_code}): {c.strong_identity}"
+                f"/{c.strong_identity_score} tags={','.join(c.strong_tags) or '无'}"
+            )
+        return "\n".join(lines)
+
+    # ================= 2. 强势观察池 =================
+    def merge_watchlist(
+        self,
+        discovery: Dict[str, Any],
+        prev_watchlist: Optional[List[WatchlistItem]],
+        trade_date: str,
+    ) -> List[WatchlistItem]:
+        by_code: Dict[str, WatchlistItem] = {}
+        for item in prev_watchlist or []:
+            by_code[item.symbol_code] = item
+
+        for cand in discovery.get("candidates") or []:
+            item = by_code.get(cand.symbol_code)
+            if item:
+                # 保留最近 5 日因子，防止无限膨胀
+                item.factors.append(cand.technical_factor)
+                del item.factors[:-5]
+                if cand.strong_identity_score > item.strong_identity_score:
+                    item.strong_identity = cand.strong_identity
+                    item.strong_identity_score = cand.strong_identity_score
+                    item.board_count = cand.board_count
+                    item.break_count = cand.break_count
+                    item.seal_strength = cand.seal_strength
+                item.strong_tags = sorted(set(item.strong_tags).union(cand.strong_tags))
+            else:
+                by_code[cand.symbol_code] = WatchlistItem(
+                    symbol_code=cand.symbol_code,
+                    symbol_name=cand.symbol_name,
+                    trade_date=trade_date,
+                    strong_tags=list(cand.strong_tags),
+                    strong_identity=cand.strong_identity,
+                    strong_identity_score=cand.strong_identity_score,
+                    board_count=cand.board_count,
+                    break_count=cand.break_count,
+                    seal_strength=cand.seal_strength,
+                    factors=[cand.technical_factor],
+                )
+        items = sorted(by_code.values(), key=lambda x: x.strong_identity_score, reverse=True)
+        top_count = int(self.config.watchlist.get("top_k", self.config.watchlist.get("top_count", 200)) or 200)
+        return items[:top_count]
+
+    # ================= 3. 等待分歧：首阴 / 断板 =================
+    def detect_divergence(
+        self,
+        watchlist: List[WatchlistItem],
+        trade_date: str,
+    ) -> List[DivergenceSignal]:
+        cfg = self.config.divergence
+        allow_shouyin = _bool(cfg.get("allow_shouyin", True))
+        allow_anban = _bool(cfg.get("allow_duanban", True))
+        min_score = float(cfg.get("min_score", 60) or 60)
+        max_break = int(cfg.get("max_break_count", 1) or 1)
+        max_shouyin_down = float(cfg.get("max_first_break_down_pct", -5.0) or -5.0)
+        max_anban_up = float(cfg.get("max_duanban_gain_pct", 8.0) or 8.0)
+
+        signals: List[DivergenceSignal] = []
+        for item in watchlist:
+            latest = item.latest_factor()
+            if not latest:
+                continue
+            change = _num(latest.get("change_pct"))
+            board = max(item.board_count, _int(latest.get("continuous_board"), 0))
+            break_count = max(item.break_count, _int(latest.get("break_count"), 0))
+
+            mode = "none"
+            score = 0.0
+            reasons: list[str] = []
+            factor = latest
+
+            # 首阴模式：连板股当日转阴线
+            if allow_shouyin and board >= 1 and change is not None and change <= 0:
+                mode = "首阴"
+                score = 45
+                reasons.append("首次阴线")
+                if change >= max_shouyin_down:
+                    score += 14
+                else:
+                    score -= 12
+                if _bool(factor.get("close_above_ma5")):
+                    score += 10
+                vol = _num(factor.get("volume_ratio"))
+                if vol is not None and vol < 1.0:
+                    score += 8
+                    reasons.append("缩量")
+                if _num(factor.get("ma5_slope_pct")) is not None and _num(factor.get("ma5_slope_pct")) > 0:
+                    score += 6
+                if _num(factor.get("daily_entry_score"), 50) >= 60:
+                    score += 6
+            # 断板模式：连板中断但仍保持 0~涨幅
+            elif allow_anban and board >= 1 and change is not None and 0 <= change <= max_anban_up:
+                mode = "断板"
+                score = 40
+                reasons.append("连板中断/断板")
+                if board >= 2:
+                    score += 10
+                if break_count <= max_break:
+                    score += 8
+                else:
+                    score -= 8
+                seal = _num(item.seal_strength)
+                if seal is not None and seal >= 5:
+                    score += 12
+                elif seal is not None and seal >= 2:
+                    score += 6
+                if (change or 0) <= 6:
+                    score += 8
+                vol = _num(factor.get("volume_ratio"))
+                if vol is not None and 0.7 <= vol <= 1.4:
+                    score += 6
+
+            score = _clamp(score)
+            signals.append(DivergenceSignal(
+                symbol_code=item.symbol_code,
+                symbol_name=item.symbol_name,
+                trade_date=trade_date,
+                divergence_mode=mode,
+                divergence_score=score,
+                divergence_pass=bool(mode != "none" and score >= 60),
+                divergence_reasons=reasons,
+                strong_identity=item.strong_identity,
+                strong_identity_score=item.strong_identity_score,
+                board_count=board,
+                factor=factor,
+            ))
+        return signals
+
+    # ================= 4. 首阴企稳 / 弱转强确认 =================
+    def confirm_buy(self, divergences: List[DivergenceSignal]) -> List[BuySignal]:
+        cfg = self.config.confirmation
+        min_entry = float(cfg.get("min_entry_quality_score", 70) or 70)
+        min_weak = float(cfg.get("min_weak_to_strong_score", 80) or 80)
+        require_ma5 = _bool(cfg.get("min_close_above_ma5", True))
+
+        out: List[BuySignal] = []
+        for d in divergences:
+            if not d.divergence_pass:
+                continue
+            factor = d.factor or {}
+            f_identity = d.strong_identity_score
+            f_div = d.divergence_score
+
+            # 入场质量
+            entry = 45.0
+            entry_reasons: list[str] = []
+            if _bool(factor.get("close_above_ma5")):
+                entry += 15
+            ma5_slope = _num(factor.get("ma5_slope_pct"))
+            if ma5_slope is not None and ma5_slope > 0:
+                entry += 8
+            vol = _num(factor.get("volume_ratio"))
+            if vol is not None and 0.8 < vol < 1.2 and d.divergence_mode == "首阴":
+                entry += 8
+                entry_reasons.append("缩量企稳")
+            if d.divergence_mode == "断板":
+                entry += 8
+            entry += min(8, f_div * 0.08)
+            entry = _clamp(entry)
+
+            # 弱转强
+            weak = _clamp(0.3 * f_identity + 0.35 * f_div + 0.35 * entry)
+            reasons: list[str] = []
+            if d.divergence_mode:
+                reasons.append(f"{d.divergence_mode}分歧")
+            if entry >= min_entry:
+                reasons.append(f"入场质量{entry:.1f}>= {min_entry}")
+            else:
+                reasons.append(f"入场{entry:.1f}不足{min_entry}")
+            if weak >= min_weak:
+                reasons.append(f"弱转强{weak:.1f}>= {min_weak}")
+            else:
+                reasons.append(f"弱转强{weak:.1f}不足{min_weak}")
+            if require_ma5 and not _bool(factor.get("close_above_ma5")):
+                reasons.append("未站上MA5，不满足确认")
+                ready = False
+            else:
+                ready = bool(entry >= min_entry and weak >= min_weak)
+            out.append(BuySignal(
+                symbol_code=d.symbol_code,
+                symbol_name=d.symbol_name,
+                trade_date=d.trade_date,
+                lifecycle_state="T+1买入候选" if ready else "等待确认",
+                divergence_mode=d.divergence_mode,
+                divergence_score=d.divergence_score,
+                entry_quality_score=round(entry, 2),
+                weak_to_strong_score=round(weak, 2),
+                t1_buy_score=round(entry * 0.5 + weak * 0.5, 2),
+                buy_ready=ready,
+                reasons=reasons,
+            ))
+        return out
+
+    # ================= 5. T+1 买入计划 =================
+    def t1_buy_plan(self, confirmed: List[BuySignal]) -> List[BuySignal]:
+        t1 = self.config.t1_buy
+        min_score = float(t1.get("min_buy_score", 0) or 0)
+        max_pos = float(t1.get("max_position_pct", 50) or 50)
+        for sig in confirmed:
+            if not sig.buy_ready or sig.t1_buy_score < min_score:
+                sig.buy_ready = False
+                sig.lifecycle_state = "T+1观察"
+                sig.reasons.append("T+1买入门槛不足")
+                continue
+            sig.lifecycle_state = "T+1买入候选"
+            sig.suggested_position_size_pct = _clamp(max_pos, 0, 100)
+            sig.stop_loss_pct = float((self.config.holding or {}).get("stop_loss_pct", -6.0) or -6.0)
+            sig.take_profit_pct = float((self.config.holding or {}).get("take_profit_pct", 6.0) or 6.0)
+            sig.reasons.append("T+1买入判断通过")
+        return confirmed
+
+    # ================= 6. T+1~T+3 管理 / 卖出 =================
+    def evaluate_exits(self, holdings: List[Holding]) -> List[ExitDecision]:
+        op = self.config.holding
+        stop_loss = float(op.get("stop_loss_pct", -6.0) or -6.0)
+        take_profit = float(op.get("take_profit_pct", 6.0) or 6.0)
+        trailing_trigger = float(op.get("trailing_trigger_pct", 4.0) or 4.0)
+        trailing_distance = float(op.get("trailing_distance_pct", 5.0) or 5.0)
+        fast_exit = int(op.get("fast_exit_after", 3) or 3)
+
+        decisions: List[ExitDecision] = []
+        for h in holdings:
+            current = h.current_price
+            if current is None:
+                decisions.append(ExitDecision(
+                    symbol_code=h.symbol_code,
+                    symbol_name=h.symbol_name,
+                    action="hold",
+                    reason="价格数据缺失",
+                ))
+                continue
+            ret = (current - h.entry_price) / h.entry_price * 100.0 if h.entry_price else 0.0
+            reasons: list[str] = []
+            score = 0.0
+            urgency = "normal"
+            if ret <= stop_loss + 1e-9:
+                score += 50
+                urgency = "urgent"
+                reasons.append(f"止损{stop_loss:.1f}%，当前{ret:.1f}%")
+            if ret >= take_profit - 1e-9:
+                score += 30
+                reasons.append(f"止盈{take_profit:.1f}%，当前{ret:.1f}%")
+            if h.highest_price and ret > trailing_trigger and (
+                (current / h.highest_price - 1.0) * 100.0 <= -trailing_distance
+            ):
+                score += 40
+                urgency = "urgent"
+                reasons.append("移动止损触发")
+            if h.holding_days > fast_exit:
+                score += min(8, h.holding_days - fast_exit)
+                reasons.append(f"持有{h.holding_days}天超期")
+            decisions.append(ExitDecision(
+                symbol_code=h.symbol_code,
+                symbol_name=h.symbol_name,
+                action="sell" if score >= 50 else "hold",
+                reason=" | ".join(reasons) if reasons else "继续持有",
+                urgency=urgency,
+                exit_score=round(score, 2),
+                current_return_pct=round(ret, 2),
+                stop_loss_triggered=bool(ret <= stop_loss + 1e-9),
+                take_profit_triggered=bool(ret >= take_profit - 1e-9),
+                reasons=reasons,
+            ))
+        return decisions
+
+    # ---------------- 导出辅助 ----------------
+    def _write_result(self, result: Dict[str, Any], output_dir: str) -> None:
+        out = Path(output_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        data = {
+            "trade_date": result["trade_date"],
+            "trigger_time": result.get("trigger_time"),
+            "discovery_candidates": [_to_dict_drop_symbols(c) for c in result.get("discovery", {}).get("candidates", [])],
+            "watchlist": [w.to_dict() for w in result.get("watchlist", [])],
+            "divergence_signals": [d.to_dict() for d in result.get("divergence_signals", [])],
+            "confirmed_signals": [b.to_dict() for b in result.get("confirmed_signals", [])],
+            "buy_signals": [b.to_dict() for b in result.get("buy_signals", [])],
+            "exit_decisions": [e.to_dict() for e in result.get("exit_decisions", [])],
+        }
+        (out / "result.json").write_text(
+            json.dumps(data, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+
+def _to_dict_drop_symbols(item) -> Dict[str, Any]:
+    """将 StrongStockCandidate 转 dict 但不写回技术因子大对象（节省空间）。"""
+    d = item.to_dict() if hasattr(item, "to_dict") else dict(item)
+    d.pop("technical_factor", None)
+    return d

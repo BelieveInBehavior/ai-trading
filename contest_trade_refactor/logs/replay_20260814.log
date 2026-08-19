@@ -1,174 +1,0 @@
-Loading config from: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/config.yaml (Market: CN-Stock)
-[replay] plan dates=['2026-08-14'] strategy=momentum output=/Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace_replays/momentum
-
-[replay] launching: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/.venv/bin/python -u /Users/ruby/Desktop/ai-trading/contest_trade_refactor/scripts/run_pipeline_rerun.py --strategy momentum --trigger-time 2026-08-14 18:00:00 --symbols-limit 0 --concurrency 4
-[replay] workspace=/Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace_replays/momentum/20260814
-Loading config from: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/config.yaml (Market: CN-Stock)
-[sina_summary_agent] Loaded: data_source.sina_news_crawl.SinaNewsCrawl
-[thx_summary_agent] Loaded: data_source.thx_news_crawl.ThxNewsCrawl
-[price_market_agent] Loaded: data_source.price_market_akshare.PriceMarketAkshare
-[hot_money_agent] Loaded: data_source.hot_money_akshare.HotMoneyAkshare
-[northbound_flow_agent] Loaded: data_source.northbound_flow_akshare.NorthboundFlowAkshare
-[technical_indicators_agent] Loaded: data_source.technical_indicators_akshare.TechnicalIndicatorsAkshare
-2026-08-15 10:37:33.786 | INFO     | utils.threshold_manager:load:125 - 阈值已从 /Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace_replays/momentum/20260814/factor_thresholds.yaml 加载
-[individual_fund_flow_agent] Loaded: data_source.individual_fund_flow_akshare.IndividualFundFlowAkshare
-[margin_trading_agent] Loaded: data_source.margin_trading_akshare.MarginTradingAkshare
-[block_trade_agent] Loaded: data_source.block_trade_akshare.BlockTradeAkshare
-[sector_fund_flow_trend_agent] Loaded: data_source.sector_fund_flow_trend_akshare.SectorFundFlowTrendAkshare
-[zt_seal_strength_agent] Loaded: data_source.zt_seal_strength_akshare.ZtSealStrengthAkshare
-[web_search_market_supplement_agent] Loaded: data_source.web_search_market_supplement.WebSearchMarketSupplement
-pipeline_start strategy=momentum trigger_time=2026-08-14 18:00:00 quantitative_screen=on max_symbols=0 concurrency=4
-🚀 Starting Trade Company Analysis at 2026-08-14 18:00:00
-================================================================================
-
-🔎 Stage 0: Full-market quantitative screening...
-Stage 0 progress: 1/5005 scanned
-2026-08-15 10:37:33.862 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:411 - 拒绝 301717.SZ 技术因子: insufficient_rows<20
-  0%|          | 0/2 [00:00<?, ?it/s]
-  0%|          | 0/2 [00:00<?, ?it/s][A
-
-  0%|          | 0/2 [00:00<?, ?it/s][A[A 50%|█████     | 1/2 [00:00<00:00,  3.24it/s]
-
- 50%|█████     | 1/2 [00:00<00:00,  2.65it/s][A[A
- 50%|█████     | 1/2 [00:00<00:00,  2.63it/s][A100%|██████████| 2/2 [00:00<00:00,  2.83it/s]                                             
-100%|██████████| 2/2 [00:00<00:00,  2.69it/s][A
-                                             [A
-
-100%|██████████| 2/2 [00:00<00:00,  2.66it/s][A[A
-
-                                             [A[AStage 0 progress: 200/5005 scanned
-  0%|          | 0/2 [00:00<?, ?it/s]
-  0%|          | 0/2 [00:00<?, ?it/s][A
-
-  0%|          | 0/2 [00:00<?, ?it/s][A[A
-
-
-  0%|          | 0/2 [00:00<?, ?it/s][A[A[A
-
- 50%|█████     | 1/2 [00:00<00:00,  3.10it/s][A[A
-
-
- 50%|█████     | 1/2 [00:00<00:00,  2.54it/s][A[A[A
- 50%|█████     | 1/2 [00:00<00:00,  2.45it/s][A 50%|█████     | 1/2 [00:00<00:00,  2.36it/s]
-100%|██████████| 2/2 [00:00<00:00,  2.82it/s][A100%|██████████| 2/2 [00:00<00:00,  2.68it/s]                                             
-                                             [A
-
-
-100%|██████████| 2/2 [00:00<00:00,  2.36it/s][A[A[A
-
-100%|██████████| 2/2 [00:00<00:00,  2.28it/s][A[A
-
-
-                                             [A[A[A
-
-                                             [A[A  0%|          | 0/2 [00:00<?, ?it/s]
-  0%|          | 0/2 [00:00<?, ?it/s][A
-
-  0%|          | 0/2 [00:00<?, ?it/s][A[A
-
-
-  0%|          | 0/2 [00:00<?, ?it/s][A[A[A
- 50%|█████     | 1/2 [00:00<00:00,  5.64it/s][A
-
-
- 50%|█████     | 1/2 [00:00<00:00,  3.51it/s][A[A[A 50%|█████     | 1/2 [00:00<00:00,  3.02it/s]
-
- 50%|█████     | 1/2 [00:00<00:00,  2.83it/s][A[A
-100%|██████████| 2/2 [00:00<00:00,  4.20it/s][A
-                                             [A100%|██████████| 2/2 [00:00<00:00,  2.97it/s]  0%|          | 0/2 [00:00<?, ?it/s]                                             
-
-
-100%|██████████| 2/2 [00:00<00:00,  2.72it/s][A[A[A
-
-
-                                             [A[A[A
-
-100%|██████████| 2/2 [00:00<00:00,  2.76it/s][A[A
-
-                                             [A[A
-  0%|          | 0/1 [00:00<?, ?it/s][A
-
-  0%|          | 0/2 [00:00<?, ?it/s][A[A
-
-
-  0%|          | 0/2 [00:00<?, ?it/s][A[A[A 50%|█████     | 1/2 [00:00<00:00,  3.37it/s]
-100%|██████████| 1/1 [00:00<00:00,  5.89it/s][A
-                                             [A
-  0%|          | 0/1 [00:00<?, ?it/s][A
-
- 50%|█████     | 1/2 [00:00<00:00,  3.56it/s][A[A
-
-
- 50%|█████     | 1/2 [00:00<00:00,  2.74it/s][A[A[A100%|██████████| 2/2 [00:00<00:00,  3.06it/s]                                             
-100%|██████████| 1/1 [00:00<00:00,  4.07it/s][A
-                                             [A  0%|          | 0/2 [00:00<?, ?it/s]
-
-100%|██████████| 2/2 [00:00<00:00,  3.29it/s][A[A
-
-                                             [A[A
-  0%|          | 0/2 [00:00<?, ?it/s][A
-
-
-100%|██████████| 2/2 [00:00<00:00,  3.04it/s][A[A[A
-
-
-                                             [A[A[A
-
-  0%|          | 0/1 [00:00<?, ?it/s][A[A
-
-
-  0%|          | 0/2 [00:00<?, ?it/s][A[A[A 50%|█████     | 1/2 [00:00<00:00,  3.05it/s]
- 50%|█████     | 1/2 [00:00<00:00,  3.90it/s][A
-
-100%|██████████| 1/1 [00:00<00:00,  5.15it/s][A[A
-
-                                             [A[A2026-08-15 10:37:38.213 | WARNING  | data_source.technical_indicators_akshare:compute_stock_technical_factor_from_history:411 - 拒绝 688828.SH 技术因子: insufficient_rows<20
-100%|██████████| 2/2 [00:00<00:00,  3.13it/s]                                               0%|          | 0/2 [00:00<?, ?it/s]
-
-
- 50%|█████     | 1/2 [00:00<00:00,  2.46it/s][A[A[A
-100%|██████████| 2/2 [00:00<00:00,  3.19it/s][A
-                                             [A
-  0%|          | 0/2 [00:00<?, ?it/s][A
-
-  0%|          | 0/2 [00:00<?, ?it/s][A[A
-
-
-100%|██████████| 2/2 [00:00<00:00,  3.16it/s][A[A[A
-
-
-                                             [A[A[A 50%|█████     | 1/2 [00:00<00:00,  2.80it/s]
- 50%|█████     | 1/2 [00:00<00:00,  3.22it/s][A
-
-
-  0%|          | 0/2 [00:00<?, ?it/s][A[A[A
-
- 50%|█████     | 1/2 [00:00<00:00,  3.10it/s][A[A100%|██████████| 2/2 [00:00<00:00,  3.31it/s]                                               0%|          | 0/2 [00:00<?, ?it/s]
-
-
- 50%|█████     | 1/2 [00:00<00:00,  3.73it/s][A[A[A
-
-100%|██████████| 2/2 [00:00<00:00,  3.10it/s][A[A
-
-                                             [A[A
-100%|██████████| 2/2 [00:00<00:00,  2.58it/s][A
-                                             [A
-  0%|          | 0/2 [00:00<?, ?it/s][A 50%|█████     | 1/2 [00:00<00:00,  2.78it/s]
-
-  0%|          | 0/2 [00:00<?, ?it/s][A[A
-
-
-100%|██████████| 2/2 [00:00<00:00,  3.13it/s][A[A[A
-
-
-                                             [A[A[A
-
-
-  0%|          | 0/2 [00:00<?, ?it/s][A[A[A100%|██████████| 2/2 [00:00<00:00,  2.79it/s]                                             Loading config from: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/config.yaml (Market: CN-Stock)
-[replay] plan dates=['2026-08-14'] strategy=momentum output=/Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace_replays/momentum
-
-[replay] launching: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/.venv/bin/python -u /Users/ruby/Desktop/ai-trading/contest_trade_refactor/scripts/run_pipeline_rerun.py --strategy momentum --trigger-time 2026-08-14 18:00:00 --symbols-limit 0 --concurrency 4
-[replay] workspace=/Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace_replays/momentum/20260814
-Loading config from: /Users/ruby/Desktop/ai-trading/contest_trade_refactor/config.yaml (Market: CN-Stock)
-[sina_summary_agent] Loaded: data_source.sina_news_crawl.SinaNewsCrawl
-[thx_summary_agent] Loaded: data_source.thx_news_crawl.ThxNewsCrawl

@@ -433,6 +433,7 @@ def compute_stock_technical_factor_from_history(
     closes = pd.to_numeric(hist_df["收盘"], errors="coerce")
     highs = pd.to_numeric(hist_df["最高"], errors="coerce")
     lows = pd.to_numeric(hist_df["最低"], errors="coerce")
+    opens = pd.to_numeric(hist_df["开盘"], errors="coerce")
     volumes = pd.to_numeric(hist_df["成交量"], errors="coerce")
 
     if closes.dropna().shape[0] < 20:
@@ -473,6 +474,23 @@ def compute_stock_technical_factor_from_history(
     amount_ratio = today_amount / prev_5d_avg_amount if prev_5d_avg_amount and prev_5d_avg_amount > 0 else float("nan")
     volume_ma5_ma20_ratio = vol_5 / vol_20 if vol_20 and vol_20 > 0 else float("nan")
 
+    # daily VWAP proxy: typical price * volume weighted over recent 5/20 sessions
+    def _session_vwap(rows: int):
+        if len(closes) < 5:
+            return float("nan")
+        c = closes.tail(rows)
+        h = highs.tail(rows)
+        l = lows.tail(rows)
+        v = volumes.tail(rows)
+        tp = (h + l + c) / 3.0
+        mask = (v > 0) & tp.notna() & (tp > 0)
+        if mask.sum() < 5:
+            return float("nan")
+        return float((tp[mask] * v[mask]).sum() / v[mask].sum())
+
+    vwap_5 = _session_vwap(5)
+    vwap_20 = _session_vwap(20)
+
     boll_upper, boll_mid, boll_lower = _compute_bollinger(closes, 20)
     if not np.isnan(boll_upper):
         if current_close >= boll_upper:
@@ -495,6 +513,45 @@ def compute_stock_technical_factor_from_history(
         (ma5 / ma5_slope_base - 1.0) * 100.0
         if not np.isnan(ma5_slope_base) and ma5_slope_base > 0
         else float("nan")
+    )
+    # ---- Weak-to-Strong strict HH/HL and pullback metrics ----
+    # HH/HL: compare the last 3 completed sessions (exclude current to avoid look-ahead uid).
+    prev_high = float(highs.iloc[-2]) if len(highs) >= 2 else float('nan')
+    prev2_high = float(highs.iloc[-3]) if len(highs) >= 3 else float('nan')
+    prev_low = float(lows.iloc[-2]) if len(lows) >= 2 else float('nan')
+    prev2_low = float(lows.iloc[-3]) if len(lows) >= 3 else float('nan')
+    hh_strict = bool(
+        not np.isnan(prev_high) and not np.isnan(prev2_high)
+        and prev_high > prev2_high
+    )
+    hl_strict = bool(
+        not np.isnan(prev_low) and not np.isnan(prev2_low)
+        and prev_low > prev2_low
+    )
+    hh_hl_strict = bool(hh_strict and hl_strict)
+    # 回踩确认（严格 Gate 3）: 今日最低 <= vwap <<= close，且接近 vwap（容差用 atr_pct 的 1.5 倍或 2% 兜底）
+    # 若没有精确 intraday vwap，用日线 vwap_20 作为代理；接近定义为 low 距 vwap 不超过 max(2%, 1.0*atr_pct)。
+    def _dist_pct(a, b):
+        try:
+            if a is None or b is None or float(b) == 0 or np.isnan(float(a)) or np.isnan(float(b)):
+                return float('nan')
+            return abs(float(a) - float(b)) / float(b) * 100.0
+        except Exception:
+            return float('nan')
+    vwap_proxy = float(vwap_20) if not np.isnan(vwap_20) else float('nan')
+    today_low = float(lows.iloc[-1])
+    pullback_allowance = 2.0 if np.isnan(atr_pct) else max(2.0, round(atr_pct * 1.5, 3))
+    pullback_near_vwap = bool(
+        not np.isnan(vwap_proxy) and not np.isnan(today_low)
+        and today_low <= vwap_proxy and current_close >= vwap_proxy
+        and _dist_pct(today_low, vwap_proxy) <= pullback_allow
+    )
+    # 放量上涨/缩量回踩：volume_ratio 为正时，用量比衡量上涨放量和回调缩量。
+    pullback_shrink = bool(
+        not np.isnan(volume_ratio) and volume_ratio <= 1.0
+    )
+    rising_volume = bool(
+        not np.isnan(volume_ratio) and volume_ratio >= 1.0 and (change_pct is not None and float(change_pct) > 0)
     )
     ret_1d_pct = _return_pct(closes, 1)
     ret_3d_pct = _return_pct(closes, 3)
@@ -586,7 +643,13 @@ def compute_stock_technical_factor_from_history(
         "symbol_code": code,
         "symbol_name": symbol_name,
         "report_date": trade_date,
+        "open": None if np.isnan(opens.iloc[-1]) else round(float(opens.iloc[-1]), 2),
+        "high": None if np.isnan(highs.iloc[-1]) else round(float(highs.iloc[-1]), 2),
+        "low": None if np.isnan(lows.iloc[-1]) else round(float(lows.iloc[-1]), 2),
         "close": current_close,
+        "vwap_5": None if np.isnan(vwap_5) else round(float(vwap_5), 2),
+        "vwap_20": None if np.isnan(vwap_20) else round(float(vwap_20), 2),
+        "vwap": None if np.isnan(vwap_20) else round(float(vwap_20), 2),
         "change_pct": change_pct,
         "ma20_deviation_pct": None if np.isnan(ma20_dist) else round(float(ma20_dist), 1),
         "close_above_ma5": close_above_ma5,
@@ -613,6 +676,12 @@ def compute_stock_technical_factor_from_history(
         "volume_ratio": None if np.isnan(volume_ratio) else round(float(volume_ratio), 2),
         "amount_ratio": None if np.isnan(amount_ratio) else round(float(amount_ratio), 2),
         "volume_ma5_ma20_ratio": None if np.isnan(volume_ma5_ma20_ratio) else round(float(volume_ma5_ma20_ratio), 2),
+        "hh_strict": bool(hh_strict),
+        "hl_strict": bool(hl_strict),
+        "hh_hl_strict": bool(hh_hl_strict),
+        "pullback_near_vwap": bool(pullback_near_vwap),
+        "pullback_shrink": bool(pullback_shrink),
+        "rising_volume": bool(rising_volume),
         "bollinger": boll_pos,
         "daily_entry_score": round(daily_entry_score, 2),
         "long_term_structure": long_factors,

@@ -14,3 +14,16 @@
 .venv/bin/python scripts/strategy_backtest.py --strategy <name> --start YYYY-MM-DD --end YYYY-MM-DD
 .venv/bin/python scripts/strategy_backtest.py --strategies <a> <b> --compare
 ```
+
+## Strong Diverge（强势分歧龙头战法）
+
+- 位置：`strategies/strong_diverge/`。
+- **完全独立**：有自己的规则引擎 `engine.py`，不依赖旧 `main_loop` / Research Agent 链路。
+- 独立运行：
+  ```bash
+  .venv/bin/python scripts/strong_diverge_backtest.py --start 2026-08-11 --end 2026-08-18 --symbols-limit 200
+  ```
+- 统一入口会自动分发到独立脚本：
+  ```bash
+  .venv/bin/python scripts/strategy_backtest.py --strategy strong_diverge --run-replay
+  ```

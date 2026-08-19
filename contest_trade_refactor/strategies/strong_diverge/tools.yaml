@@ -1,0 +1,3 @@
+# Strong Diverge 策略自身不需要 LLM/研究 Agent。
+# 保留空工具列表，因为 get_strategy() 会加载 tools.yaml。
+tools: []

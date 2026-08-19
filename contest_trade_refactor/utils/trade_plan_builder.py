@@ -430,10 +430,8 @@ def build_trade_plan(
         and not np.isnan(ema21)
         and ema8 > ema13 > ema21
     )
-    hh_hl_proxy = bool(
-        close_series.tail(3).is_monotonic_increasing
-        or (not np.isnan(ma5_slope_pct) and ma5_slope_pct > 0)
-    )
+    # Simplify: use price structure directly; no MA5 slope dependency here.
+    hh_hl_proxy = bool(close_series.tail(3).is_monotonic_increasing)
 
     plan = {
         "symbol_code": code,
@@ -515,8 +513,9 @@ def evaluate_trade_plan_quality(
     Gray-scale by default: returns pass flag + reasons; does NOT mutate anything
     by itself.  Use it in reporting/backtest to compare plan-pass vs plan-fail.
 
-    Based on small historical samples, RR>=1.5 alone was not useful; we now
-    evaluate actionability with signal category and volume confirmation.
+    规划职责分离：RR/止损/信号档是“交易计划硬门”，VWAP/量比/MA5 等转强信号
+    只交给 score_weak_to_strong，价格/风险回报只交给 score_entry_quality，
+    避免因子在同一计划里重复计权。
     """
     if not plan or plan.get("status") != "ok":
         return {
@@ -524,16 +523,10 @@ def evaluate_trade_plan_quality(
             "trade_plan_reject_reasons": ["plan_unavailable"],
             "trade_plan_notes": [],
         }
-    inds = plan.get("indicators") or {}
     p = plan.get("plan") or {}
-    lv = plan.get("levels") or {}
     rr = p.get("rr_1")
     stop_loss = p.get("stop_loss")
     stop_loss_pct = p.get("stop_loss_pct")
-    rsi = inds.get("rsi")
-    vwap20 = inds.get("vwap_20")
-    close = plan.get("close")
-    volume_ratio = inds.get("volume_ratio")
     trade_signal = signal or {}
     pass_ = True
     reject: list[str] = []
@@ -549,6 +542,7 @@ def evaluate_trade_plan_quality(
         pass_ = False
         reject.append("low_signal_group")
 
+    # 计划级硬门：RR / 止损合法性，属于“能否下单”，不属于重复评分因子
     if rr is None:
         pass_ = False
         reject.append("rr_missing")
@@ -567,24 +561,7 @@ def evaluate_trade_plan_quality(
     if stop_loss_pct is not None and stop_loss_pct < max_stop_loss_pct:
         notes.append(f"wide_stop_{stop_loss_pct}")
 
-    if require_volume_ratio_min is not None and volume_ratio is not None and volume_ratio < require_volume_ratio_min:
-        pass_ = False
-        reject.append(f"volume_ratio_below_{require_volume_ratio_min}")
-
-    if require_rsi_max is not None and rsi is not None and rsi > require_rsi_max:
-        pass_ = False
-        reject.append(f"rsi_above_{require_rsi_max}")
-
-    if avoid_below_vwap and vwap20 is not None and close is not None:
-        if close < vwap20 and not lv.get("support_1"):
-            pass_ = False
-            reject.append("below_vwap_no_support")
-        elif close < vwap20:
-            notes.append("below_vwap")
-
-    if volume_ratio is not None and volume_ratio < 0.8:
-        notes.append("low_volume_ratio")
-
+    # 这两个维度只由专用评分模块回答，不在这里再重复硬判
     quality_score = score_entry_quality(trade_signal, trade_plan=plan, identity=trade_signal.get("strong_stock_lifecycle"))
     entry_quality_score = float(quality_score.get("entry_quality_score", 0.0) or 0.0)
     entry_quality_reasons = list(quality_score.get("entry_quality_reasons") or [])

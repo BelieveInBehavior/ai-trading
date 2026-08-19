@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime
@@ -117,8 +118,42 @@ def _load_signal_frame(workspace: Path) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
+
+def _load_strong_diverge_frame(workspace: Path) -> pd.DataFrame:
+    """Load Strong Diverge rule-based result.json files as a lightweight signal frame."""
+    records = []
+    regex = re.compile(r"^\d{8}$")
+    if workspace.exists():
+        for result_json in workspace.rglob("result.json"):
+            try:
+                data = json.loads(result_json.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            trade_date = str(data.get("trade_date") or "").strip()
+            for sig in data.get("buy_signals") or []:
+                if not sig.get("buy_ready"):
+                    continue
+                records.append({
+                    "strategy": "strong_diverge",
+                    "trigger_date": trade_date,
+                    "signal_group": "buy_passed",
+                    "symbol_code": sig.get("symbol_code"),
+                    "symbol_name": sig.get("symbol_name"),
+                    "lifecycle_state": sig.get("lifecycle_state"),
+                    "divergence_mode": sig.get("divergence_mode"),
+                    "divergence_score": sig.get("divergence_score"),
+                    "entry_quality_score": sig.get("entry_quality_score"),
+                    "weak_to_strong_score": sig.get("weak_to_strong_score"),
+                    "t1_buy_score": sig.get("t1_buy_score"),
+                })
+    if not records:
+        return pd.DataFrame()
+    return pd.DataFrame(records)
+
 def _metrics(strategy: str, workspace: Path, horizons: Tuple[int, ...]) -> Dict[str, Any]:
     df = _load_signal_frame(workspace)
+    if strategy == "strong_diverge" and df.empty:
+        df = _load_strong_diverge_frame(workspace)
     if df.empty:
         discovered = _discover_existing_signal_frames(strategy)
         frames = []
@@ -173,8 +208,24 @@ def _metrics(strategy: str, workspace: Path, horizons: Tuple[int, ...]) -> Dict[
 def _run_replay_with_subprocess(strategy: str, start_compact: str, end_compact: str,
                                 symbols_limit: int, concurrency: int, output_dir: Path) -> None:
     """调用 replay_historical_no_future.py 主入口，避免其 subprocess 内部 sys.path 副作用。"""
-    script = PROJECT_ROOT / "scripts" / "replay_historical_no_future.py"
     vpy = PROJECT_ROOT / ".venv" / "bin" / "python"
+    if strategy == "strong_diverge":
+        # 独立策略：走本策略自带的回放 CLI，不调用旧 main_loop
+        script = PROJECT_ROOT / "scripts" / "strong_diverge_backtest.py"
+        cmd = [
+            str(vpy if vpy.exists() else sys.executable),
+            "-u",
+            str(script),
+            "--start", _fmt_compact(start_compact),
+            "--end", _fmt_compact(end_compact),
+            "--output-dir", str(output_dir),
+            "--symbols-limit", str(symbols_limit),
+            "--concurrency", str(concurrency),
+        ]
+        print(f"[replay] {cmd}", flush=True)
+        subprocess.run(cmd, cwd=PROJECT_ROOT, check=True, env=os.environ.copy())
+        return
+    script = PROJECT_ROOT / "scripts" / "replay_historical_no_future.py"
     cmd = [
         str(vpy if vpy.exists() else sys.executable),
         "-u",
