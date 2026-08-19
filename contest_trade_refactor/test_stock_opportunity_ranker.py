@@ -4,6 +4,91 @@ from agents.stock_opportunity_ranker import RankerConfig, StockOpportunityRanker
 
 
 class TestStockOpportunityRanker(unittest.TestCase):
+    def test_forward_score_does_not_saturate_at_100(self):
+        ranker = StockOpportunityRanker(
+            RankerConfig(
+                min_buy_score=0,
+                min_probability=0,
+                min_tradeability_score=0,
+                min_risk_reward_score=0,
+                min_data_quality_score=0,
+                min_technical_score=0,
+                expected_return_floor_pct=-10,
+                enforce_flow_confirmation_if_available=False,
+            )
+        )
+        signal = {
+            "has_opportunity": "yes",
+            "action": "buy",
+            "symbol_code": "600001.SH",
+            "symbol_name": "前瞻机会",
+            "probability": "80%",
+            "technical_factor": {
+                "weekly_data_available": True,
+                "weekly_trend_score": 90,
+                "relative_strength_available": True,
+                "relative_strength_score": 90,
+                "daily_entry_score": 75,
+                "ma20_deviation_pct": 3,
+                "rsi": 55,
+                "volume_ratio": 1.3,
+                "macd": 1.0,
+            },
+            "evidence_list": [
+                {
+                    "description": "公司公告新增订单超预期，主力资金净流入",
+                    "time": "2026-08-11 09:30:00",
+                    "from_source": "公司公告",
+                }
+            ],
+            "limitations": [],
+        }
+
+        scored = ranker.score_signals([signal], "2026-08-11 10:00:00")[0]
+
+        self.assertLess(scored["buy_score"], 100)
+        self.assertEqual(
+            scored["buy_score"],
+            scored["next_day_factor_scorecard"]["forward_opportunity_score"],
+        )
+
+    def test_flow_is_soft_when_hard_confirmation_is_disabled(self):
+        ranker = StockOpportunityRanker(
+            RankerConfig(
+                min_buy_score=0,
+                min_probability=0,
+                min_tradeability_score=0,
+                min_risk_reward_score=0,
+                min_data_quality_score=0,
+                min_technical_score=0,
+                expected_return_floor_pct=-10,
+                enforce_flow_confirmation_if_available=False,
+            )
+        )
+        signal = {
+            "has_opportunity": "yes",
+            "action": "buy",
+            "symbol_code": "600002.SH",
+            "symbol_name": "催化启动",
+            "probability": "70%",
+            "evidence_list": [
+                {
+                    "description": "新增订单超预期，但暂未见明显资金净流入",
+                    "time": "2026-08-11 09:30:00",
+                    "from_source": "公司公告",
+                }
+            ],
+            "limitations": [],
+        }
+
+        scored = ranker.score_signals(
+            [signal],
+            "2026-08-11 10:00:00",
+            market_context={"has_sector_flow_data": True},
+        )[0]
+
+        self.assertNotIn("flow<", " ".join(scored["next_day_gate_report"]["failed_reasons"]))
+
     def test_rank_signals_prefers_high_quality_buy_signal(self):
         ranker = StockOpportunityRanker(
             RankerConfig(top_k=5, min_buy_score=55, min_probability=0.5)
@@ -288,7 +373,8 @@ class TestStockOpportunityRanker(unittest.TestCase):
         )
         self.assertGreater(by_code["600111.SH"]["buy_score"], by_code["600112.SH"]["buy_score"])
 
-    def test_multitimeframe_gate_requires_weekly_and_relative_strength(self):
+    def test_multitimeframe_gate_does_not_require_weekly_and_relative_strength_for_short(self):
+        """Under T+3~T+5 design, weak weekly/RS does NOT hard-block when the short setup exists."""
         ranker = StockOpportunityRanker(
             RankerConfig(
                 top_k=5,
@@ -321,10 +407,14 @@ class TestStockOpportunityRanker(unittest.TestCase):
                 "relative_strength_20d_pct": -3.2,
                 "relative_strength_60d_pct": -5.0,
                 "daily_entry_score": 65,
+                "ret_3d_pct": 5.0,
+                "ret_5d_pct": 8.0,
+                "volume_ratio": 1.4,
+                "amount_ratio": 1.5,
             },
             "evidence_list": [
                 {
-                    "description": "短线反弹，但周线趋势转弱且相对大盘走弱",
+                    "description": "短线放量反弹，但周线趋势转弱且相对大盘走弱",
                     "time": "2026-08-11 09:30:00",
                     "from_source": "公司公告",
                 }
@@ -335,9 +425,9 @@ class TestStockOpportunityRanker(unittest.TestCase):
         scored = ranker.score_signals([signal], "2026-08-11 10:00:00")
         gate = scored[0]["next_day_gate_report"]
         failed = " ".join(gate["failed_reasons"])
-        self.assertFalse(gate["passed"])
-        self.assertIn("weekly_trend", failed)
-        self.assertIn("relative_strength", failed)
+        self.assertTrue(gate["passed"])
+        self.assertNotIn("weekly_trend<", failed)
+        self.assertNotIn("relative_strength<", failed)
 
     def test_multitimeframe_gate_accepts_aligned_weekly_rs_and_daily_setup(self):
         ranker = StockOpportunityRanker(
@@ -556,9 +646,52 @@ class TestStockOpportunityRanker(unittest.TestCase):
         self.assertIn("flow", " ".join(gate["failed_reasons"]))
         self.assertIn("regime", " ".join(gate["failed_reasons"]))
 
+    def test_flow_confirmation_uses_concrete_amount_evidence(self):
+        """Top-tier evidence with real net-inflow magnitude should pass flow gate."""
+        ranker = StockOpportunityRanker(
+            RankerConfig(
+                min_buy_score=0,
+                min_probability=0,
+                min_data_quality_score=0,
+                min_tradeability_score=0,
+                min_risk_reward_score=0,
+                min_technical_score=0,
+                expected_return_floor_pct=-10,
+                min_flow_confirmation_score=55,
+                min_regime_confirmation_score=50,
+                enforce_flow_confirmation_if_available=True,
+            )
+        )
+        signal = {
+            "has_opportunity": "yes",
+            "action": "buy",
+            "symbol_code": "000636.SZ",
+            "symbol_name": "风华高科",
+            "probability": "0.62",
+            "evidence_list": [
+                {
+                    "description": "风华高科当日主力净流入10.5亿元，MLCC方向板块主力净流入28.38亿元居首。",
+                    "time": "2026-08-03 18:00:00",
+                    "from_source": "sector_fund_flow_trend_agent",
+                },
+                {
+                    "description": "技术面日线评分82分，量比1.60，属于可关注启动初期。",
+                    "time": "2026-08-03 18:00:00",
+                    "from_source": "technical_indicators_agent",
+                },
+            ],
+            "limitations": [],
+        }
+        scored = ranker.score_signals(
+            [signal],
+            "2026-08-03 18:00:00",
+            market_context={"has_sector_flow_data": True, "market_trend": "neutral", "risk_sentiment": "risk_on"},
+        )[0]
+        gate = scored["next_day_gate_report"]
+        flow = scored["next_day_factor_scorecard"]["capital_flow_score"]
+        self.assertGreaterEqual(flow, 55)
+        self.assertNotIn("flow<", " ".join(gate["failed_reasons"]))
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class TestFinancialEvidenceConsistency(unittest.TestCase):
@@ -618,3 +751,189 @@ class TestFinancialEvidenceConsistency(unittest.TestCase):
         )[0]
         self.assertFalse(scored["next_day_gate_report"]["passed"])
         self.assertIn("financial_claim_conflict", scored["next_day_gate_report"]["failed_reasons"])
+
+
+class TestShortCatalystAndRrGate(unittest.TestCase):
+    def _ranker(self):
+        return StockOpportunityRanker(
+            RankerConfig(
+                min_buy_score=0,
+                min_probability=0,
+                min_tradeability_score=0,
+                min_risk_reward_score=0,
+                min_data_quality_score=0,
+                min_technical_score=0,
+                expected_return_floor_pct=-10,
+                enforce_flow_confirmation_if_available=False,
+                reject_below_rr_without_company_catalyst=True,
+                min_rr_without_company_catalyst=1.0,
+            )
+        )
+
+    def _signal(self, event_type="sector_flow", rr=0.6, with_company_catalyst_text=False):
+        ev = [
+            {
+                "description": "板块资金净流入，个股跟涨"
+                + ("，公司公告新增订单超预期" if with_company_catalyst_text else ""),
+                "time": "2026-08-17 09:30:00",
+                "from_source": "公司公告" if with_company_catalyst_text else "sector_fund_flow_trend_agent",
+            }
+        ]
+        plan = {"plan": {"rr_1": rr}, "status": "ok"}
+        return {
+            "has_opportunity": "yes",
+            "action": "buy",
+            "symbol_code": "600001.SH",
+            "symbol_name": "测试标的",
+            "probability": "70%",
+            "event_type": event_type,
+            "evidence_list": ev,
+            "limitations": [],
+            "trade_plan": plan,
+        }
+
+    def test_sector_only_and_rr_below_one_is_rejected(self):
+        scored = self._ranker().score_signals(
+            [self._signal(event_type="sector_flow", rr=0.6, with_company_catalyst_text=False)],
+            "2026-08-18 10:00:00",
+        )[0]
+        gate = scored["next_day_gate_report"]
+        self.assertFalse(gate["passed"])
+        self.assertIn("rr<1.0_no_company_catalyst", " ".join(gate["failed_reasons"]))
+
+    def test_company_catalyst_and_rr_below_one_is_not_hard_rejected_by_new_gate(self):
+        scored = self._ranker().score_signals(
+            [self._signal(event_type="order_win", rr=0.6, with_company_catalyst_text=True)],
+            "2026-08-18 10:00:00",
+        )[0]
+        gate = scored["next_day_gate_report"]
+        failed = " ".join(gate["failed_reasons"])
+        self.assertNotIn("rr<1.0_no_company_catalyst", failed)
+
+    def test_company_catalyst_and_rr_ok_passes(self):
+        scored = self._ranker().score_signals(
+            [self._signal(event_type="order_win", rr=1.5, with_company_catalyst_text=True)],
+            "2026-08-18 10:00:00",
+        )[0]
+        self.assertTrue(scored["next_day_gate_report"]["passed"])
+
+
+
+class TestSectorOutflowGate(unittest.TestCase):
+    def setUp(self):
+        self.ranker = StockOpportunityRanker(
+            RankerConfig(
+                min_buy_score=0,
+                min_probability=0,
+                min_tradeability_score=0,
+                min_risk_reward_score=0,
+                min_data_quality_score=0,
+                min_technical_score=0,
+                expected_return_floor_pct=-10,
+                enforce_flow_confirmation_if_available=False,
+            )
+        )
+        self.signal = {
+            "has_opportunity": "yes",
+            "action": "buy",
+            "symbol_code": "600602.SH",
+            "symbol_name": "测试半导体",
+            "probability": "70%",
+            "event_type": "sector_flow",
+            "evidence_list": [
+                {
+                    "description": "半导体板块今日主力净流出152.6亿元，个股当日涨停",
+                    "time": "2026-08-18 09:40:00",
+                    "from_source": "sector_fund_flow_trend_agent",
+                }
+            ],
+            "limitations": ["板块资金面偏弱"],
+        }
+
+    def test_sector_only_and_block_outflow_is_rejected(self):
+        scored = self.ranker.score_signals([self.signal], "2026-08-18 10:00:00")[0]
+        gate = scored["next_day_gate_report"]
+        self.assertFalse(gate["passed"])
+        self.assertIn("sector_main_net_outflow", " ".join(gate["failed_reasons"]))
+
+    def test_sector_outflow_block_with_company_catalyst_does_not_break(self):
+        signal = dict(self.signal)
+        signal["event_type"] = "price_hike"
+        signal["evidence_list"] = [
+            {
+                "description": "公司产品涨价20%，同时半导体板块主力净流出50亿",
+                "time": self.signal["evidence_list"][0]["time"],
+                "from_source": "公司公告",
+            }
+        ]
+        scored = self.ranker.score_signals([signal], "2026-08-18 10:00:00")[0]
+        gate = scored["next_day_gate_report"]
+        # outflow <100 and company catalyst => not rejected by this gate
+        failed = " ".join(gate["failed_reasons"])
+        self.assertNotIn("sector_main_net_outflow", failed)
+
+
+
+class TestSetupMetaOutput(unittest.TestCase):
+    def setUp(self):
+        self.ranker = StockOpportunityRanker(
+            RankerConfig(
+                min_buy_score=0,
+                min_probability=0,
+                min_tradeability_score=0,
+                min_risk_reward_score=0,
+                min_data_quality_score=0,
+                min_technical_score=0,
+                expected_return_floor_pct=-10,
+                enforce_flow_confirmation_if_available=False,
+            )
+        )
+
+    def _signal(self, event_type="sector_flow", company_catalyst=False):
+        desc = "板块资金净流入，个股跟涨"
+        if company_catalyst:
+            desc += "，公司公告新增订单超预期"
+        return {
+            "has_opportunity": "yes",
+            "action": "buy",
+            "symbol_code": "600700.SH",
+            "symbol_name": "状态测试",
+            "probability": "70%",
+            "event_type": event_type,
+            "technical_factor": {
+                "ma20_deviation_pct": 3.0,
+                "rsi": 55,
+                "relative_strength_20d_pct": 1.2,
+                "breakout_20d": True,
+                "short_setup_score": 90,
+            },
+            "evidence_list": [
+                {
+                    "description": desc,
+                    "time": "2026-08-17 09:30:00",
+                    "from_source": "公司公告" if company_catalyst else "sector_fund_flow_trend_agent",
+                }
+            ],
+            "limitations": [],
+        }
+
+    def test_sector_follow_outputs_d_state(self):
+        scored = self.ranker.score_signals([self._signal()], "2026-08-18 10:00:00")[0]
+        meta = scored.get("setup_meta") or {}
+        self.assertEqual(meta.get("risk_state"), "D_纯板块跟随")
+        self.assertEqual(meta.get("driver_quality"), "sector_follow")
+        self.assertEqual(scored.get("signal_confidence_type"), "subjective_confidence_not_backtest")
+        self.assertEqual(scored.get("expected_return_method"), "heuristic_edge_from_scoring_formula")
+
+    def test_company_catalyst_outputs_company_driven(self):
+        scored = self.ranker.score_signals(
+            [self._signal(event_type="order_win", company_catalyst=True)],
+            "2026-08-18 10:00:00",
+        )[0]
+        meta = scored.get("setup_meta") or {}
+        self.assertEqual(meta.get("risk_state"), "B_公司催化启动")
+        self.assertEqual(meta.get("driver_quality"), "company")
+
+
+if __name__ == "__main__":
+    unittest.main()

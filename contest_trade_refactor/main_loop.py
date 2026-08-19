@@ -8,6 +8,7 @@ Uses the new agent loop implementations for cleaner control flow.
 import re
 import json
 import asyncio
+import sys
 import pandas as pd
 from datetime import datetime
 from typing import Awaitable, Callable, List, Dict, Any, Optional
@@ -30,6 +31,7 @@ from agents.signal_schema import parse_json_signals, validate_research_signal
 from agents.signal_tier_classifier import SignalTierClassifier
 from agents.market_regime_detector import MarketRegimeDetector, format_regime_report
 from utils.signal_tracker import SignalTracker
+from utils.trade_plan_builder import attach_trade_plans
 from data_source.technical_indicators_akshare import compute_stock_technical_factor
 from utils.market_manager import GLOBAL_MARKET_MANAGER
 from utils.report_utils import generate_trade_decision_report
@@ -97,8 +99,10 @@ def _extract_technical_stock_factors(data_factors: List[Dict[str, Any]]) -> Dict
         r"MA20距离(?P<ma20>[-+]?\d+(?:\.\d+)?|N/A)%?,\s*"
         r"RSI=(?P<rsi>[-+]?\d+(?:\.\d+)?|N/A|nan),\s*"
         r"MACD=(?P<macd>[-+]?\d+(?:\.\d+)?|N/A|nan),\s*"
-        r"量比=(?P<volume_ratio>[-+]?\d+(?:\.\d+)?|N/A|nan),\s*"
-        r"布林=(?P<bollinger>[^\s<]+)",
+        r"量比=(?P<volume_ratio>[-+]?\d+(?:\.\d+)?|N/A|nan),?\s*"
+        r"(?:额比=(?P<amount_ratio>[-+]?\d+(?:\.\d+)?|N/A|nan),\s*)?"
+        r"(?:量趋势=(?P<volume_ma5_ma20_ratio>[-+]?\d+(?:\.\d+)?|N/A|nan),\s*)?"
+        r"(?:布林=(?P<bollinger>[^\s<]+))",
     )
 
     for factor in data_factors or []:
@@ -129,6 +133,8 @@ def _extract_technical_stock_factors(data_factors: List[Dict[str, Any]]) -> Dict
                 "rsi": _parse_float(match.group("rsi")),
                 "macd": _parse_float(match.group("macd")),
                 "volume_ratio": _parse_float(match.group("volume_ratio")),
+                "amount_ratio": _parse_float(match.group("amount_ratio")) if match.groupdict().get("amount_ratio") else None,
+                "volume_ma5_ma20_ratio": _parse_float(match.group("volume_ma5_ma20_ratio")) if match.groupdict().get("volume_ma5_ma20_ratio") else None,
                 "bollinger": match.group("bollinger"),
                 "source_line": line,
             }
@@ -382,6 +388,10 @@ class SimpleTradeCompany:
                     selection_config.get("quantitative_hard_min_relative_score"),
                     _config_float(strategy_config.get("quantitative_hard_min_relative_score"), 25.0),
                 ),
+                hard_min_relative_20d_pct=_config_float(
+                    selection_config.get("quantitative_hard_min_relative_20d_pct"),
+                    _config_float(strategy_config.get("quantitative_hard_min_relative_20d_pct"), -50.0),
+                ),
                 require_data_quality=_config_bool(
                     selection_config.get("require_data_quality"),
                     True,
@@ -389,6 +399,10 @@ class SimpleTradeCompany:
                 # V2: 不再强制 Weinstein Stage 2。改用 stage 评分 + stage>=4硬拒绝。
                 require_weinstein_stage2=_config_bool(
                     selection_config.get("require_weinstein_stage2"),
+                    False,
+                ),
+                sector_enrichment_enabled=_config_bool(
+                    selection_config.get("sector_enrichment_enabled"),
                     False,
                 ),
             )
@@ -420,7 +434,17 @@ class SimpleTradeCompany:
                     True,
                 ),
                 enforce_multi_timeframe=_config_bool(
-                    selection_config.get("multi_timeframe_enabled"),
+                    ranker_overrides.get(
+                        "enforce_multi_timeframe",
+                        selection_config.get("multi_timeframe_enabled"),
+                    ),
+                    True,
+                ),
+                enforce_flow_confirmation_if_available=_config_bool(
+                    ranker_overrides.get(
+                        "enforce_flow_confirmation_if_available",
+                        selection_config.get("enforce_flow_confirmation_if_available"),
+                    ),
                     True,
                 ),
                 min_weekly_trend_score=_config_float(
@@ -467,6 +491,14 @@ class SimpleTradeCompany:
                     ranker_overrides.get("strong_trend_penalty_bias"),
                     0.0,
                 ),
+                reject_below_rr_without_company_catalyst=_config_bool(
+                    ranker_overrides.get("reject_below_rr_without_company_catalyst"),
+                    True,
+                ),
+                min_rr_without_company_catalyst=_config_float(
+                    ranker_overrides.get("min_rr_without_company_catalyst"),
+                    1.0,
+                ),
             )
         )
         self.consensus_aggregator = ConsensusAggregator(
@@ -507,10 +539,12 @@ class SimpleTradeCompany:
             with open(belief_list_path, 'r', encoding='utf-8') as f:
                 belief_list = json.load(f)
 
+        strategy_tools = strategy_config.get("tool_list")
         for agent_idx, belief in enumerate(belief_list):
             config = ResearchAgentLoopConfig(
                 agent_name=f"agent_{agent_idx}",
                 belief=belief,
+                tools_paths=strategy_tools,
                 verbose=True,
                 enable_cache=False,
             )
@@ -775,6 +809,63 @@ class SimpleTradeCompany:
         watchlist = selection["watchlist"]
         consensus_signals = selection.get("consensus_signals", [])
 
+        # Candidate-level trade plan: RSI/VWAP/EMA/support/entry-stop-take/RR.
+        # This is the "Stage 2 candidate plan layer" that turns a candidate
+        # into a decision-ready 1-5 day plan without changing the buy gates.
+        trade_date = self._latest_completed_trade_date(trigger_time)
+        buy_signals = attach_trade_plans(buy_signals, trade_date=trade_date)
+        watchlist = attach_trade_plans(watchlist, trade_date=trade_date)
+
+        # Post-attach short gate: once the plan supplies an RR figure, demote
+        # sector-only candidates whose reward/risk is unacceptable.  the ranker
+        # stage cannot see the plan, so this is the binding layer.
+        remaining_buy = []
+        for sig in buy_signals or []:
+            rr = self.signal_ranker._trade_plan_rr(sig)
+            company_catalyst = self.signal_ranker._has_company_level_catalyst(
+                sig, sig.get("evidence_list") or []
+            )
+            event_type = self.signal_ranker._event_type(sig)
+            sector_only = (
+                str(event_type or "").strip().lower() == "sector_flow"
+                or not company_catalyst
+            )
+            sector_outflow = self.signal_ranker._sector_net_outflow_amount(sig)
+            weak_plan = rr is not None and rr < 1.0 and sector_only
+            sector_headwind = (
+                sector_only
+                and sector_outflow is not None
+                and sector_outflow <= -100.0
+            )
+            if weak_plan or sector_headwind:
+                sig["buy_decision"] = "watch"
+                sig_gate = dict(sig.get("next_day_gate_report") or {})
+                gate_failed = list(sig_gate.get("failed_reasons") or [])
+                if weak_plan:
+                    reason = "rr<1_no_company_catalyst"
+                    if reason not in gate_failed:
+                        gate_failed.append(reason)
+                if sector_headwind:
+                    reason = f"sector_main_net_outflow_{abs(sector_outflow):.0f}亿"
+                    if reason not in gate_failed:
+                        gate_failed.append(reason)
+                sig_gate["failed_reasons"] = gate_failed
+                sig_gate["passed"] = False
+                sig["next_day_gate_report"] = sig_gate
+                watchlist.append(sig)
+            else:
+                remaining_buy.append(sig)
+        buy_signals = remaining_buy
+
+        # Candidate ranking helper: trade_plan_pass leads, then buy_score falls back.
+        def _plan_rank(sig):
+            return (
+                0 if sig.get("trade_plan_pass") is True else 1,
+                -float(sig.get("buy_score") or 0),
+            )
+        buy_signals.sort(key=_plan_rank)
+        watchlist.sort(key=_plan_rank)
+
         print("\n" + "=" * 80)
         print("✅ Trade Company Analysis Completed")
 
@@ -832,6 +923,13 @@ class SimpleTradeCompany:
 
         return result
 
+    def _latest_completed_trade_date(self, trigger_time: str) -> str | None:
+        """Best-effort as-of trading date for candidate trade plans."""
+        try:
+            return get_latest_completed_trading_date(trigger_time)
+        except Exception:
+            return None
+
     async def _run_data_agents(self, trigger_time: str) -> List:
         """Run all data agents (pipelines) in parallel"""
         tasks = []
@@ -855,17 +953,41 @@ class SimpleTradeCompany:
     async def _run_research_agents(
         self, trigger_time: str, data_factors: List
     ) -> List[Dict]:
-        """Run all research agents in parallel"""
-        tasks = []
+        """Run all research agents in parallel.
 
-        for agent_id, agent in self.research_agents.items():
+        Each agent is forced to work on a slice of the quantitative candidate pool;
+        the agent-specific scope is injected into the background so the LLM cannot
+        silently restrict itself to hot themes outside the pool.
+        """
+        tasks = []
+        scoped_candidates = self._split_quantitative_candidates_for_agents()
+
+        for idx, (agent_id, agent) in enumerate(self.research_agents.items()):
             # Build background information for this agent
             research_factors = list(data_factors or [])
             quantitative_factor = self._quantitative_context_factor()
             if quantitative_factor:
                 research_factors.append(quantitative_factor)
+
+            # Mandatory research scope from the quantitative candidate pool
+            scope = ""
+            if scoped_candidates and idx < len(scoped_candidates):
+                scope_cands = scoped_candidates[idx]
+                if scope_cands:
+                    lines = ["你必须从以下量化候选池中优先研究，不能只凭自己的偏好搜索全市场。"]
+                    lines.append("请至少研究其中若干只，输出最有把握的候选；若全部都不适合，再逐条说明理由。")
+                    lines.append("候选列表（排名按量化分，越小越靠前）：")
+                    for j, c in enumerate(scope_cands, start=1):
+                        code = c.get("symbol_code") or ""
+                        name = c.get("symbol_name") or ""
+                        qs = c.get("quantitative_score")
+                        lines.append(
+                            f"{j}. {name}({code}) 量化分={qs or 0}"
+                        )
+                    scope = "\n".join(lines)
+
             background = agent.build_background_information(
-                trigger_time, agent.config.belief, research_factors
+                trigger_time, agent.config.belief, research_factors, research_scope=scope
             )
 
             input_data = ResearchAgentInput(
@@ -914,6 +1036,38 @@ class SimpleTradeCompany:
 
         return all_signals
 
+    def _split_quantitative_candidates_for_agents(self) -> List[List[Dict[str, Any]]]:
+        """Distribute quantitative_candidates evenly among research agents.
+
+        top_k<=0 feed the full quantitative passed pool; still cap each prompt
+        with _per_agent_scope_max so we don't dump thousands of lines into the
+        LLM context. The cap is per-agent, so with N agents the total research
+        reach is N * cap.
+        """
+        if self.quantitative_screener.config.enabled and not self.quantitative_screen_fail_open:
+            candidates = list(self.quantitative_screen_result.get("candidates") or [])
+        else:
+            candidates = list(self.quantitative_candidates_by_code.values()) or []
+        if not candidates:
+            return []
+        num_agents = max(1, len(self.research_agents))
+        max_scope = int(getattr(self.quantitative_screener.config, "top_k", 0) or 0)
+        if max_scope <= 0:
+            # Still keep each individual LLM prompt bounded.  Increase this if you
+            # trust the model with more names per call.
+            per_agent_cap = 80
+        else:
+            per_agent_cap = None  # top_k was already the global cap
+        pool_size = max(1, len(candidates) // num_agents)
+        buckets: List[List[Dict[str, Any]]] = []
+        for i in range(num_agents):
+            chunk = candidates[i * pool_size:(i + 1) * pool_size]
+            if per_agent_cap and len(chunk) > per_agent_cap:
+                chunk = chunk[:per_agent_cap]
+            buckets.append(chunk)
+        return buckets
+
+
     def _quantitative_context_factor(self) -> Dict[str, Any] | None:
         if not self.quantitative_screener.config.enabled:
             return None
@@ -933,18 +1087,20 @@ class SimpleTradeCompany:
         ):
             return signals
 
+        # Candidate-gate for research signals.  The quantitative universe is the
+        # ONLY entry point into watch/buy/consensus.  Signals from research agents
+        # that are not in the quantitative candidate pool are dropped here; they
+        # cannot become buy/watch just because a research agent liked a hot theme.
         filtered = []
         for signal in signals or []:
             code = _normalize_stock_code(signal.get("symbol_code"))
             candidate = self.quantitative_candidates_by_code.get(code)
-            if not candidate:
-                continue
-            signal["technical_factor"] = dict(candidate.get("technical_factor") or {})
-            signal["quantitative_score"] = candidate.get("quantitative_score")
-            signal["quantitative_screen"] = candidate.get("quantitative_screen") or {}
-            filtered.append(signal)
+            if candidate:
+                signal["technical_factor"] = dict(candidate.get("technical_factor") or {})
+                signal["quantitative_score"] = candidate.get("quantitative_score")
+                signal["quantitative_screen"] = candidate.get("quantitative_screen") or {}
+                filtered.append(signal)
         return filtered
-
     def _parse_signals(self, result) -> List[Dict]:
         """Parse preferred JSON output, with legacy XML compatibility."""
         thinking_text = getattr(result, "final_result_thinking", "") or ""
@@ -1313,6 +1469,28 @@ class SimpleTradeCompany:
 
         combined_text = "\n".join((factor.get("context_string") or "") for factor in data_factors or [])
 
+        # Structured breadth/liquidity features for the regime model. Text is
+        # only a source adapter here; the detector consumes numeric fields.
+        def _latest_count(patterns):
+            values = []
+            for pattern in patterns:
+                values.extend(int(x) for x in re.findall(pattern, combined_text))
+            return values[-1] if values else None
+
+        advancing = _latest_count([r"上涨(?:个股)?(?:有|约)?\s*(\d+)\s*只", r"(\d+)\s*只(?:股票|个股)上涨"])
+        declining = _latest_count([r"下跌(?:个股)?(?:有|超|约)?\s*(\d+)\s*只", r"(\d+)\s*只(?:股票|个股)下跌"])
+        limit_up = _latest_count([r"涨停(?:股)?(?:有|共|约)?\s*(\d+)\s*只", r"(\d+)\s*只(?:股票|个股)涨停"])
+        limit_down = _latest_count([r"跌停(?:股)?(?:有|共|约)?\s*(\d+)\s*只", r"(\d+)\s*只(?:股票|个股)跌停"])
+        if advancing is not None and declining is not None and advancing + declining > 0:
+            context["advance_ratio"] = round(advancing / (advancing + declining), 4)
+        if limit_up is not None and limit_down is not None:
+            context["limit_up_down_ratio"] = round(limit_up / max(1, limit_down), 4)
+        turnover_matches = re.findall(r"成交(?:额|量)[^。；\n]{0,30}?(?:较[^。；\n]{0,12}?)?(增加|减少|放大|缩量|下降)\s*(\d+(?:\.\d+)?)%", combined_text)
+        if turnover_matches:
+            direction, value = turnover_matches[-1]
+            signed = float(value) * (1 if direction in {"增加", "放大"} else -1)
+            context["market_turnover_change_pct"] = signed
+
         positive_trend_hits = sum(combined_text.count(keyword) for keyword in ["涨停", "普涨", "收涨", "上涨", "新高", "反弹"])
         negative_trend_hits = sum(combined_text.count(keyword) for keyword in ["回调", "下跌", "承压", "走弱", "回落"])
 
@@ -1394,8 +1572,14 @@ async def main():
     """Main entry point for testing"""
     company = SimpleTradeCompany()
 
-    # Use current time or specify a time
+    # Allow an optional trigger time via CLI: python main_loop.py [--trigger "YYYY-MM-DD HH:MM:SS"]
     trigger_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    argv = sys.argv[1:]
+    if "--trigger" in argv:
+        idx = argv.index("--trigger")
+        if idx + 1 < len(argv):
+            trigger_time = argv[idx + 1]
+            print(f"[main_loop] Using override trigger_time={trigger_time}")
     # trigger_time = "2024-01-23 09:00:00"  # For testing with specific time
 
     result = await company.run(trigger_time)

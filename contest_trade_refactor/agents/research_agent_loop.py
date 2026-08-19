@@ -69,6 +69,7 @@ class ResearchAgentLoopConfig(AgentLoopConfig):
         self,
         agent_name: str = "research_agent",
         belief: str = "",
+        tools_paths: List[str] | None = None,
         **kwargs
     ):
         # Initialize base config
@@ -77,7 +78,8 @@ class ResearchAgentLoopConfig(AgentLoopConfig):
         # Research agent specific
         self.belief = belief
         self.max_iterations = cfg.research_agent_config.get("max_react_step", 10)
-        self.tool_config = ToolManagerConfig(cfg.research_agent_config["tools"])
+        tool_paths = tools_paths or cfg.research_agent_config.get("tools") or []
+        self.tool_config = ToolManagerConfig(list(tool_paths))
         self.output_language = cfg.system_language
         self.plan_enabled = cfg.research_agent_config.get("plan", True)
         self.react_enabled = cfg.research_agent_config.get("react", True)
@@ -392,9 +394,14 @@ class ResearchAgentLoop(ReactAgentLoop):
 
     # Helper methods for building prompts
     def build_background_information(
-        self, trigger_time: str, belief: str, factors: List
+        self, trigger_time: str, belief: str, factors: List, research_scope: str = ""
     ) -> str:
-        """Build background information from data factors"""
+        """Build background information from data factors.
+
+        ``research_scope`` is an optional mandatory candidate list that the agent
+        must start from; it appears prominently in the prompt so the research
+        step cannot silently ignore the quantitative candidate pool.
+        """
         global_market_information = ""
 
         for factor in factors:
@@ -440,6 +447,10 @@ class ResearchAgentLoop(ReactAgentLoop):
         <your_belief>
         {belief}
         </your_belief>
+
+        <research_scope>
+        {research_scope}
+        </research_scope>
         """
         )
 
@@ -447,6 +458,7 @@ class ResearchAgentLoop(ReactAgentLoop):
             global_market_information=global_market_information,
             target_market=target_market,
             belief=belief,
+            research_scope=research_scope,
         )
 
     def get_invest_prompt(self) -> str:

@@ -52,7 +52,7 @@ area               str      地区                  深圳
 industry           str      行业                  银行
 turnover_rate      float    换手率（%）           2.06
 turnover_rate_f    float    换手率（自由流通股）   3.28
-volume_ratio       float    量比                  1.08
+volume_ratio       float    量比=今量/前5日均量    1.26
 pe                 float    市盈率（总市值/净利润，亏损的PE为空） 21.22
 pe_ttm             float    市盈率（TTM，亏损的PE为空） 22.06
 pb                 float    市净率（总市值/净资产） 2.16
@@ -103,7 +103,7 @@ high               float    最高价                7.62
 low                float    最低价                7.56
 open               float    开盘价                7.58
 pre_close          float    昨收价                7.57
-volume_ratio       float    量比                  1.08
+volume_ratio       float    量比=今量/前5日均量    1.26
 turnover_rate      float    换手率（%）           2.06
 pe                 float    市盈率（动态）        21.22
 pb                 float    市净率                2.16

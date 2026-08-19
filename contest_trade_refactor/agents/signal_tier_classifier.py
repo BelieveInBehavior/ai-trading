@@ -1,266 +1,277 @@
-"""信号分级分类器
-将候选���票分为A/B/C三个等���，对���不同的仓���策���
+"""Forward-opportunity signal allocation and risk sizing.
+
+The class name is kept for the existing pipeline contract, but the legacy
+weekly-trend/relative-strength tier gates have intentionally been removed.
 """
 
-from typing import Dict, List, Any, Tuple
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import Any, Dict, List
+
+from utils.strong_stock_lifecycle import evaluate_lifecycle
+
+
+def _number(value: Any, default: float = 0.0) -> float:
+    try:
+        result = float(value)
+        return result if result == result else default
+    except (TypeError, ValueError):
+        return default
 
 
 @dataclass
 class SignalTier:
-    tier: str  # A/B/C
-    confidence: float  # 0-100
+    tier: str
+    confidence: float
     position_size_pct: float
     reasons: List[str]
 
 
-class SignalTierClassifier:
-    """根据多维度���标将���号分为A/B/C三���"""
+@dataclass
+class AllocationConfig:
+    min_buy_score: float = 60.0
+    high_conviction_score: float = 80.0
+    min_net_edge_pct: float = 0.20
+    high_net_edge_pct: float = 0.80
+    min_data_quality_score: float = 50.0
+    min_identity_score: float = 55.0
+    min_divergence_score: float = 60.0
+    min_entry_quality_score: float = 70.0
+    min_weak_to_strong_score: float = 80.0
+    risk_budget_pct: float = 0.60
+    min_position_pct: float = 30.0
+    max_position_pct: float = 50.0
+    max_high_conviction_position_pct: float = 70.0
 
-    def __init__(self, config: Dict[str, Any] = None):
-        self.config = config or {}
+
+class SignalTierClassifier:
+    """Allocate passed signals using forward edge and volatility-aware risk."""
+
+    def __init__(self, config: Dict[str, Any] | AllocationConfig | None = None):
+        if isinstance(config, AllocationConfig):
+            self.config = config
+        elif isinstance(config, dict):
+            allowed = AllocationConfig.__dataclass_fields__
+            self.config = AllocationConfig(**{k: v for k, v in config.items() if k in allowed})
+        else:
+            self.config = AllocationConfig()
 
     def classify(
         self,
         signals: List[Dict[str, Any]],
-        market_regime: str = "neutral"
+        market_regime: str = "neutral",
     ) -> Dict[str, List[Dict[str, Any]]]:
-        """
-        将���号分级
-
-        Returns:
-            {
-                "tier_A": [...],
-                "tier_B": [...],
-                "tier_C": [...],
-                "tier_reject": [...]
-            }
-        """
-        tiers = {
-            "tier_A": [],
-            "tier_B": [],
-            "tier_C": [],
-            "tier_reject": []
-        }
-
-        for signal in signals:
-            tier_result = self._classify_single(signal, market_regime)
-            tier_key = f"tier_{tier_result.tier}"
-
+        tiers = {"tier_A": [], "tier_B": [], "tier_C": [], "tier_reject": []}
+        for signal in signals or []:
+            result = self._classify_single(signal, market_regime)
             enriched = dict(signal)
-            enriched["signal_tier"] = tier_result.tier
-            enriched["tier_confidence"] = tier_result.confidence
-            enriched["recommended_position_size_pct"] = tier_result.position_size_pct
-            enriched["tier_reasons"] = tier_result.reasons
-
-            tiers[tier_key].append(enriched)
-
+            enriched.update(
+                {
+                    "signal_tier": result.tier,
+                    "tier_confidence": result.confidence,
+                    "recommended_position_size_pct": result.position_size_pct,
+                    "tier_reasons": result.reasons,
+                    "allocation_model": "forward-edge-risk-v1",
+                    "recommended_holding_days": _holding_days(signal),
+                    "holding_rule": _holding_rule(signal),
+                }
+            )
+            tiers[f"tier_{result.tier}"].append(enriched)
         return tiers
 
-    def _classify_single(
-        self,
-        signal: Dict[str, Any],
-        market_regime: str
-    ) -> SignalTier:
-        """单个信号分级"""
-        score = signal.get("buy_score", 0)
-        scorecard = signal.get("next_day_factor_scorecard", {})
+    def _classify_single(self, signal: Dict[str, Any], market_regime: str) -> SignalTier:
+        cfg = self.config
+        scorecard = signal.get("next_day_factor_scorecard") or {}
+        gate = signal.get("next_day_gate_report") or {}
+        lifecycle = signal.get("strong_stock_lifecycle")
+        if not isinstance(lifecycle, dict):
+            lifecycle = evaluate_lifecycle(
+                signal.get("technical_factor") or signal,
+                trade_plan=signal.get("trade_plan"),
+                market_context=signal.get("market_context") or {},
+            )
+        lifecycle_identity = str(lifecycle.get("strong_identity") or "观察股")
+        lifecycle_identity_score = _number(lifecycle.get("strong_identity_score"), 0.0)
+        lifecycle_divergence = _number(lifecycle.get("divergence_score"), 0.0)
+        lifecycle_entry = _number(lifecycle.get("entry_quality_score"), 0.0)
+        lifecycle_weak = _number(lifecycle.get("weak_to_strong_score"), 0.0)
+        lifecycle_buy_ready = bool(lifecycle.get("buy_ready"))
+        forward_score = _number(
+            scorecard.get("forward_opportunity_score", signal.get("buy_score")),
+            0.0,
+        )
+        net_edge = _number(
+            signal.get("expected_net_edge_pct", signal.get("expected_return_t1_pct")),
+            0.0,
+        )
+        data_quality = _number(scorecard.get("data_quality_score"), 0.0)
+        probability = _number(signal.get("probability_value"), 0.5)
+        volatility = max(
+            1.0,
+            _number(
+                signal.get("expected_downside_pct")
+                or scorecard.get("atr_pct")
+                or scorecard.get("daily_volatility_20d_pct"),
+                4.0,
+            ),
+        )
+        risk_flags = list(signal.get("risk_flags") or [])
+        passed = bool(gate.get("passed", True))
 
-        # ���取关���指标
-        weekly_score = scorecard.get("weekly_trend_score", 0)
-        rs_score = scorecard.get("relative_strength_score", 0)
-        daily_score = scorecard.get("daily_entry_score", 0)
-        catalyst_score = scorecard.get("catalyst_score", 0)
-        flow_score = scorecard.get("capital_flow_score", 0)
-        technical_score = scorecard.get("technical_score", 0)
+        if lifecycle_identity != "观察股":
+            return self._classify_lifecycle(signal, lifecycle, market_regime)
 
-        ma20_dev = scorecard.get("ma20_deviation_pct")
-        prev_gain = scorecard.get("prev_day_gain_pct")
+        reasons = [
+            f"前瞻机会分{forward_score:.1f}",
+            f"预期净收益{net_edge:.2f}%",
+            f"预估下行{volatility:.2f}%",
+        ]
+        if not passed or risk_flags:
+            reasons.extend(str(x) for x in (gate.get("failed_reasons") or risk_flags)[:3])
+            return SignalTier("reject", 0.0, 0.0, reasons)
+        if data_quality < cfg.min_data_quality_score:
+            reasons.append(f"数据质量不足{data_quality:.1f}")
+            return SignalTier("reject", 0.0, 0.0, reasons)
 
-        primary_catalyst = scorecard.get("primary_catalyst", False)
-        flow_available = scorecard.get("flow_data_available", False)
+        position = cfg.risk_budget_pct / volatility * 100.0
+        regime_multiplier = {"bull": 1.10, "neutral": 1.0, "bear": 0.65}.get(
+            str(market_regime).lower(),
+            1.0,
+        )
+        edge_multiplier = max(0.65, min(1.35, 0.75 + max(0.0, net_edge) / 2.0))
+        position *= regime_multiplier * edge_multiplier
 
-        # 计���置信���得分（0-100）
-        confidence = self._calculate_confidence(
-            weekly_score, rs_score, daily_score,
-            catalyst_score, flow_score, technical_score,
-            ma20_dev, prev_gain, primary_catalyst
+        confidence = (
+            forward_score * 0.55
+            + max(0.0, min(100.0, probability * 100.0)) * 0.20
+            + data_quality * 0.15
+            + max(0.0, min(100.0, 50.0 + net_edge * 20.0)) * 0.10
+        )
+        confidence = max(0.0, min(100.0, confidence))
+
+        daily_entry = _number(scorecard.get("daily_entry_score"), 0.0)
+        technical = _number(scorecard.get("technical_score"), 0.0)
+        quant_score = _number(
+            signal.get("quantitative_score")
+            or (signal.get("quantitative_screen") or {}).get("forward_opportunity_score")
+            or (signal.get("quantitative_screen") or {}).get("opportunity_rank_score"),
+            0.0,
+        )
+        # 2026-08-16 tuning: A/B should not be gated only by T+1 expected net
+        # edge.  A strong daily-entry/technical structure is also executable even
+        # if expected T1 is small/negative (the payoff often comes T3/T5).
+        if forward_score >= cfg.high_conviction_score and net_edge >= cfg.high_net_edge_pct:
+            position = max(cfg.min_position_pct, min(cfg.max_high_conviction_position_pct, position))
+            reasons.append("高前瞻收益+风控通过")
+            return SignalTier("A", round(confidence, 2), round(position, 2), reasons)
+        if forward_score >= cfg.min_buy_score and (
+            net_edge >= cfg.min_net_edge_pct or daily_entry >= 65.0 or technical >= 55.0 or quant_score >= 70.0
+        ):
+            position = max(cfg.min_position_pct, min(cfg.max_position_pct, position))
+            reasons.append("前瞻机会+买点/技术/量化确认")
+            return SignalTier("B", round(confidence, 2), round(position, 2), reasons)
+
+        reasons.append("净收益或机会分尚未达到执行门槛")
+        return SignalTier("C", round(confidence, 2), 0.0, reasons)
+
+    def _classify_lifecycle(self, signal: Dict[str, Any], lifecycle: Dict[str, Any], market_regime: str) -> SignalTier:
+        cfg = self.config
+        scorecard = signal.get("next_day_factor_scorecard") or {}
+        gate = signal.get("next_day_gate_report") or {}
+        risk_flags = list(signal.get("risk_flags") or [])
+        passed = bool(gate.get("passed", True))
+        strong_identity = str(lifecycle.get("strong_identity") or "观察股")
+        identity_score = _number(lifecycle.get("strong_identity_score"), 0.0)
+        divergence_score = _number(lifecycle.get("divergence_score"), 0.0)
+        entry_quality = _number(lifecycle.get("entry_quality_score"), 0.0)
+        weak_to_strong = _number(lifecycle.get("weak_to_strong_score"), 0.0)
+        buy_ready = bool(lifecycle.get("buy_ready"))
+        lifecycle_state = str(lifecycle.get("lifecycle_state") or "观察池")
+        probability = _number(signal.get("probability_value"), 0.5)
+        forward_score = _number(scorecard.get("forward_opportunity_score", signal.get("buy_score")), 0.0)
+        volatility = max(
+            1.0,
+            _number(
+                signal.get("expected_downside_pct")
+                or scorecard.get("atr_pct")
+                or scorecard.get("daily_volatility_20d_pct"),
+                4.0,
+            ),
         )
 
-        reasons = []
+        reasons = [
+            f"生命周期={lifecycle_state}",
+            f"强势={strong_identity}/{identity_score:.1f}",
+            f"分歧={divergence_score:.1f}",
+            f"入场={entry_quality:.1f}",
+            f"转强={weak_to_strong:.1f}",
+        ]
+        if not passed or risk_flags or lifecycle.get("hard_failed"):
+            reasons.extend(str(x) for x in (gate.get("failed_reasons") or risk_flags or lifecycle.get("hard_failed") or [])[:3])
+            return SignalTier("reject", 0.0, 0.0, reasons)
 
-        # A级���高确���性（多���度���势+催化���）
-        if (
-            score >= 70
-            and confidence >= 75
-            and weekly_score >= 60
-            and rs_score >= 55
-            and daily_score >= 55
-            and (primary_catalyst or (catalyst_score >= 60 and flow_score >= 60))
-            and (ma20_dev is None or ma20_dev <= 8)
-            and (prev_gain is None or prev_gain <= 5)
+        position = 30.0 + max(0.0, min(25.0, (weak_to_strong - 80.0) * 1.0 + (entry_quality - 70.0) * 0.5))
+        regime_multiplier = {"bull": 1.10, "neutral": 1.0, "bear": 0.75}.get(str(market_regime).lower(), 1.0)
+        position *= regime_multiplier
+
+        confidence = (
+            identity_score * 0.30
+            + divergence_score * 0.25
+            + entry_quality * 0.25
+            + weak_to_strong * 0.20
+        )
+        confidence = max(0.0, min(100.0, confidence))
+
+        if buy_ready and identity_score >= cfg.min_identity_score and divergence_score >= cfg.min_divergence_score and entry_quality >= cfg.min_entry_quality_score and weak_to_strong >= cfg.min_weak_to_strong_score:
+            position = max(cfg.max_position_pct, min(cfg.max_high_conviction_position_pct, position))
+            reasons.append("强势身份+分歧/转强/入场全通过")
+            return SignalTier("A", round(confidence, 2), round(position, 2), reasons)
+
+        if strong_identity != "观察股" and (
+            divergence_score >= cfg.min_divergence_score
+            or entry_quality >= cfg.min_entry_quality_score
+            or weak_to_strong >= cfg.min_weak_to_strong_score
+            or forward_score >= cfg.min_buy_score
         ):
-            reasons.append(f"综合分{score:.1f}+置信度{confidence:.1f}")
-            reasons.append(f"周线{weekly_score:.1f}/RS{rs_score:.1f}/日线{daily_score:.1f}")
-            if primary_catalyst:
-                reasons.append("主要催���剂确���")
-            if flow_score >= 60:
-                reasons.append(f"资金流确认{flow_score:.1f}")
+            position = max(cfg.min_position_pct, min(cfg.max_position_pct, position))
+            reasons.append("强势观察，等待确认")
+            return SignalTier("B", round(confidence, 2), round(position, 2), reasons)
 
-            return SignalTier(
-                tier="A",
-                confidence=confidence,
-                position_size_pct=15.0,
-                reasons=reasons
-            )
-
-        # B级：标���信号���符���基本���槛���
-        elif (
-            score >= 60
-            and confidence >= 60
-            and weekly_score >= 55
-            and rs_score >= 50
-            and daily_score >= 50
-            and (ma20_dev is None or ma20_dev <= 12)
-            and (prev_gain is None or prev_gain <= 6)
-        ):
-            reasons.append(f"综���分{score:.1f}+置信���{confidence:.1f}")
-            reasons.append(f"周���{weekly_score:.1f}/RS{rs_score:.1f}")
-            if catalyst_score >= 55:
-                reasons.append(f"���化剂{catalyst_score:.1f}")
-
-            return SignalTier(
-                tier="B",
-                confidence=confidence,
-                position_size_pct=8.0,
-                reasons=reasons
-            )
-
-        # C���：观察���号（降���门槛，���需要密切���注）
-        elif (
-            score >= 50
-            and confidence >= 50
-            and weekly_score >= 50
-            and rs_score >= 45
-            and (ma20_dev is None or ma20_dev <= 15)
-        ):
-            reasons.append(f"���合���{score:.1f}���观察级）")
-            reasons.append(f"周线{weekly_score:.1f}/RS{rs_score:.1f}")
-            if daily_score < 50:
-                reasons.append(f"日线���场分偏���{daily_score:.1f}")
-
-            return SignalTier(
-                tier="C",
-                confidence=confidence,
-                position_size_pct=5.0,
-                reasons=reasons
-            )
-
-        # 拒绝
-        else:
-            reasons.append(f"综合分{score:.1f}不足")
-            if weekly_score < 50:
-                reasons.append(f"周线趋势���{weekly_score:.1f}")
-            if rs_score < 45:
-                reasons.append(f"相对���度弱{rs_score:.1f}")
-
-            return SignalTier(
-                tier="reject",
-                confidence=confidence,
-                position_size_pct=0.0,
-                reasons=reasons
-            )
-
-    def _calculate_confidence(
-        self,
-        weekly_score: float,
-        rs_score: float,
-        daily_score: float,
-        catalyst_score: float,
-        flow_score: float,
-        technical_score: float,
-        ma20_dev: float | None,
-        prev_gain: float | None,
-        primary_catalyst: bool
-    ) -> float:
-        """
-        计算信号���信度���0-100）
-
-        置信度 = 趋势一���性 + 催化剂强度 + 技术位置 + ���金确认
-        """
-        confidence = 50.0  # ���础分
-
-        # 1. 趋势一���性（最高+20分���
-        trend_consistency = min(weekly_score, rs_score, daily_score)
-        if trend_consistency >= 60:
-            confidence += 20
-        elif trend_consistency >= 55:
-            confidence += 15
-        elif trend_consistency >= 50:
-            confidence += 10
-
-        # 2. 催化剂强度（最���+15分）
-        if primary_catalyst:
-            confidence += 15
-        elif catalyst_score >= 60:
-            confidence += 12
-        elif catalyst_score >= 55:
-            confidence += 8
-
-        # 3. 技���位置（最���+10分���
-        if ma20_dev is not None:
-            if 0 <= ma20_dev <= 5:  # 理想位置
-                confidence += 10
-            elif 5 < ma20_dev <= 8:
-                confidence += 5
-            elif ma20_dev < 0 or ma20_dev > 12:
-                confidence -= 5
-
-        # 4. 资金确认（最高+10分）
-        if flow_score >= 60:
-            confidence += 10
-        elif flow_score >= 55:
-            confidence += 5
-
-        # 5. 防追���惩罚
-        if prev_gain is not None and prev_gain > 6:
-            confidence -= (prev_gain - 6) * 2
-
-        return max(0.0, min(100.0, confidence))
+        reasons.append("仍处观察池")
+        return SignalTier("C", round(confidence, 2), 0.0, reasons)
 
     def get_tier_summary(self, tiers: Dict[str, List[Dict[str, Any]]]) -> str:
-        """生成分级摘要"""
-        lines = [
-            "=" * 60,
-            "���号分���结���",
-            "=" * 60,
-        ]
-
-        for tier_name in ["tier_A", "tier_B", "tier_C"]:
-            tier_list = tiers.get(tier_name, [])
-            tier_label = tier_name.split("_")[1]
-
-            if not tier_list:
-                lines.append(f"{tier_label}级���高确定性���: 0个")
-                continue
-
-            lines.append(f"\n{tier_label}级���号 ({len(tier_list)}个):")
-            for i, signal in enumerate(tier_list, 1):
-                name = signal.get("symbol_name", "")
-                code = signal.get("symbol_code", "")
-                score = signal.get("buy_score", 0)
-                confidence = signal.get("tier_confidence", 0)
-                position = signal.get("recommended_position_size_pct", 0)
-
+        lines = ["=" * 60, "前瞻机会与风险分级", "=" * 60]
+        for tier_name in ("tier_A", "tier_B", "tier_C", "tier_reject"):
+            items = tiers.get(tier_name) or []
+            label = tier_name.split("_", 1)[1]
+            lines.append(f"{label}级: {len(items)}个")
+            for signal in items:
+                lifecycle = signal.get("strong_stock_lifecycle") or {}
                 lines.append(
-                    f"  {i}. {name}({code}) | "
-                    f"分数{score:.1f} | 置���度{confidence:.1f} | "
-                    f"建议仓位{position:.1f}%"
+                    f"  {signal.get('symbol_name', '')}({signal.get('symbol_code', '')}) | "
+                    f"机会分{_number(signal.get('buy_score')):.1f} | "
+                    f"强势{lifecycle.get('strong_identity', '')} | "
+                    f"仓位{_number(signal.get('recommended_position_size_pct')):.1f}%"
                 )
-
-                reasons = signal.get("tier_reasons", [])
-                if reasons:
-                    lines.append(f"     理���: {' | '.join(reasons[:3])}")
-
-        lines.append("=" * 60)
         return "\n".join(lines)
+
+
+def _holding_days(signal: dict) -> int:
+    """T+1~T+2 优先；仅当入场质量高且板块不极端拥挤时允许 T+3。"""
+    lifecycle = signal.get("strong_stock_lifecycle") or {}
+    entry_quality = _number(lifecycle.get("entry_quality_score"), 50.0)
+    weak_to_strong = _number(lifecycle.get("weak_to_strong_score"), 50.0)
+    if entry_quality >= 70.0 and weak_to_strong >= 80.0:
+        return 3
+    return 2
+
+
+def _holding_rule(signal: dict) -> str:
+    lifecycle = signal.get("strong_stock_lifecycle") or {}
+    entry_quality = _number(lifecycle.get("entry_quality_score"), 50.0)
+    weak_to_strong = _number(lifecycle.get("weak_to_strong_score"), 50.0)
+    if entry_quality >= 70.0 and weak_to_strong >= 80.0:
+        return "T+3_ok"
+    return "T+1_2_fast_exit"

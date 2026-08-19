@@ -91,7 +91,7 @@ def signal_brief(signal: Dict) -> str:
         lines.append("技术/量化:")
         lines.append(
             f"  MA20偏离: {tech.get('ma20_deviation_pct')}% | 涨跌幅: {tech.get('change_pct')}% | "
-            f"RSI: {tech.get('rsi')} | 量比: {tech.get('volume_ratio')} | MACD: {tech.get('macd')} | "
+            f"RSI: {tech.get('rsi')} | 量比(今/前5日): {tech.get('volume_ratio')} | 额比: {tech.get('amount_ratio')} | 量趋势: {tech.get('volume_ma5_ma20_ratio')} | MACD: {tech.get('macd')} | "
             f"布林: {tech.get('bollinger')}"
         )
     lines.append(

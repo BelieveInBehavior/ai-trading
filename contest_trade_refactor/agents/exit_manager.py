@@ -11,9 +11,9 @@ class ExitManager:
 
     def __init__(self):
         # 止损/止盈配置���可后续从config���取���
-        self.default_stop_loss_pct = -8.0  # 默���止损-8%
-        self.default_take_profit_pct = 15.0  # 默认止盈+15%
-        self.trailing_stop_trigger_pct = 8.0  # 盈���超过8%时启动移���止损
+        self.default_stop_loss_pct = -6.0  # 默���止损-8%
+        self.default_take_profit_pct = 6.0  # 默认止盈+6%（T+1~T+3止盈优先）
+        self.trailing_stop_trigger_pct = 4.0  # 盈���超过8%时启动移���止损
         self.trailing_stop_distance_pct = 5.0  # 移动���损距离最高点5%
 
     def evaluate_position(
@@ -107,13 +107,17 @@ class ExitManager:
             exit_score += market_exit_score
             reasons.append(f"市场环境恶化+{market_exit_score:.1f}")
 
-        # 6. 持有���间过���检查（���过20个交���日）
+        # 6. 持有时间检查：T+1~T+2 优先，超过推荐持有天数就考虑换股
+        holding_rule = position.get("holding_rule") or "T+1_2_fast_exit"
         entry_date = position.get("entry_date", "")
         if entry_date:
             holding_days = self._calculate_holding_days(entry_date)
-            if holding_days > 20:
-                exit_score += min(10, holding_days - 20)
-                reasons.append(f"持有{holding_days}���，考虑换股")
+            max_hold = position.get("recommended_holding_days", 2)
+            if holding_rule == "T+3_ok":
+                max_hold = max(int(max_hold), 3)
+            if holding_days > max_hold:
+                exit_score += min(6, holding_days - max_hold)
+                reasons.append(f"持有{holding_days}天，超过推荐{max_hold}天")
 
         # 决策
         action = "sell" if exit_score >= 50 else "hold"
@@ -133,18 +137,18 @@ class ExitManager:
     def _get_tier_stop_loss(self, tier: str) -> float:
         """根���信号���别返回���损阈���"""
         tier_config = {
-            "A": -10.0,  # A级信���容忍���高���些
-            "B": -8.0,
-            "C": -6.0,   # C级信���快速止损
+            "A": -7.0,  # A级信号短期止损
+            "B": -6.0,
+            "C": -5.0,   # C级信���快速止损
         }
         return tier_config.get(tier, self.default_stop_loss_pct)
 
     def _get_tier_take_profit(self, tier: str) -> float:
         """根据信号���别返回止盈阈值"""
         tier_config = {
-            "A": 18.0,  # A级信���让���润���跑
-            "B": 15.0,
-            "C": 12.0,  # C���信号快���落袋为安
+            "A": 8.0,  # A级信号短线止盈
+            "B": 6.0,
+            "C": 5.0,  # C���信号快���落袋为安
         }
         return tier_config.get(tier, self.default_take_profit_pct)
 

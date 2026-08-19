@@ -48,6 +48,12 @@ class ResearchSignal(BaseModel):
     action: str = ""
     symbol_code: str = ""
     symbol_name: str = ""
+    event_type: str = ""
+    event_date: str = ""
+    event_summary: str = ""
+    catalyst_certainty: float = 0.0
+    catalyst_market_impact: float = 0.0
+    price_in_status: str = ""
     evidence_list: List[EvidenceRecord] = Field(default_factory=list)
     limitations: List[str] = Field(default_factory=list)
     probability: float = 0.5
@@ -160,23 +166,147 @@ def _decode_json_candidate(text: str) -> Any:
     return None
 
 
+def _decode_all_json_candidates(text: str):
+    """Decode all top-level JSON objects/arrays in a model response.
+
+    Research agents sometimes emit multiple independent JSON blocks in the
+    same final result (multiple ``signals`` arrays). Only taking the first block
+    silently drops valid signals, so we return all top-level values.
+    """
+    cleaned = (text or "").strip()
+    cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s*```$", "", cleaned)
+
+    decoder = json.JSONDecoder()
+    out = []
+    idx = 0
+    while idx < len(cleaned):
+        ch = cleaned[idx]
+        if ch not in "[{":
+            idx += 1
+            continue
+        try:
+            value, end = decoder.raw_decode(cleaned[idx:])
+            out.append(value)
+            idx += end
+        except json.JSONDecodeError:
+            idx += 1
+    return out
+
+
+def _extract_signals_from_decoded(decoded):
+    if isinstance(decoded, list):
+        return decoded
+    if isinstance(decoded, dict):
+        if "signals" in decoded or "signal" in decoded or "signals_list" in decoded:
+            return (
+                decoded.get("signals")
+                or decoded.get("signal")
+                or decoded.get("signals_list")
+                or []
+            )
+        # When the full JSON array is malformed, the decoder recovers individual
+        # signal objects as top-level dicts. Treat them as one-item signal lists
+        # so we don't silently drop the whole candidate.
+        if decoded.get("symbol_code") or decoded.get("symbol_name"):
+            return [decoded]
+    return []
+
+
+def _extract_signals_arrays_legacy(text: str):
+    """Extract every ``"signals": [...]`` array in a raw model response.
+
+    Research agents sometimes emit multiple ``signals`` keys inside a single
+    JSON object. python's ``json`` decoder silently keeps only the last duplicate
+    key, which drops earlier candidates, so we scan the raw text with a regex
+    before/independently of full-JSON decoding.
+    """
+    arrays = []
+    pattern = re.compile(r'"signals"\s*:\s*\[')
+    decoder = json.JSONDecoder()
+    for match in pattern.finditer(text or ""):
+        start = match.end() - 1  # points at '['
+        end = _find_json_array_end(text, start)
+        if end is None:
+            continue
+        chunk = text[start:end + 1]
+        try:
+            value = json.loads(chunk)
+        except Exception:
+            try:
+                value, _ = decoder.raw_decode(chunk)
+            except Exception:
+                continue
+        if isinstance(value, list):
+            arrays.extend(value)
+    return arrays
+
+
+def _find_json_array_end(text: str, start: int) -> int:
+    """Return the index of the closing bracket for a JSON array starting at start."""
+    depth = 0
+    i = start
+    n = len(text)
+    in_string = False
+    escaped = False
+    while i < n:
+        ch = text[i]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '\"':
+                in_string = False
+        else:
+            if ch == '\"':
+                in_string = True
+            elif ch == "[":
+                depth += 1
+            elif ch == "]":
+                depth -= 1
+                if depth == 0:
+                    return i
+        i += 1
+    return None
+
+
 def parse_json_signals(text: str, thinking: str = "") -> List[Dict[str, Any]]:
     """Parse the preferred JSON signal format.
 
-    Accepted roots are either a list of signal objects or
-    ``{"signals": [...]}``.
+    Accepts one or more top-level JSON blocks, either a list of signal objects
+    or ``{"signals": [...]}``.  Multiple blocks are merged so valid signals
+    emitted later in a report are not lost. Also handles raw text in which the
+    same ``signals`` key is duplicated inside one JSON object.
     """
-    decoded = _decode_json_candidate(text)
-    if isinstance(decoded, dict):
-        decoded = decoded.get("signals") or decoded.get("signal") or []
-    if not isinstance(decoded, list):
-        return []
+    candidates = _decode_all_json_candidates(text) or []
+    combined: List[Any] = list(_extract_signals_arrays_legacy(text))
+    for decoded in candidates:
+        combined.extend(_extract_signals_from_decoded(decoded))
 
     signals = []
-    for item in decoded:
+    seen = set()
+    for item in combined:
         if not isinstance(item, dict):
             continue
-        validated = validate_research_signal(item, thinking=thinking)
+        if not (item.get("symbol_code") or item.get("symbol_name")):
+            # Skip partial JSON fragments (e.g. evidence dicts recovered after
+            # an LLM malformed a parent array).
+            continue
+        try:
+            validated = validate_research_signal(item, thinking=thinking)
+        except Exception:
+            continue
         if validated.get("symbol_code") or validated.get("symbol_name"):
+            key = (
+                str(validated.get("symbol_code") or "")
+                + "|"
+                + str(validated.get("symbol_name") or "")
+                + "|"
+                + str(validated.get("event_summary") or "")[:40]
+            )
+            if key in seen:
+                continue
+            seen.add(key)
             signals.append(validated)
     return signals

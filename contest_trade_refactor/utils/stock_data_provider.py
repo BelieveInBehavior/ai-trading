@@ -350,7 +350,8 @@ def _generate_technical_narrative(factor_result, stock_name):
     rsi, macd, k, d_k, j = f('rsi_bfq_12'), f('macd_bfq'), f('kdj_k_bfq'), f('kdj_d_bfq'), f('kdj_bfq')
     boll_u, boll_m, boll_l = f('boll_upper_bfq'), f('boll_mid_bfq'), f('boll_lower_bfq')
     ma5, ma10, ma20 = f('ma_bfq_5'), f('ma_bfq_10'), f('ma_bfq_20')
-    vol_ratio = f('vol') / f('vol_ratio', 1) if f('vol_ratio') else 1
+    # Tushare stk_factor_pro's 'vol_ratio' is already the 东财-style 量比; do NOT divide by volume.
+    vol_ratio = f('vol_ratio', 1)
     return f"""{stock_name}技术面因子分析：
 
 基础行情：

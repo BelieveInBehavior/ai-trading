@@ -79,6 +79,8 @@ def _apply_env_overrides(config: dict) -> dict:
         "jqdata_password": "JQDATA_PASSWORD",
         "bocha_key": "BOCHA_KEY",
         "serp_key": "SERP_KEY",
+        "volc_api_key": "VOLC_WEB_SEARCH_API_KEY",
+        "volc_web_search_base_url": "VOLC_WEB_SEARCH_BASE_URL",
         "fmp_key": "FMP_KEY",
         "finnhub_key": "FINNHUB_KEY",
         "alpha_vantage_key": "ALPHA_VANTAGE_KEY",
@@ -100,6 +102,12 @@ def _apply_env_overrides(config: dict) -> dict:
     config["llm"] = _build_llm_block("LLM")
     config["llm_thinking"] = _build_llm_block("LLM_THINKING", fallback_prefix="LLM")
     config["vlm"] = _build_llm_block("VLM", fallback_prefix="LLM")
+    config["deepseek"] = {
+        "provider": _env("DEEPSEEK_PROVIDER", "openai"),
+        "base_url": _env("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+        "api_key": _env("DEEPSEEK_API_KEY"),
+        "model_name": _env("DEEPSEEK_MODEL_NAME", "deepseek-chat"),
+    }
 
     return config
 

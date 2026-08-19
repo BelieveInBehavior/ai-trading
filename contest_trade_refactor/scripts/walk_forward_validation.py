@@ -36,7 +36,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 FACTOR_COLS = [
-    "buy_score", "probability_value", "probability", "weekly_trend_score",
+    "buy_score", "forward_opportunity_score", "expected_net_edge_pct",
+    "probability_value", "probability", "weekly_trend_score",
     "relative_strength_score", "daily_entry_score", "catalyst_score",
     "capital_flow_score", "market_regime_score", "risk_reward_score",
     "tradeability_score", "data_quality_score", "ma20_deviation_pct",
@@ -56,7 +57,7 @@ def compute_ic(df: pd.DataFrame, factor: str, target: str = "t1_return_pct") -> 
     if len(sub) < 5 or sub[factor].nunique() <= 1:
         return math.nan
     try:
-        return sub[factor].corr(sub[target])
+        return sub[factor].corr(sub[target], method="spearman")
     except Exception:
         return math.nan
 
@@ -75,28 +76,32 @@ def equal_weight_top_quartile(df: pd.DataFrame, factor: str, target: str = "t1_r
     return top[target].mean()
 
 
-def run_walk_forward(df: pd.DataFrame, folds: int = 2) -> List[dict]:
+def run_walk_forward(df: pd.DataFrame, folds: int = 2, purge_dates: int = 0) -> List[dict]:
     if df.empty or "trigger_date" not in df.columns:
         return []
     df = df.copy()
+    if {"trigger_date", "symbol_code"}.issubset(df.columns):
+        df = df.drop_duplicates(["trigger_date", "symbol_code"], keep="first")
     df["fold_date"] = pd.to_datetime(df["trigger_date"].astype(str), format="%Y%m%d", errors="coerce")
     df = df.dropna(subset=["fold_date", "t1_return_pct"]).sort_values("fold_date")
     dates = sorted(df["fold_date"].unique())
     if len(dates) < folds + 1:
         return []
 
-    # Simple expanding-window fold: train on first N/m folds, test on remaining folds one at a time.
+    # Purged expanding-window folds with non-overlapping test windows.
     base_cut = len(dates) // (folds + 1)
     results = []
     for fold_idx in range(1, folds + 1):
         train_end = base_cut * fold_idx
         if train_end >= len(dates):
             continue
-        train_dates = set(dates[:train_end])
+        effective_train_end = max(0, train_end - max(0, purge_dates))
+        train_dates = set(dates[:effective_train_end])
         test_start = dates[train_end] if train_end < len(dates) else None
         if not test_start:
             continue
-        test_dates = dates[train_end:]
+        test_end = base_cut * (fold_idx + 1) if fold_idx < folds else len(dates)
+        test_dates = dates[train_end:test_end]
         train = df[df["fold_date"].isin(train_dates)]
         test = df[df["fold_date"].isin(test_dates)]
         if train.empty or test.empty:
@@ -190,6 +195,7 @@ def main() -> None:
     parser.add_argument("--input", default=str(PROJECT_ROOT / "agents_workspace" / "backtest_results" / "signal_performance.csv"))
     parser.add_argument("--output", default=str(PROJECT_ROOT / "agents_workspace" / "backtest_results"))
     parser.add_argument("--folds", type=int, default=2, help="number of test folds")
+    parser.add_argument("--purge-dates", type=int, default=5, help="trading-date gap between train and test")
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -199,7 +205,7 @@ def main() -> None:
     df = pd.read_csv(input_path)
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
-    results = run_walk_forward(df, folds=args.folds)
+    results = run_walk_forward(df, folds=args.folds, purge_dates=args.purge_dates)
     print(f"[walk] results rows: {len(results)}")
     write_report(results, out)
 

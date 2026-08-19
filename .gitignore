@@ -27,11 +27,12 @@ out/
 # Runtime caches & generated data
 contest_trade_refactor/utils/akshare_cache/
 contest_trade_refactor/tools/stock_summary_akshare_cache/
-contest_trade_refactor/agents_workspace/results/
-contest_trade_refactor/agents_workspace/reports/
-contest_trade_refactor/agents_workspace/factors/
-contest_trade_refactor/agents_workspace/factor_store/
-contest_trade_refactor/agents_workspace/performance/
+contest_trade_refactor/agents_workspace/
+contest_trade_refactor/agents_workspace_replays/
+contest_trade_refactor/agents_analysis/
+contest_trade_refactor/logs/
+*.pid
+*.bak_*
 
 # IDE & OS
 .idea/
@@ -39,3 +40,4 @@ contest_trade_refactor/agents_workspace/performance/
 .DS_Store
 *.swp
 *.swo
+

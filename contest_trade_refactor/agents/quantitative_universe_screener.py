@@ -20,6 +20,13 @@ from data_source.technical_indicators_akshare import (
 from utils.akshare_utils import akshare_cached
 from utils.cn_price_provider import get_index_daily, get_stock_zh_a_hist
 from utils.date_utils import get_latest_completed_trading_date, get_trading_date_range
+from utils.sector_enrichment import (
+    build_code_sector_snapshot,
+    build_sector_snapshot_from_factor_store,
+    enrich_factor_with_sector,
+    load_industry_map,
+)
+from utils.strong_stock_lifecycle import evaluate_lifecycle, load_zt_strength_snapshot
 
 
 @dataclass
@@ -36,17 +43,18 @@ class QuantitativeScreenerConfig:
     min_daily_entry_score: float = 50.0
     min_amount: float = 0.0
     require_data_quality: bool = True
-    require_weinstein_stage2: bool = True
+    require_weinstein_stage2: bool = False
     max_ma20_deviation_pct: float = 60.0
     max_prev_day_gain_pct: float = 15.0
     ma20_deviation_penalty: float = 1.0
+    sector_enrichment_enabled: bool = False
     # V2 hard/soft split
     hard_filter_stage_le: int = 4
-    hard_min_weekly_score: float = 30.0
-    hard_min_relative_score: float = 25.0
+    hard_min_weekly_score: float = 20.0
+    hard_min_relative_score: float = 15.0
     hard_max_ma20_deviation_pct: float = 60.0
     hard_max_prev_day_gain_pct: float = 20.0
-    hard_min_relative_20d_pct: float = -50.0
+    hard_min_relative_20d_pct: float = -60.0
     # Number of top names to hard-label as core_buy for the trade system.
     core_buy_max: int = 5
 
@@ -117,6 +125,26 @@ class QuantitativeUniverseScreener:
 
         records = universe.to_dict(orient="records")
         total = len(records)
+
+        # T+1~T+3 板块强度：快照可插拔；数据不可用时保持中性，不影响主流程。
+        sector_map: Dict[str, Dict[str, float]] = {}
+        if self.config.sector_enrichment_enabled:
+            try:
+                industry_map = load_industry_map()
+                by_name = build_sector_snapshot_from_factor_store(trade_date=trade_date)
+                sector_map = build_code_sector_snapshot(industry_map, by_name, trade_date=trade_date)
+                logger.info("板块富化映射启用: {} 只股票有行业板块字段", len(sector_map))
+            except Exception as exc:
+                logger.warning("板块快照构建失败（保持中性分）: {}", exc)
+
+        zt_snapshot: Dict[str, Dict[str, Any]] = {}
+        try:
+            zt_snapshot = load_zt_strength_snapshot(trade_date)
+            if zt_snapshot:
+                logger.info("涨停封单快照启用: {} 只股票", len(zt_snapshot))
+        except Exception as exc:
+            logger.warning("涨停封单快照加载失败（保持中性分）: {}", exc)
+
         semaphore = asyncio.Semaphore(max(1, int(self.config.max_concurrency)))
         progress_lock = asyncio.Lock()
         completed = 0
@@ -132,6 +160,8 @@ class QuantitativeUniverseScreener:
                 trade_date=trade_date,
                 benchmark_frame=benchmark_frame,
                 semaphore=semaphore,
+                sector_map=sector_map,
+                zt_snapshot=zt_snapshot,
             )
             async with progress_lock:
                 completed += 1
@@ -166,8 +196,28 @@ class QuantitativeUniverseScreener:
             for reason in (ev.get("hard_failed") or []):
                 funnel[reason] = funnel.get(reason, 0) + 1
         passed = [item for item in scored if item["quantitative_screen"].get("passed")]
-        passed.sort(key=lambda item: item.get("quantitative_score", 0), reverse=True)
-        candidates = passed[: max(1, int(self.config.top_k))]
+        # Candidate admission: do NOT let "remaining room" alone dominate.
+        # For a momentum/短线 strategy the critical balance is:
+        #   forward opportunity (near-term setup + room) AND
+        #   market-recognized strength/volume (RS / short-term trend / relative activity)
+        # The old pure-room sort pushed defensively-low-extension names to the top
+        # and made the Research Agents produce almost no signals.
+        passed.sort(
+            key=lambda item: (
+                (item.get("quantitative_screen") or {}).get("opportunity_rank_score") or 0,
+                (item.get("quantitative_screen") or {}).get("forward_opportunity_score") or 0,
+                (item.get("quantitative_screen") or {}).get("short_score") or 0,
+                -((item.get("quantitative_screen") or {}).get("extension_risk") or 0),
+            ),
+            reverse=True,
+        )
+        # If top_k > 0 keep only the top-ranked slice for research; if top_k <= 0,
+        # we intentionally do NOT truncate -- the full quantitative passed pool is
+        # the research candidate universe.  (The caller can still limit it later.)
+        if self.config.top_k and int(self.config.top_k) > 0:
+            candidates = passed[: max(1, int(self.config.top_k))]
+        else:
+            candidates = passed
         funnel["_passed"] = len(passed)
 
         # Stable core_buy: take the top few from best_opportunity/eligible names by
@@ -273,6 +323,8 @@ class QuantitativeUniverseScreener:
         trade_date: str,
         benchmark_frame: pd.DataFrame,
         semaphore: asyncio.Semaphore,
+        sector_map: Dict[str, Dict[str, float]] | None = None,
+        zt_snapshot: Dict[str, Dict[str, Any]] | None = None,
     ) -> Dict[str, Any] | None:
         async with semaphore:
             return await asyncio.to_thread(
@@ -282,6 +334,8 @@ class QuantitativeUniverseScreener:
                 end_date,
                 trade_date,
                 benchmark_frame,
+                sector_map,
+                zt_snapshot,
             )
 
     def _score_one_sync(
@@ -291,6 +345,8 @@ class QuantitativeUniverseScreener:
         end_date: str,
         trade_date: str,
         benchmark_frame: pd.DataFrame,
+        sector_map: Dict[str, Dict[str, float]] | None = None,
+        zt_snapshot: Dict[str, Dict[str, Any]] | None = None,
     ) -> Dict[str, Any] | None:
         symbol_code = str(row.get("symbol_code") or "")
         raw_code = symbol_code[:6]
@@ -312,9 +368,28 @@ class QuantitativeUniverseScreener:
         if not factor:
             return None
 
+        factor = enrich_factor_with_sector(factor, sector_map or {})
+        lifecycle = evaluate_lifecycle(factor, market_context={}, zt_snapshot=zt_snapshot)
+        factor["strong_stock_lifecycle"] = lifecycle
+        factor["strong_stock_divergence"] = {
+            "divergence_mode": lifecycle.get("divergence_mode"),
+            "divergence_score": lifecycle.get("divergence_score"),
+            "divergence_pass": lifecycle.get("divergence_pass"),
+            "divergence_reasons": lifecycle.get("divergence_reasons"),
+        }
+        factor["strong_identity_score"] = lifecycle.get("strong_identity_score")
+        factor["entry_quality_score"] = lifecycle.get("entry_quality_score")
+        factor["weak_to_strong_score"] = lifecycle.get("weak_to_strong_score")
         ev = self._evaluate_quality(factor)
-        final_score = (ev.get("score_breakdown") or {}).get("final")
-        quantitative_score = final_score if final_score is not None else 50.0
+        # Forward-looking snapshot that is no longer purely "remaining room".
+        rank_score = ev.get("opportunity_rank_score")
+        forward_score = ev.get("forward_opportunity_score")
+        legacy_score = (ev.get("score_breakdown") or {}).get("final")
+        quantitative_score = (
+            rank_score
+            if rank_score is not None
+            else forward_score if forward_score is not None else 50.0
+        )
 
         return {
             "symbol_code": symbol_code,
@@ -322,153 +397,155 @@ class QuantitativeUniverseScreener:
             "amount": row.get("amount"),
             "technical_factor": factor,
             "quantitative_score": round(quantitative_score, 2),
-            "quantitative_screen": self._evaluate_quality(factor),
-            "screen_eval": self._evaluate_quality(factor),
+            "legacy_trend_score": round(legacy_score, 2) if legacy_score is not None else None,
+            "quantitative_screen": ev,
+            "screen_eval": ev,
+            "strong_stock_lifecycle": lifecycle,
         }
 
     def _evaluate_quality(self, factor: Dict[str, Any]) -> Dict[str, Any]:
-        """V3 dual-axis scoring: long quality x short setup, plus isolated risk."""
+        """Strong-stock lifecycle screen.
+
+        Stage 0 now prioritizes strong identity first, then keeps divergence and
+        weak-to-strong quality as progressively stricter ranking signals.
+        """
+        lifecycle = factor.get("strong_stock_lifecycle") or {}
         hard_failed: List[str] = []
         if not factor.get("data_quality_valid") or factor.get("data_quality_status") != "ok":
             hard_failed.append("data_quality")
-        if not factor.get("weekly_data_available"):
-            hard_failed.append("weekly_data_missing")
-        if not factor.get("relative_strength_available"):
-            hard_failed.append("relative_strength_missing")
+        hard_failed.extend(lifecycle.get("hard_failed") or [])
 
-        weinstein = str(factor.get("weinstein_stage") or "")
-        if weinstein in {"", "N/A", "none", "None"}:
-            hard_failed.append("weinstein_missing")
-        elif self.config.hard_filter_stage_le and _stage_level(weinstein) >= self.config.hard_filter_stage_le:
-            hard_failed.append("weinstein_" + str(weinstein).lower())
-
-        rel20 = _safe_float(factor.get("relative_strength_20d_pct"))
-        weekly = _safe_float(factor.get("weekly_trend_score"))
-        rel_score = _safe_float(factor.get("relative_strength_score"))
-        if rel20 is not None and rel20 < self.config.hard_min_relative_20d_pct:
-            hard_failed.append("relative_20d_too_low")
-        if weekly is not None and weekly < self.config.hard_min_weekly_score:
-            hard_failed.append("weekly_score_too_low")
-        if rel_score is not None and rel_score < self.config.hard_min_relative_score:
-            hard_failed.append("relative_score_too_low")
-
-        ma20_dev = _safe_float(factor.get("ma20_deviation_pct"))
         change_pct = _safe_float(factor.get("change_pct"))
-        if self.config.hard_max_ma20_deviation_pct and ma20_dev is not None and ma20_dev > self.config.hard_max_ma20_deviation_pct:
-            hard_failed.append("ma20_overextended")
-        if self.config.hard_max_prev_day_gain_pct and change_pct is not None and change_pct > self.config.hard_max_prev_day_gain_pct:
+        ma20_dev = _safe_float(factor.get("ma20_deviation_pct"))
+        lts = factor.get("long_term_structure") or {}
+        ma200_dev = _safe_float(lts.get("ma200_deviation_pct"))
+        dist52 = _safe_float(lts.get("distance_to_52w_high_pct"))
+        if (
+            change_pct is not None
+            and change_pct > self.config.hard_max_prev_day_gain_pct
+            and not bool(factor.get("breakout_60d"))
+        ):
             hard_failed.append("prev_day_too_hot")
+        if (
+            self.config.hard_max_ma20_deviation_pct
+            and ma20_dev is not None
+            and ma20_dev > self.config.hard_max_ma20_deviation_pct
+        ):
+            hard_failed.append("ma20_overextended")
+        if ma200_dev is not None and ma200_dev < -35:
+            hard_failed.append("long_term_broken")
+        if dist52 is not None and dist52 < -60:
+            hard_failed.append("distance_52w_extreme")
 
-        # ------------------------------------------------------------------
-        # Basic factors
-        # ------------------------------------------------------------------
         weekly_score = _safe_float(factor.get("weekly_trend_score"))
         relative_score = _safe_float(factor.get("relative_strength_score"))
         daily_score = _safe_float(factor.get("daily_entry_score"))
-        ma20_dev = _safe_float(factor.get("ma20_deviation_pct"))
-        change_pct = _safe_float(factor.get("change_pct"))
+        short_setup_score = _safe_float(factor.get("short_setup_score"))
         rsi = _safe_float(factor.get("rsi"))
         vol_ratio = _safe_float(factor.get("volume_ratio"))
+        amount_ratio = _safe_float(factor.get("amount_ratio"))
+        ret3 = _safe_float(factor.get("ret_3d_pct"))
+        ret5 = _safe_float(factor.get("ret_5d_pct"))
+        close_above_ma5 = bool(factor.get("close_above_ma5"))
+        ma5_slope = _safe_float(factor.get("ma5_slope_pct"))
+        breakout20 = bool(factor.get("breakout_20d"))
+        breakout60 = bool(factor.get("breakout_60d"))
         rs20 = _safe_float(factor.get("relative_strength_20d_pct"))
-        rs60 = _safe_float(factor.get("relative_strength_60d_pct"))
-        stock_ret20 = _safe_float(factor.get("stock_return_20d_pct"))
-        weekly_ma20_slope = _safe_float(factor.get("weekly_ma20_slope_pct"))
-        wein_ma30_slope = _safe_float(factor.get("weinstein_ma30_slope_pct"))
-        above_ma30_ratio = _safe_float(factor.get("weinstein_above_ma30_ratio_8w"))
-        lts = factor.get("long_term_structure") or {}
-        ma50_dev = _safe_float(lts.get("ma50_deviation_pct"))
-        ma200_dev = _safe_float(lts.get("ma200_deviation_pct"))
-        dist52 = _safe_float(lts.get("distance_to_52w_high_pct"))
-        ma50_slope = _safe_float(lts.get("ma50_slope_pct"))
+        sector_1d = _safe_float(factor.get("sector_1d_return"))
+        sector_3d = _safe_float(factor.get("sector_3d_return"))
+        sector_5d = _safe_float(factor.get("sector_5d_return"))
+        sector_10d = _safe_float(factor.get("sector_10d_return"))
+        sector_rank = _safe_float(factor.get("sector_rank"))
+        stock_vs_sector = _safe_float(factor.get("stock_vs_sector_strength"))
 
-        # ------------------------------------------------------------------
-        # Long-Term Score (position): MA20 deviation does NOT participate.
-        # ------------------------------------------------------------------
-        weekly_long = _band_score(weekly_score, [40,50,60,70,80], [10,30,50,70,85,100])
-        stage_long = _band_score(_weinstein_score(weinstein), [-30,-10,0,10,15], [10,20,40,80,95,100])
-        rs_long = _band_score(relative_score, [40,50,60,70,80], [10,30,50,70,85,100])
+        strong_identity = str(lifecycle.get("strong_identity") or "观察股")
+        strong_identity_score = _safe_float(lifecycle.get("strong_identity_score")) or 0.0
+        divergence_mode = str(lifecycle.get("divergence_mode") or "none")
+        divergence_score = _safe_float(lifecycle.get("divergence_score")) or 0.0
+        entry_quality_score = _safe_float(lifecycle.get("entry_quality_score")) or 0.0
+        weak_to_strong_score = _safe_float(lifecycle.get("weak_to_strong_score")) or 0.0
+        lifecycle_state = str(lifecycle.get("lifecycle_state") or "观察池")
 
-        long_structural = 0.0
-        if weekly_ma20_slope is not None:
-            long_structural += _band_score(weekly_ma20_slope, [0,1,2,4,6], [20,35,55,75,90,100]) * 0.4
-        if wein_ma30_slope is not None:
-            long_structural += _band_score(wein_ma30_slope, [0,1,2,4,8], [20,35,55,75,90,100]) * 0.3
-        if ma50_slope is not None:
-            long_structural += _band_score(ma50_slope, [0,1,3,5,8], [20,35,55,75,90]) * 0.3
-        elif ma50_dev is not None:
-            long_structural += _band_score(ma50_dev, [-3,0,3,8,15], [20,35,55,75,90]) * 0.3
-        if ma200_dev is not None:
-            long_structural += _band_score(ma200_dev, [-3,0,5,15,30], [10,30,50,75,90]) * 0.3
-        if dist52 is not None:
-            long_structural += _band_score(dist52, [-40,-20,-10,-3,0], [15,30,45,70,90]) * 0.4
-        if above_ma30_ratio is not None:
-            long_structural += _band_score(above_ma30_ratio, [0.5,0.7,0.9,1.0], [0,10,30,40]) * 0.0
-        # 平均化结构分量，而不是叠加到 100+
-        if long_structural > 0:
-            # count how many structure factors present
-            factors_present = sum([
-                weekly_ma20_slope is not None,
-                wein_ma30_slope is not None,
-                ma50_slope is not None or ma50_dev is not None,
-                ma200_dev is not None,
-                dist52 is not None,
-            ])
-            if factors_present > 0:
-                long_structural /= max(1.0, float(factors_present))
-        elif rs60 is not None:
-            long_structural = _band_score(rs60, [0,5,10,20,35], [15,30,55,75,90])
-
-        long_score = weekly_long * 0.30 + stage_long * 0.20 + rs_long * 0.20 + long_structural * 0.30
-        long_score = max(0.0, min(100.0, long_score))
-
-        # ------------------------------------------------------------------
-        # Short-Term Setup Score: does current window offer a good buy?
-        # ------------------------------------------------------------------
-        entry_part = _band_score(daily_score, [40,50,60,70,80], [10,25,40,55,70,85])
+        if strong_identity != "观察股" and strong_identity_score < 55:
+            hard_failed.append("not_strong_stock")
 
         momentum_part = 0.0
-        if rs20 is not None and rs60 is not None:
-            momentum_part = (
-                _band_score(rs20, [-5,0,5,10,20], [10,25,40,60,80])
-                + _band_score(rs60, [-5,0,5,10,20], [10,25,40,60,80])
-            ) / 2.0
-        elif stock_ret20 is not None:
-            momentum_part = _band_score(stock_ret20, [-10,0,5,15,30], [10,30,50,75,90])
-        else:
-            momentum_part = 40.0
+        if ret3 is not None or ret5 is not None:
+            blended = (ret3 if ret3 is not None else 0.0) * 0.4 + (ret5 if ret5 is not None else 0.0) * 0.6
+            momentum_part = _band_score(
+                blended,
+                [-15, -5, 0, 3, 6, 12, 20],
+                [0, 15, 30, 45, 55, 75, 85],
+            )
+        elif rs20 is not None:
+            momentum_part = _band_score(rs20, [-10, 0, 5, 10, 20], [15, 35, 55, 70, 85])
 
-        volume_part = _band_score(vol_ratio, [0.8,1.0,1.2,1.5,2.0], [20,40,55,70,80]) if vol_ratio is not None else 40.0
-        ma20_position = _band_score(ma20_dev, [0,3,6,10,15], [70,85,95,80,60]) if ma20_dev is not None else 50.0
+        ma5_part = 0.0
+        if close_above_ma5:
+            ma5_part += 50.0
+        if ma5_slope is not None and ma5_slope > 0:
+            ma5_part += 30.0
+        if ret5 is not None and 1.0 <= ret5 <= 12.0:
+            ma5_part += 20.0
+        if ret5 is not None and ret5 > 30.0:
+            ma5_part -= 20.0
+        ma5_part = max(0.0, min(100.0, ma5_part))
 
-        # breakout/pullback heuristic from current daily scores + RSI
-        breakout_part = 50.0
-        if ma20_dev is not None and ma20_dev > 0 and rsi is not None:
-            breakout_part = _band_score(rsi, [30,45,60,75], [45,60,75,70])
-        elif ma20_dev is not None and ma20_dev < -3:
-            breakout_part = 25.0
+        volume_part = _band_score(vol_ratio, [0.8, 1.0, 1.2, 1.5, 2.0], [20, 40, 55, 70, 80]) if vol_ratio is not None else 40.0
+        amount_part = _band_score(amount_ratio, [0.8, 1.0, 1.2, 1.5, 2.0], [20, 40, 55, 70, 80]) if amount_ratio is not None else 40.0
+        volume_parts = (volume_part + amount_part) / 2.0 if vol_ratio is not None and amount_ratio is not None else (volume_part if vol_ratio is not None else amount_part)
 
+        breakout_part = 75.0 if breakout20 or breakout60 else 50.0
+        if rsi is not None and rsi > 85:
+            breakout_part -= 25.0
+        if ma20_dev is not None and ma20_dev > 20:
+            breakout_part -= 20.0
+        breakout_part = max(0.0, min(100.0, breakout_part))
+
+        entry_part = _band_score(daily_score, [40, 50, 60, 70, 80], [10, 25, 40, 55, 70, 85])
         short_score = (
-            entry_part * 0.35
-            + momentum_part * 0.25
-            + volume_part * 0.15
-            + ma20_position * 0.15
-            + breakout_part * 0.10
+            momentum_part * 0.25
+            + ma5_part * 0.25
+            + volume_parts * 0.20
+            + breakout_part * 0.15
+            + entry_part * 0.15
         )
+        if short_setup_score is not None:
+            short_score = short_score * 0.85 + float(short_setup_score) * 0.15
         short_score = max(0.0, min(100.0, short_score))
 
-        # ------------------------------------------------------------------
-        # Extension Risk [0,100] isolated from score
-        # ------------------------------------------------------------------
+        long_score = 50.0
+        if weekly_score is not None:
+            long_score += _band_score(weekly_score, [35, 45, 55, 65, 75, 85], [-12, -2, 10, 20, 30, 40])
+        if relative_score is not None:
+            long_score += _band_score(relative_score, [35, 45, 55, 65, 75], [-10, 0, 10, 20, 30])
+        if rs20 is not None:
+            long_score += _band_score(rs20, [-10, 5, 10, 20, 30], [-8, 0, 10, 20, 30])
+        long_score = max(0.0, min(100.0, long_score))
+
+        sector_score = 50.0
+        if sector_1d is not None:
+            sector_score += _band_score(sector_1d, [-2, 0, 1, 3, 4], [-15, 0, 5, 10, 15])
+        if sector_3d is not None:
+            sector_score += _band_score(sector_3d, [-5, 0, 3, 6, 12], [-15, 0, 8, 10, 20])
+        if sector_5d is not None:
+            sector_score += _band_score(sector_5d, [-5, 0, 3, 6, 12, 18], [-15, 0, 6, 10, 18, 12])
+        if sector_10d is not None:
+            sector_score += _band_score(sector_10d, [-8, 0, 5, 10, 15, 22], [-20, 0, 8, 12, 18, 6])
+        if sector_rank is not None:
+            sector_score += _band_score(sector_rank, [20, 40, 60, 90, 95], [10, 0, -5, -8, -12])
+        if stock_vs_sector is not None:
+            sector_score += _band_score(stock_vs_sector, [-10, -2, 0, 5, 10], [-12, -5, 0, 8, 15])
+        sector_score = max(0.0, min(100.0, sector_score))
+
         extension_risk = 0.0
         if ma20_dev is not None:
-            if ma20_dev <= 6:
-                extension_risk += 0
-            elif ma20_dev <= 15:
-                extension_risk += 10
-            elif ma20_dev <= 30:
-                extension_risk += 45
-            else:
+            if ma20_dev > 30:
                 extension_risk += 80
+            elif ma20_dev > 15:
+                extension_risk += 45
+            elif ma20_dev > 6:
+                extension_risk += 10
         if change_pct is not None:
             if change_pct > 20:
                 extension_risk += 30
@@ -481,47 +558,86 @@ class QuantitativeUniverseScreener:
                 extension_risk += 10
             elif rsi > 75:
                 extension_risk += 5
+        sector_peak = max([x for x in (sector_3d, sector_5d, sector_10d) if x is not None] or [0.0])
+        if sector_peak >= 12 and sector_rank is not None and sector_rank <= 15:
+            extension_risk += 12
+        elif sector_peak >= 10:
+            extension_risk += 6
         extension_risk = max(0.0, min(100.0, extension_risk))
 
-        # ------------------------------------------------------------------
-        # Pools: do NOT collapse to a single final score.
-        # core_buy = top tier for trading (validated by 8/11->8/13 backtest),
-        # best_opportunity = wide watch pool.
-        # ------------------------------------------------------------------
-        if long_score >= 80 and short_score >= 75:
+        room_score = max(0.0, 100.0 - extension_risk)
+        forward_opportunity_score = (
+            short_score * 0.55
+            + room_score * 0.15
+            + long_score * 0.10
+            + sector_score * 0.20
+        )
+        forward_opportunity_score = max(0.0, min(100.0, forward_opportunity_score))
+
+        rs_momentum = _band_score((rs20 if rs20 is not None else 0.0), [-10, 0, 5, 10, 20], [10, 30, 40, 70, 88])
+        lifecycle_rank_score = max(
+            0.0,
+            min(100.0, 0.30 * strong_identity_score + 0.30 * divergence_score + 0.20 * entry_quality_score + 0.20 * weak_to_strong_score),
+        )
+        opportunity_rank_score = (
+            short_score * 0.38
+            + forward_opportunity_score * 0.17
+            + rs_momentum * 0.08
+            + sector_score * 0.12
+            + long_score * 0.10
+            + lifecycle_rank_score * 0.15
+        )
+        opportunity_rank_score = max(0.0, min(100.0, opportunity_rank_score))
+        forward_opportunity_score = max(
+            0.0,
+            min(100.0, forward_opportunity_score * 0.72 + lifecycle_rank_score * 0.28),
+        )
+
+        if strong_identity != "观察股" and lifecycle_state == "T+1买入候选" and not hard_failed:
             pool = "core_buy"
-        elif long_score >= 72 and short_score >= 65:
+        elif strong_identity != "观察股" and (divergence_score >= 60 or entry_quality_score >= 70 or weak_to_strong_score >= 80):
             pool = "best_opportunity"
+        elif strong_identity != "观察股":
+            pool = "short_trade"
+        elif short_score >= 62:
+            pool = "short_trade"
         elif long_score >= 72:
             pool = "long_watch"
-        elif short_score >= 65:
-            pool = "short_trade"
         else:
             pool = "watch"
 
-        # Backward-compatible fields
-        weekly_bonus = _band_score(weekly_score, [40,50,60,70,80], [-20,-5,5,12,18,20])
-        rs_bonus = _band_score(relative_score, [40,50,60,70,80], [-15,-5,5,10,15,20])
-        daily_bonus = _band_score(daily_score, [40,50,60,70,80], [-10,0,5,10,15,20])
-        stage_bonus = _weinstein_score(weinstein)
-        extension = _extension_penalty(ma20_dev, change_pct, rsi)
-        base_raw = weekly_bonus * 0.4 + stage_bonus * 0.2 + rs_bonus * 0.2 + daily_bonus * 0.2
-        final_raw = base_raw - extension * 0.6
-        final_score = max(0.0, min(100.0, 50 + final_raw))
+        weekly_bonus = _band_score(weekly_score, [40, 50, 60, 70, 80], [-20, -5, 5, 12, 18, 20]) if weekly_score is not None else 0.0
+        rs_bonus = _band_score(relative_score, [40, 50, 60, 70, 80], [-15, -5, 5, 10, 15, 20]) if relative_score is not None else 0.0
+        daily_bonus = _band_score(daily_score, [40, 50, 60, 70, 80], [-10, 0, 5, 10, 15, 20]) if daily_score is not None else 0.0
+        final_score = max(0.0, min(100.0, 50 + (short_score - 50) * 0.4 + (long_score - 50) * 0.2 - extension_risk * 0.12 + lifecycle_rank_score * 0.24))
 
         return {
-            "passed": len(hard_failed) == 0,
+            "passed": len(hard_failed) == 0 and strong_identity != "观察股",
             "hard_failed": hard_failed,
             "pool": pool,
+            "strong_identity": strong_identity,
+            "strong_identity_score": round(strong_identity_score, 2),
+            "strong_identity_reasons": lifecycle.get("strong_identity_reasons") or [],
+            "divergence_mode": divergence_mode,
+            "divergence_score": round(divergence_score, 2),
+            "entry_quality_score": round(entry_quality_score, 2),
+            "weak_to_strong_score": round(weak_to_strong_score, 2),
+            "lifecycle_state": lifecycle_state,
+            "lifecycle_rank_score": round(lifecycle_rank_score, 2),
             "long_score": round(long_score, 2),
             "short_score": round(short_score, 2),
+            "sector_score": round(sector_score, 2),
             "extension_risk": round(extension_risk, 2),
+            "room_score": round(room_score, 2),
+            "forward_opportunity_score": round(forward_opportunity_score, 2),
+            "opportunity_rank_score": round(opportunity_rank_score, 2),
             "score_breakdown": {
-                "weinstein": round(stage_bonus, 2),
+                "weinstein": 0,
                 "weekly": round(weekly_bonus, 2),
                 "relative": round(rs_bonus, 2),
                 "daily_entry": round(daily_bonus, 2),
-                "extension": round(extension, 2),
+                "extension": round(extension_risk, 2),
+                "lifecycle": round(lifecycle_rank_score, 2),
                 "final": round(final_score, 2),
             },
             "reason": "ok" if not hard_failed else ";".join(hard_failed),
@@ -541,6 +657,21 @@ class QuantitativeUniverseScreener:
             "daily_entry_score": factor.get("daily_entry_score"),
             "ma20_deviation_pct": factor.get("ma20_deviation_pct"),
             "change_pct": factor.get("change_pct"),
+            "short_setup_score": factor.get("short_setup_score"),
+            "ret_3d_pct": factor.get("ret_3d_pct"),
+            "ret_5d_pct": factor.get("ret_5d_pct"),
+            "close_above_ma5": factor.get("close_above_ma5"),
+            "ma5_slope_pct": factor.get("ma5_slope_pct"),
+            "breakout_20d": factor.get("breakout_20d"),
+            "breakout_60d": factor.get("breakout_60d"),
+            "volume_ratio": factor.get("volume_ratio"),
+            "amount_ratio": factor.get("amount_ratio"),
+            "sector_1d_return": factor.get("sector_1d_return"),
+            "sector_3d_return": factor.get("sector_3d_return"),
+            "sector_5d_return": factor.get("sector_5d_return"),
+            "sector_10d_return": factor.get("sector_10d_return"),
+            "sector_rank": factor.get("sector_rank"),
+            "stock_vs_sector_strength": factor.get("stock_vs_sector_strength"),
             "data_quality_valid": factor.get("data_quality_valid"),
             "data_quality_errors": factor.get("data_quality_errors"),
             "weinstein_stage": factor.get("weinstein_stage"),
@@ -560,10 +691,10 @@ class QuantitativeUniverseScreener:
             f"全市场量化预筛选报告 ({trade_date})",
             f"股票池数量: {universe_count}",
             f"成功计算多周期因子: {scanned_count}",
-            f"通过周线+相对强度+日线条件: {passed_count}",
+            f"通过强势发现+分歧/转强综合条件: {passed_count}",
             (
-                '筛选条件：硬过滤=数据质量/周线可用/极端坏趋势; '
-                f"评分=周线+RS+Weinstein+日线-过度延伸; "
+                '筛选条件：硬过滤=数据质量/一字板/极端过热/长期破烂; '
+                f"候选排序=强势身份+分歧质量+转强准备度+量价/板块/长期趋势; "
                 f"MA20硬上限={self.config.hard_max_ma20_deviation_pct}%, "
                 f"前日硬上限={self.config.hard_max_prev_day_gain_pct}%"
             ),
@@ -573,15 +704,23 @@ class QuantitativeUniverseScreener:
             factor = candidate["technical_factor"]
             lines.append(
                 f"{index}. {candidate['symbol_name']}({candidate['symbol_code']}): "
-                f"量化分={candidate['quantitative_score']}, "
-                f"周线={factor.get('weekly_trend')}/{factor.get('weekly_trend_score')}, "
+                f"机会排序分={candidate['quantitative_score']}, "
+                f"强势={factor.get('strong_stock_lifecycle', {}).get('strong_identity')}/{factor.get('strong_stock_lifecycle', {}).get('strong_identity_score')}, "
+                f"分歧={factor.get('strong_stock_lifecycle', {}).get('divergence_mode')}/{factor.get('strong_stock_lifecycle', {}).get('divergence_score')}, "
+                f"转强={factor.get('strong_stock_lifecycle', {}).get('weak_to_strong_score')}, "
+                f"入场={factor.get('strong_stock_lifecycle', {}).get('entry_quality_score')}, "
+                f"短线分={factor.get('short_setup_score')}, "
+                f"5日={factor.get('ret_5d_pct')}%, "
+                f"量比={factor.get('volume_ratio')}, "
+                f"额比={factor.get('amount_ratio')}, "
                 f"RS20={factor.get('relative_strength_20d_pct')}%, "
-                f"RS60={factor.get('relative_strength_60d_pct')}%, "
-                f"日线={factor.get('daily_entry_score')}, "
-                f"MA20偏离={factor.get('ma20_deviation_pct')}%, "
-                f"前日涨跌={factor.get('change_pct')}%, "
-                f"温斯坦={factor.get('weinstein_stage')}"
+                f"MA20={factor.get('ma20_deviation_pct')}%, "
+                f"涨跌={factor.get('change_pct')}%, "
+                f"突破={factor.get('breakout_20d')}"
             )
+            if index >= 250:
+                lines.append(f"... 候选太多，仅展示前 250 / 共 {len(candidates)} 只 ...")
+                break
         if errors:
             lines.append(f"部分股票计算失败数量: {len(errors)}")
         return "\n".join(lines)

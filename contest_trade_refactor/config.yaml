@@ -104,22 +104,23 @@ signal_selection_config:
   consensus_enabled: true      # 启用多研究 Agent 的确定性共识
   consensus_method: weighted_majority
   consensus_require_majority: true
-  multi_timeframe_enabled: true       # 周线定方向 + 相对强度选股 + 日线找买点
+  multi_timeframe_enabled: true       # 周线/RS/日线作为软评分，不硬阻断短线动量
   relative_strength_benchmark: sh000300 # 个股相对沪深300的超额收益基准
-  min_weekly_trend_score: 55            # 周线趋势最低分（偏趋势确认，不要超弱）
-  min_relative_strength_score: 45       # 相对强度最低分（允许刚启动时相对强度略低）
+  min_weekly_trend_score: 40            # 周线趋势只作低权重参考（短线系统不硬卡）
+  min_relative_strength_score: 30       # 相对强度允许刚启动略弱，动量+量价+催化更重要
   min_relative_strength_20d_pct: 0     # 20日跑赢基准至少 0 个百分点（不要求已经暴涨）
-  min_daily_entry_score: 50             # 日线入场触发最低分（要求有入场形态，不追高）
+  min_daily_entry_score: 40             # 日线入场触发最低分（突破首日可进入）
   min_flow_confirmation_score: 50       # 资金确认最低分（有资金迹象即可，不给太热/太满）
   min_regime_confirmation_score: 50     # 市场环境确认最低分（中性市场也可通过）
-  max_prev_day_gain_pct: 5              # 前一日涨幅超过 5% 的追高信号要更谨慎（强催化剂除外）
-  max_ma20_deviation_pct: 8             # 偏离 20 日线上方超过 8% 的追高信号要更谨慎
+  max_prev_day_gain_pct: 10             # 前日涨超10%且无动量+量价+板块确认才警示
+  max_ma20_deviation_pct: 12            # 强动量/催化/量价确认时允许更高偏离
   quantitative_screen_enabled: true    # 先从全市场股票池做量化预筛选
   quantitative_screen_fail_open: false # 量化预筛失败时不允许研究 Agent 绕过筛选
   quantitative_screen_max_symbols: 0   # 0 = 扫描全部股票
-  quantitative_screen_top_k: 80        # 交给 Research Agent 的候选上限
+  quantitative_screen_top_k: 0        # 0 = 不截断，全部量化通过候选都交给 Research Agent
   quantitative_screen_concurrency: 8   # 历史行情并发请求数
   quantitative_screen_history_days: 260
   quantitative_screen_min_amount: 0    # 0 = 不按成交额预先截断
   require_data_quality: true           # OHLCV、日期和未来数据校验必须通过
-  require_weinstein_stage2: true      # 只把温斯坦第二阶段候选交给研究 Agent
+  sector_enrichment_enabled: true      # 开启板块强度富化：读取 industry_map + 板块资金流快照
+  require_weinstein_stage2: false     # 温斯坦只是软评分，不再硬要求 Stage2

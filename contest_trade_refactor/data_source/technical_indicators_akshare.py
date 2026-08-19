@@ -17,7 +17,7 @@ from utils.date_utils import get_latest_completed_trading_date, get_trading_date
 
 
 KLINE_DAYS = 260
-CACHE_VERSION = "technical_indicators_akshare_v4"
+CACHE_VERSION = "technical_indicators_akshare_v5_volratio_fix"
 
 
 def _compute_rsi(closes: pd.Series, period: int = 14) -> float:
@@ -92,14 +92,23 @@ def format_stock_technical_factor_line(factor: dict) -> str:
 
     change_pct = factor.get("change_pct")
     change_str = f"{fmt(change_pct, 2, signed=True)}%" if change_pct is not None and not pd.isna(change_pct) else "N/A"
+    close_above_ma5 = factor.get('close_above_ma5')
+    ret5 = factor.get('ret_5d_pct')
+    breakout = factor.get('breakout_20d')
     return (
         f"{factor.get('symbol_name')}({factor.get('symbol_code')}): "
         f"收盘{fmt(factor.get('close'), 2)}, "
         f"涨跌幅{change_str}, "
+        f"MA5{'上' if close_above_ma5 else '下'}, "
         f"MA20距离{fmt(factor.get('ma20_deviation_pct'), 1, signed=True)}%, "
+        f"5日{fmt(ret5, 1, signed=True)}%, "
+        f"20日突破={'是' if breakout else '否'}, "
         f"RSI={fmt(factor.get('rsi'), 1)}, "
         f"MACD={fmt(factor.get('macd'), 3)}, "
         f"量比={fmt(factor.get('volume_ratio'), 2)}, "
+        f"额比={fmt(factor.get('amount_ratio'), 2)}, "
+        f"短线分={fmt(factor.get('short_setup_score'), 1)}, "
+        f"量趋势={fmt(factor.get('volume_ma5_ma20_ratio'), 2)}, "
         f"布林={factor.get('bollinger')}"
     )
 
@@ -440,10 +449,29 @@ def compute_stock_technical_factor_from_history(
     ma20_dist = (current_close - ma20) / ma20 * 100 if ma20 > 0 else float("nan")
     rsi = _compute_rsi(closes, 14)
     dif, dea, macd_hist = _compute_macd(closes)
+    atr = _compute_atr(highs, lows, closes, 14)
+    atr_pct = atr / current_close * 100.0 if current_close > 0 and not np.isnan(atr) else float("nan")
+    daily_returns = closes.pct_change().dropna()
+    daily_volatility_20d_pct = (
+        float(daily_returns.tail(20).std(ddof=0) * 100.0)
+        if len(daily_returns) >= 10
+        else float("nan")
+    )
 
+    today_vol = float(volumes.iloc[-1]) if len(volumes) >= 1 else float("nan")
+    prev_5d_vol = float(volumes.iloc[-6:-1].mean()) if len(volumes) >= 6 else float("nan")
     vol_5 = float(volumes.tail(5).mean())
     vol_20 = float(volumes.tail(20).mean())
-    volume_ratio = vol_5 / vol_20 if vol_20 > 0 else float("nan")
+    amounts_series = (
+        pd.to_numeric(hist_df["成交额"], errors="coerce")
+        if "成交额" in hist_df.columns
+        else pd.Series(dtype=float)
+    )
+    today_amount = float(amounts_series.iloc[-1]) if len(amounts_series) >= 1 else float("nan")
+    prev_5d_avg_amount = float(amounts_series.iloc[-6:-1].mean()) if len(amounts_series) >= 6 else float("nan")
+    volume_ratio = today_vol / prev_5d_vol if prev_5d_vol and prev_5d_vol > 0 else float("nan")
+    amount_ratio = today_amount / prev_5d_avg_amount if prev_5d_avg_amount and prev_5d_avg_amount > 0 else float("nan")
+    volume_ma5_ma20_ratio = vol_5 / vol_20 if vol_20 and vol_20 > 0 else float("nan")
 
     boll_upper, boll_mid, boll_lower = _compute_bollinger(closes, 20)
     if not np.isnan(boll_upper):
@@ -457,6 +485,42 @@ def compute_stock_technical_factor_from_history(
             boll_pos = "下轨下方"
     else:
         boll_pos = "N/A"
+
+    ma5 = float(closes.rolling(5).mean().iloc[-1]) if len(closes) >= 5 else float("nan")
+    ma10 = float(closes.rolling(10).mean().iloc[-1]) if len(closes) >= 10 else float("nan")
+    close_above_ma5 = bool(current_close > ma5) if not np.isnan(ma5) else False
+    # MA5 slope: compare latest MA5 to the MA5 from 3 bars earlier (approximates初速)
+    ma5_slope_base = float(closes.rolling(5).mean().iloc[-4]) if len(closes) >= 7 else float("nan")
+    ma5_slope_pct = (
+        (ma5 / ma5_slope_base - 1.0) * 100.0
+        if not np.isnan(ma5_slope_base) and ma5_slope_base > 0
+        else float("nan")
+    )
+    ret_1d_pct = _return_pct(closes, 1)
+    ret_3d_pct = _return_pct(closes, 3)
+    ret_5d_pct = _return_pct(closes, 5)
+    ret_10d_pct = _return_pct(closes, 10)
+    ret_20d_pct = _return_pct(closes, 20)
+    recent_20d_high = float(closes.tail(20).max()) if len(closes) >= 20 else float("nan")
+    recent_60d_high = float(closes.tail(60).max()) if len(closes) >= 60 else float("nan")
+    close_vs_20d_high_pct = (
+        (current_close / recent_20d_high - 1.0) * 100.0
+        if not np.isnan(recent_20d_high) and recent_20d_high > 0
+        else float("nan")
+    )
+    close_vs_60d_high_pct = (
+        (current_close / recent_60d_high - 1.0) * 100.0
+        if not np.isnan(recent_60d_high) and recent_60d_high > 0
+        else float("nan")
+    )
+    breakout_20d = bool(
+        not np.isnan(close_vs_20d_high_pct)
+        and close_vs_20d_high_pct >= -0.5
+    )
+    breakout_60d = bool(
+        not np.isnan(close_vs_60d_high_pct)
+        and close_vs_60d_high_pct >= -0.5
+    )
 
     weekly_factor = _compute_weekly_factor(price_frame)
     weinstein_factor = _compute_weinstein_phase(price_frame)
@@ -482,6 +546,39 @@ def compute_stock_technical_factor_from_history(
         daily_entry_score -= 4.0
     daily_entry_score = max(0.0, min(100.0, daily_entry_score))
 
+    # T+3~T+5 short-term setup score
+    short_setup_score = 50.0
+    short_setup_score += 12.0 if close_above_ma5 else -12.0
+    if not np.isnan(ma5_slope_pct):
+        short_setup_score += 8.0 if ma5_slope_pct > 0 else -8.0
+    if ret_5d_pct is not None:
+        if 1.0 <= ret_5d_pct <= 10.0:
+            short_setup_score += 12.0
+        elif 10.0 < ret_5d_pct <= 20.0:
+            short_setup_score += 8.0
+        elif ret_5d_pct > 30.0:
+            short_setup_score -= 10.0
+        elif ret_5d_pct < 0.0:
+            short_setup_score -= 12.0
+        else:
+            short_setup_score -= 2.0
+    if change_pct is not None:
+        if 3.0 <= float(change_pct) <= 15.0:
+            short_setup_score += 5.0
+        elif float(change_pct) > 15.0 and not breakout_60d:
+            short_setup_score -= 8.0
+    if not np.isnan(volume_ratio):
+        if volume_ratio >= 1.2:
+            short_setup_score += 6.0
+        elif volume_ratio < 0.8:
+            short_setup_score -= 5.0
+    if not np.isnan(amount_ratio):
+        if amount_ratio >= 1.2:
+            short_setup_score += 4.0
+    if breakout_20d:
+        short_setup_score += 6.0
+    short_setup_score = max(0.0, min(100.0, short_setup_score))
+
     # Long-term structure factors (MA50/MA200/52w, used by long_score)
     long_factors = _compute_long_term_factors(closes, current_close)
 
@@ -492,9 +589,30 @@ def compute_stock_technical_factor_from_history(
         "close": current_close,
         "change_pct": change_pct,
         "ma20_deviation_pct": None if np.isnan(ma20_dist) else round(float(ma20_dist), 1),
+        "close_above_ma5": close_above_ma5,
+        "ma5_slope_pct": None if np.isnan(ma5_slope_pct) else round(float(ma5_slope_pct), 3),
+        "ret_1d_pct": ret_1d_pct,
+        "ret_3d_pct": ret_3d_pct,
+        "ret_5d_pct": ret_5d_pct,
+        "ret_10d_pct": ret_10d_pct,
+        "ret_20d_pct": ret_20d_pct,
+        "close_vs_20d_high_pct": None if np.isnan(close_vs_20d_high_pct) else round(float(close_vs_20d_high_pct), 3),
+        "close_vs_60d_high_pct": None if np.isnan(close_vs_60d_high_pct) else round(float(close_vs_60d_high_pct), 3),
+        "breakout_20d": breakout_20d,
+        "breakout_60d": breakout_60d,
+        "short_setup_score": round(short_setup_score, 2),
         "rsi": None if np.isnan(rsi) else round(float(rsi), 1),
         "macd": None if np.isnan(macd_hist) else round(float(macd_hist), 3),
+        "atr": None if np.isnan(atr) else round(float(atr), 4),
+        "atr_pct": None if np.isnan(atr_pct) else round(float(atr_pct), 3),
+        "daily_volatility_20d_pct": (
+            None
+            if np.isnan(daily_volatility_20d_pct)
+            else round(float(daily_volatility_20d_pct), 3)
+        ),
         "volume_ratio": None if np.isnan(volume_ratio) else round(float(volume_ratio), 2),
+        "amount_ratio": None if np.isnan(amount_ratio) else round(float(amount_ratio), 2),
+        "volume_ma5_ma20_ratio": None if np.isnan(volume_ma5_ma20_ratio) else round(float(volume_ma5_ma20_ratio), 2),
         "bollinger": boll_pos,
         "daily_entry_score": round(daily_entry_score, 2),
         "long_term_structure": long_factors,
@@ -709,10 +827,14 @@ class TechnicalIndicatorsAkshare(DataSourceBase):
                 # MACD
                 dif, dea, macd_hist = _compute_macd(closes)
 
-                # 量比 (5日均量 / 20日均量)
+                # 量比 = 当日量 / 前5日均量(不含当日); 额比 = 当日额/前5日均额; 量趋势 = MA5/MA20
+                today_vol = float(volumes.iloc[-1]) if len(volumes) >= 1 else float('nan')
+                prev_5d_vol = float(volumes.iloc[-6:-1].mean()) if len(volumes) >= 6 else float('nan')
                 vol_5 = float(volumes.tail(5).mean())
                 vol_20 = float(volumes.tail(20).mean())
-                volume_ratio = vol_5 / vol_20 if vol_20 > 0 else float('nan')
+                volume_ratio = today_vol / prev_5d_vol if prev_5d_vol and prev_5d_vol > 0 else float('nan')
+                amount_ratio = float('nan')
+                volume_ma5_ma20_ratio = vol_5 / vol_20 if vol_20 and vol_20 > 0 else float('nan')
 
                 # ATR
                 atr = _compute_atr(highs, lows, closes, 14)
@@ -739,6 +861,8 @@ class TechnicalIndicatorsAkshare(DataSourceBase):
                     f"RSI={rsi:.1f}, "
                     f"MACD={macd_hist:.3f}(DIF={dif:.3f},DEA={dea:.3f}), "
                     f"量比={volume_ratio:.2f}, "
+                    f"额比={amount_ratio:.2f}, "
+                    f"量趋势={volume_ma5_ma20_ratio:.2f}, "
                     f"ATR={atr:.2f}, "
                     f"布林={boll_pos}"
                 )

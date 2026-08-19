@@ -9,10 +9,11 @@ portfolio using the system's recommended position sizing.
 Current behavior:
   - Simulates `buy_passed` signals only by default (--include-watch / --include-research opt-in)
   - Entry at next-trading-day open (already stored as entry_date / entry_price)
-  - Position size from signal_tier (A:15%, B:8%, C:5%, default: 8%)
+  - Position size from the allocator's recommended_position_size_pct
   - Optional stop-loss / take-profit during holding window
-  - Sells at close of T+N (default N=5) or stop/take-trigger date
-  - Applies per-side commission and slippage as a seller/buyer cost
+  - Enforces A-share T+1: no exit is allowed on the entry session
+  - Sells at the configured holding-session close (default T3) or a later stop/take trigger
+  - Applies commission, minimum commission, sell stamp duty and slippage
 
 Outputs:
   agents_workspace/backtest_results/
@@ -104,6 +105,16 @@ def tier_weight(signal_tier: str, fallback: float = 8.0) -> float:
     return fallback
 
 
+def recommended_weight(row: pd.Series, cfg: "SimConfig") -> float:
+    explicit = safe_float(row.get("recommended_position_size_pct"), 0.0)
+    if explicit > 0:
+        return min(cfg.max_position_pct, explicit)
+    return min(
+        cfg.max_position_pct,
+        tier_weight(str(row.get("signal_tier") or ""), cfg.default_weight_pct),
+    )
+
+
 def max_drawdown_from_equity(eq: pd.DataFrame, value_col: str = "equity") -> float:
     if eq.empty or value_col not in eq:
         return 0.0
@@ -119,8 +130,10 @@ def max_drawdown_from_equity(eq: pd.DataFrame, value_col: str = "equity") -> flo
 @dataclass
 class SimConfig:
     initial_cash: float = 1_000_000.0
-    holding_days: int = 5
-    commission_rate: float = 0.0004   # 4 bps round trip? Applied per side as 0.0004 = 4bps
+    holding_days: int = 3
+    commission_rate: float = 0.0003
+    minimum_commission: float = 5.0
+    stamp_duty_rate: float = 0.0005
     slippage_bps: float = 2.0
     stop_loss_pct: float = -5.0
     take_profit_pct: float = 8.0
@@ -129,12 +142,21 @@ class SimConfig:
     include_research: bool = False
     include_consensus: bool = False
     default_weight_pct: float = 8.0
+    max_position_pct: float = 15.0
+    min_fill_ratio: float = 0.5
 
 
 def simulate_signals(df: pd.DataFrame, cfg: SimConfig) -> pd.DataFrame:
     """Simulate trades from the closed-loop CSV rows."""
+    if cfg.holding_days < 2:
+        raise ValueError("holding_days must be >= 2 for A-share T+1 execution")
     records = []
-    for _, row in df.iterrows():
+    available_cash = cfg.initial_cash
+    active_positions: List[Dict[str, Any]] = []
+    ordered = df.copy()
+    if "entry_date" in ordered:
+        ordered = ordered.sort_values(["entry_date", "trigger_time"], kind="stable")
+    for _, row in ordered.iterrows():
         group = str(row.get("signal_group") or "")
         if group == "buy_passed":
             allowed = True
@@ -149,7 +171,9 @@ def simulate_signals(df: pd.DataFrame, cfg: SimConfig) -> pd.DataFrame:
         if not allowed:
             continue
 
-        symbol = str(row.get("symbol_code") or row.get("symbol") or "").partition(".")[0]
+        symbol_raw = str(row.get("symbol_code") or row.get("symbol") or "").partition(".")[0]
+        digits = "".join(ch for ch in symbol_raw if ch.isdigit())
+        symbol = digits[-6:].zfill(6) if digits else symbol_raw
         entry_compact = str(row.get("entry_date") or "").replace("-", "")[:8]
         if not symbol or len(entry_compact) != 8:
             continue
@@ -157,43 +181,79 @@ def simulate_signals(df: pd.DataFrame, cfg: SimConfig) -> pd.DataFrame:
         if entry_price <= 0:
             continue
 
-        # Position size (fraction of initial cash for this simulation; a real
-        # portfolio would cap by available cash. Keep simple for v1.)
-        tier = str(row.get("signal_tier") or "").upper()
-        weight = tier_weight(tier, cfg.default_weight_pct) / 100.0
-        budget = cfg.initial_cash * weight
+        # Release proceeds from positions closed before this entry session.
+        still_active = []
+        for position in active_positions:
+            if str(position["exit_date"]) < entry_compact:
+                available_cash += float(position["proceeds"])
+            else:
+                still_active.append(position)
+        active_positions = still_active
 
-        nxt = get_next_trade_dates(entry_compact, cfg.holding_days + 1)
-        if len(nxt) < 2:
+        tier = str(row.get("signal_tier") or "").upper()
+        weight_pct = recommended_weight(row, cfg)
+        requested_budget = cfg.initial_cash * weight_pct / 100.0
+        if requested_budget <= 0:
             continue
-        dates_in_window = nxt[1:]  # T+1..T+N
+        if available_cash < requested_budget and available_cash / requested_budget < cfg.min_fill_ratio:
+            continue
+        budget = min(requested_budget, available_cash)
+
+        future_dates = get_next_trade_dates(entry_compact, max(0, cfg.holding_days - 1))
+        dates_in_window = [entry_compact] + future_dates
+        if len(dates_in_window) < cfg.holding_days:
+            continue
         end = dates_in_window[-1]
-        price_map = get_price_map(symbol, entry_compact, end)
+        trigger_compact = str(row.get("trigger_date") or entry_compact).replace("-", "")[:8]
+        price_map = get_price_map(symbol, trigger_compact, end)
         if entry_compact not in price_map:
             continue
 
+        # A one-price/near-limit-up open is not assumed fillable.
+        previous = price_map.get(trigger_compact) or {}
+        previous_close = safe_float(previous.get("收盘", previous.get("close")), 0.0)
+        entry_row = price_map.get(entry_compact) or {}
+        entry_open = safe_float(entry_row.get("开盘", entry_row.get("open")), entry_price)
+        limit_pct = 19.5 if symbol.startswith(("300", "688")) else 9.7
+        if previous_close > 0 and (entry_open / previous_close - 1.0) * 100.0 >= limit_pct:
+            continue
+
         # Realistic share lot constraint: A-share trades in 100-share lots.
-        shares = int(budget / entry_price / 100) * 100
+        per_share_entry_cost = entry_price * (1 + cfg.commission_rate + cfg.slippage_bps / 10000.0)
+        shares = int(budget / per_share_entry_cost / 100) * 100
         if shares <= 0:
             continue
 
         buy_cost = entry_price * shares
-        commission_buy = buy_cost * cfg.commission_rate
+        commission_buy = max(cfg.minimum_commission, buy_cost * cfg.commission_rate)
         slippage_buy = buy_cost * cfg.slippage_bps / 10000.0
         total_cost = buy_cost + commission_buy + slippage_buy
+        if total_cost > available_cash:
+            continue
+        available_cash -= total_cost
 
         # Find exit: stop/take within window, else close at last available.
         exit_price = entry_price
         exit_date = entry_compact
-        stop_price = entry_price * (1 + cfg.stop_loss_pct / 100.0)
-        take_price = entry_price * (1 + cfg.take_profit_pct / 100.0)
+        # Prefer the per-candidate trade_plan stop/take over the global defaults.
+        plan_stop = safe_float(row.get("trade_plan_stop_loss"), 0.0)
+        plan_take = safe_float(row.get("trade_plan_take_profit_1"), 0.0)
+        if plan_stop > 0:
+            stop_price = plan_stop
+        else:
+            stop_price = entry_price * (1 + cfg.stop_loss_pct / 100.0)
+        if plan_take > 0:
+            take_price = plan_take
+        else:
+            take_price = entry_price * (1 + cfg.take_profit_pct / 100.0)
         max_gain = entry_price
         max_loss = entry_price
-        for d in dates_in_window:
+        for session_index, d in enumerate(dates_in_window):
             r = price_map.get(d)
             if not r:
                 continue
             try:
+                opn = safe_float(r.get("开盘", r.get("open", entry_price)), entry_price)
                 hi = safe_float(r.get("最高", r.get("high", entry_price)), entry_price)
                 lo = safe_float(r.get("最低", r.get("low", entry_price)), entry_price)
                 close = safe_float(r.get("收盘", r.get("close", entry_price)), entry_price)
@@ -201,6 +261,16 @@ def simulate_signals(df: pd.DataFrame, cfg: SimConfig) -> pd.DataFrame:
                 continue
             max_gain = max(max_gain, hi)
             max_loss = min(max_loss, lo)
+            # A shares bought today cannot be sold until the next trading day.
+            # We still retain entry-session highs/lows for excursion statistics.
+            if session_index == 0:
+                exit_price = close
+                exit_date = d
+                continue
+            if cfg.enable_stop and opn <= stop_price:
+                exit_price = opn
+                exit_date = d
+                break
             if cfg.enable_stop and lo <= stop_price:
                 exit_price = stop_price
                 exit_date = d
@@ -212,13 +282,14 @@ def simulate_signals(df: pd.DataFrame, cfg: SimConfig) -> pd.DataFrame:
             exit_price = close
             exit_date = d
 
-        commission_sell = exit_price * shares * cfg.commission_rate
+        commission_sell = max(cfg.minimum_commission, exit_price * shares * cfg.commission_rate)
+        stamp_duty = exit_price * shares * cfg.stamp_duty_rate
         slippage_sell = exit_price * shares * cfg.slippage_bps / 10000.0
-        proceeds = exit_price * shares - commission_sell - slippage_sell
+        proceeds = exit_price * shares - commission_sell - stamp_duty - slippage_sell
         pnl = proceeds - total_cost
         ret_pct = pnl / total_cost * 100 if total_cost else 0
 
-        records.append({
+        trade_record = {
             "trigger_time": row.get("trigger_time", ""),
             "symbol": symbol,
             "signal_group": group,
@@ -227,25 +298,31 @@ def simulate_signals(df: pd.DataFrame, cfg: SimConfig) -> pd.DataFrame:
             "entry_price": round(entry_price, 4),
             "shares": shares,
             "buy_cost": round(total_cost, 2),
+            "position_weight_pct": round(total_cost / cfg.initial_cash * 100.0, 3),
             "exit_date": exit_date,
             "exit_price": round(exit_price, 4),
             "days_held": len([d for d in dates_in_window if d in price_map]),
             "gross_return_pct": round((exit_price - entry_price) / entry_price * 100, 4),
             "pnl": round(pnl, 2),
+            "fees": round(commission_buy + commission_sell + stamp_duty + slippage_buy + slippage_sell, 2),
             "return_after_cost_pct": round(ret_pct, 4),
             "max_gain_pct": round((max_gain - entry_price) / entry_price * 100, 4),
             "max_loss_pct": round((max_loss - entry_price) / entry_price * 100, 4),
-        })
+            "trade_plan_pass": bool(row.get("trade_plan_pass", True)),
+            "trade_plan_reject_reasons": str(row.get("trade_plan_reject_reasons") or ""),
+        }
+        records.append(trade_record)
+        active_positions.append({"exit_date": exit_date, "proceeds": proceeds})
     return pd.DataFrame(records)
 
 
 def build_equity_curve(trades: pd.DataFrame, initial_cash: float) -> pd.DataFrame:
     if trades.empty:
         return pd.DataFrame(columns=["date", "equity", "pnl", "drawdown_pct"])
-    dt_sorted = trades.sort_values("exit_date")
+    daily = trades.groupby("exit_date", as_index=False)["pnl"].sum().sort_values("exit_date")
     cash = initial_cash
-    rows = []
-    for _, t in dt_sorted.iterrows():
+    rows = [{"date": "START", "equity": cash, "pnl": 0.0}]
+    for _, t in daily.iterrows():
         cash += t["pnl"]
         rows.append({"date": t["exit_date"], "equity": cash, "pnl": t["pnl"]})
     eq = pd.DataFrame(rows)
@@ -296,6 +373,10 @@ def write_report(summary: Dict[str, Any], trades: pd.DataFrame, equity: pd.DataF
         "",
         f"Initial cash: {cfg.initial_cash:,.2f}",
         f"Commission rate per side: {cfg.commission_rate:.4%}",
+        f"Minimum commission per order: {cfg.minimum_commission:.2f}",
+        f"Sell stamp duty: {cfg.stamp_duty_rate:.4%}",
+        f"Slippage: {cfg.slippage_bps:.2f} bps per side",
+        f"Minimum fill ratio: {cfg.min_fill_ratio:.2f}",
         f"Stop loss: {cfg.stop_loss_pct}%",
         f"Take profit: {cfg.take_profit_pct}%",
         f"Enable stop/take: {cfg.enable_stop}",
@@ -345,8 +426,10 @@ def main() -> None:
                         help="Optional glob to raw trade_decision JSON; if provided, first run backtest_signal_closed_loop.py to generate signal_performance.csv.")
     parser.add_argument("--output", default=str(PROJECT_ROOT / "agents_workspace" / "backtest_results"))
     parser.add_argument("--initial-cash", type=float, default=1_000_000)
-    parser.add_argument("--holding-days", type=int, default=5)
+    parser.add_argument("--holding-days", type=int, default=3)
     parser.add_argument("--commission-pct", type=float, default=0.03, help="commission per side, e.g. 0.03 = 3 bps")
+    parser.add_argument("--minimum-commission", type=float, default=5.0)
+    parser.add_argument("--stamp-duty-pct", type=float, default=0.05)
     parser.add_argument("--slippage-bps", type=float, default=2.0)
     parser.add_argument("--stop-loss-pct", type=float, default=-5.0)
     parser.add_argument("--take-profit-pct", type=float, default=8.0)
@@ -354,12 +437,17 @@ def main() -> None:
     parser.add_argument("--include-watch", action="store_true")
     parser.add_argument("--include-research", action="store_true")
     parser.add_argument("--include-consensus", action="store_true")
+    parser.add_argument("--max-position-pct", type=float, default=15.0)
+    parser.add_argument("--min-fill-ratio", type=float, default=0.5,
+                        help="Reject scaled-down buys below this fraction of target budget.")
     args = parser.parse_args()
 
     cfg = SimConfig(
         initial_cash=args.initial_cash,
         holding_days=args.holding_days,
         commission_rate=args.commission_pct / 100.0,
+        minimum_commission=args.minimum_commission,
+        stamp_duty_rate=args.stamp_duty_pct / 100.0,
         slippage_bps=args.slippage_bps,
         stop_loss_pct=args.stop_loss_pct,
         take_profit_pct=args.take_profit_pct,
@@ -367,6 +455,8 @@ def main() -> None:
         include_watch=True if args.include_watch else False,
         include_research=True if args.include_research else False,
         include_consensus=args.include_consensus,
+        max_position_pct=args.max_position_pct,
+        min_fill_ratio=args.min_fill_ratio,
     )
 
     if args.decision_glob:
@@ -387,6 +477,16 @@ def main() -> None:
 
     df = pd.read_csv(input_path)
     print(f"[sim] loaded {len(df)} signals from {input_path.name}")
+
+    allowed_groups = {"buy_passed"}
+    if cfg.include_watch:
+        allowed_groups.add("watch")
+    if cfg.include_research:
+        allowed_groups.add("research")
+    if cfg.include_consensus:
+        allowed_groups.add("consensus")
+    if "signal_group" in df.columns:
+        df = df[df["signal_group"].astype(str).isin(allowed_groups)].copy()
 
     # Prefer a single canonical group per trigger_date+symbol so we don't double
     # count the same candidate across watch/research/consensus/buy.
@@ -411,6 +511,12 @@ def main() -> None:
         equity.to_csv(output_dir / "portfolio_equity.csv", index=False)
         print(f"[result] {output_dir / 'portfolio_trades.csv'}")
         print(f"[result] {output_dir / 'portfolio_equity.csv'}")
+    else:
+        pd.DataFrame(columns=[
+            "trigger_time", "symbol", "signal_group", "signal_tier", "entry_date",
+            "entry_price", "shares", "buy_cost", "exit_date", "exit_price", "pnl",
+        ]).to_csv(output_dir / "portfolio_trades.csv", index=False)
+        equity.to_csv(output_dir / "portfolio_equity.csv", index=False)
 
     print(json.dumps(summary, ensure_ascii=False, indent=2))
 

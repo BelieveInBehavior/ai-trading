@@ -181,19 +181,23 @@ def load_all_signals(glob_pattern: str) -> List[Dict[str, Any]]:
         sigs = extract_signals_from_file(path)
         if sigs:
             all_sigs.extend(sigs)
-    # Dedup identical (trigger, symbol, group)
-    seen = set()
-    uniq = []
+    # One economic prediction per trigger+symbol.  The previous implementation
+    # counted watch/research/consensus copies as independent observations,
+    # inflating sample size and factor statistics.
+    priority = {"buy_passed": 0, "watch": 1, "consensus": 2, "research": 3}
+    grouped: Dict[tuple, List[Dict[str, Any]]] = {}
     for r in all_sigs:
         key = (
             r.get("__trigger_compact"),
             str(r.get("symbol_code") or r.get("symbol_name") or ""),
-            r.get("__group"),
         )
-        if key in seen:
-            continue
-        seen.add(key)
-        uniq.append(r)
+        grouped.setdefault(key, []).append(r)
+    uniq = []
+    for records in grouped.values():
+        records.sort(key=lambda item: priority.get(str(item.get("__group")), 99))
+        chosen = dict(records[0])
+        chosen["source_groups"] = sorted({str(item.get("__group")) for item in records})
+        uniq.append(chosen)
     print(f"[load] {len(uniq)} unique signals from {len(files)} files")
     return uniq
 
@@ -212,7 +216,11 @@ def extract_signals_from_file(path: Path) -> List[Dict[str, Any]]:
     trigger_compact = compact_ts(trigger_ts)
     if not trigger_compact:
         return []
-    strategy = str((payload.get("logic_version") or {}).get("strategy_id") or (payload.get("strategy") or {}).get("id") or "")
+    logic_version = payload.get("logic_version") or {}
+    strategy_info = payload.get("strategy") or {}
+    logic_strategy = logic_version.get("strategy_id") if isinstance(logic_version, dict) else ""
+    payload_strategy = strategy_info.get("id") if isinstance(strategy_info, dict) else ""
+    strategy = str(logic_strategy or payload_strategy or "")
 
     groups = [
         ("buy_passed", payload.get("buy_signals") or payload.get("best_signals") or []),
@@ -253,6 +261,53 @@ class Settings:
     min_samples: int = 10
 
 
+def trade_plan_of(rec: Dict[str, Any]) -> Dict[str, Any]:
+    plan = rec.get("trade_plan")
+    if isinstance(plan, dict):
+        return plan
+    # Some older rows stored it nested in scorecard.
+    sc = rec.get("scorecard")
+    if isinstance(sc, dict):
+        plan = sc.get("trade_plan")
+        if isinstance(plan, dict):
+            return plan
+    return {}
+
+
+def _populate_trade_plan_cols(out: Dict[str, Any], rec: Dict[str, Any]) -> None:
+    pl = trade_plan_of(rec)
+    if not pl:
+        out["trade_plan_status"] = pl.get("status", "missing")
+        return
+    inds = pl.get("indicators") or {}
+    lv = pl.get("levels") or {}
+    p = pl.get("plan") or {}
+    out["trade_plan_status"] = pl.get("status", "ok")
+    out["trade_plan_rsi"] = inds.get("rsi")
+    out["trade_plan_vwap20"] = inds.get("vwap_20")
+    out["trade_plan_ema8"] = inds.get("ema8")
+    out["trade_plan_ema13"] = inds.get("ema13")
+    out["trade_plan_ema21"] = inds.get("ema21")
+    out["trade_plan_volume_ratio"] = inds.get("volume_ratio")
+    out["trade_plan_amount_ratio"] = inds.get("amount_ratio")
+    out["trade_plan_volume_ma5_ma20_ratio"] = inds.get("volume_ma5_ma20_ratio")
+    out["trade_plan_support_1"] = lv.get("support_1")
+    out["trade_plan_support_2"] = lv.get("support_2")
+    out["trade_plan_resistance_1"] = lv.get("resistance_1")
+    out["trade_plan_resistance_2"] = lv.get("resistance_2")
+    out["trade_plan_entry_zone_low"] = p.get("entry_zone_low")
+    out["trade_plan_entry_zone_high"] = p.get("entry_zone_high")
+    out["trade_plan_stop_loss"] = p.get("stop_loss")
+    out["trade_plan_stop_loss_pct"] = p.get("stop_loss_pct")
+    out["trade_plan_take_profit_1"] = p.get("take_profit_1")
+    out["trade_plan_take_profit_2"] = p.get("take_profit_2")
+    out["trade_plan_rr_1"] = p.get("rr_1")
+    out["trade_plan_rr_ok"] = p.get("rr_ok")
+    out["trade_plan_pass"] = rec.get("trade_plan_pass", pl.get("trade_plan_pass", False))
+    reasons = rec.get("trade_plan_reject_reasons") or pl.get("trade_plan_reject_reasons")
+    out["trade_plan_reject_reasons"] = reasons
+
+
 def scorecard_of(rec: Dict[str, Any]) -> Dict[str, Any]:
     sc = rec.get("next_day_factor_scorecard")
     if not isinstance(sc, dict):
@@ -269,12 +324,14 @@ def evaluate_one(rec: Dict[str, Any], settings: Settings) -> Optional[Dict[str, 
     if not symbol or not trigger_compact:
         return None
 
-    nxt = get_next_trade_dates(trigger_compact, settings.horizons[-1] + 1)
-    if len(nxt) < settings.horizons[-1] + 1:
+    nxt = get_next_trade_dates(trigger_compact, settings.horizons[-1])
+    if len(nxt) < settings.horizons[-1]:
         rec["_eval_error"] = "not_enough_future"
         return None
     entry_date = nxt[0]
-    horizon_dates = nxt[1:]
+    # T1 is the close of the entry session (next trading-day open -> close),
+    # T3/T5 are the third/fifth session closes from that same entry.
+    horizon_dates = nxt
     start = trigger_compact
     end = horizon_dates[-1]
 
@@ -308,6 +365,7 @@ def evaluate_one(rec: Dict[str, Any], settings: Settings) -> Optional[Dict[str, 
     out["symbol_raw"] = rec.get("symbol_code")
     out["evaluated"] = True
     out.update(fwd)
+    _populate_trade_plan_cols(out, rec)
 
     # For this closed-loop framework we define "hit" as T1 return > 0 for all
     # buy/watch candidate groups. Later we can distinguish by action.
@@ -318,6 +376,19 @@ def evaluate_one(rec: Dict[str, Any], settings: Settings) -> Optional[Dict[str, 
         if k not in out:
             out[k] = v
 
+    # Ensure holding days/rule are present (may come direct on rec)
+    if "recommended_holding_days" not in out or "holding_rule" not in out:
+        try:
+            from agents.signal_tier_classifier import _holding_days, _holding_rule
+            synthetic = {"next_day_factor_scorecard": sc}
+            if "recommended_holding_days" not in out:
+                out["recommended_holding_days"] = _holding_days(synthetic)
+            if "holding_rule" not in out:
+                out["holding_rule"] = _holding_rule(synthetic)
+        except Exception:
+            out.setdefault("recommended_holding_days", 2)
+            out.setdefault("holding_rule", "T+1_2_fast_exit")
+
     for col in [
         "weekly_trend_score", "relative_strength_score", "daily_entry_score",
         "catalyst_score", "capital_flow_score", "technical_score",
@@ -326,7 +397,10 @@ def evaluate_one(rec: Dict[str, Any], settings: Settings) -> Optional[Dict[str, 
         "consensus_score", "future_evidence_count", "flow_data_available",
         "primary_catalyst", "signal_tier", "tier_confidence",
         "recommended_position_size_pct", "buy_score", "probability_value",
-        "probability", "expected_return_t1_pct",
+        "probability", "expected_return_t1_pct", "expected_net_edge_pct",
+        "expected_upside_pct", "expected_downside_pct", "payoff_ratio",
+        "forward_opportunity_score", "fundamental_score", "valuation_score",
+        "atr_pct", "daily_volatility_20d_pct",
     ]:
         if col not in out:
             out[col] = sc.get(col) if col in sc else out.get(col)
@@ -367,7 +441,8 @@ def classify_pending(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 CSV_COLS = [
     "trigger_time", "trigger_date", "source_file", "symbol_code", "symbol_name_raw",
     "signal_group", "buy_decision", "signal_tier", "buy_score", "probability_value",
-    "expected_return_t1_pct", "entry_date", "entry_price",
+    "expected_return_t1_pct", "expected_net_edge_pct", "expected_upside_pct",
+    "expected_downside_pct", "payoff_ratio", "entry_date", "entry_price",
     "t1_close", "t3_close", "t5_close",
     "t1_return_pct", "t3_return_pct", "t5_return_pct",
     "max_gain_pct", "max_loss_pct", "max_drawdown_pct",
@@ -377,6 +452,20 @@ CSV_COLS = [
     "data_quality_score", "ma20_deviation_pct", "prev_day_gain_pct",
     "flow_data_available", "primary_catalyst", "consensus_score",
     "future_evidence_count", "tier_confidence", "recommended_position_size_pct",
+    "recommended_holding_days", "holding_rule",
+    "entry_quality_score", "crowding_score", "entry_quality_delta",
+    "forward_opportunity_score", "fundamental_score", "valuation_score",
+    "atr_pct", "daily_volatility_20d_pct",
+    "trade_plan_status", "trade_plan_rsi", "trade_plan_vwap20",
+    "trade_plan_ema8", "trade_plan_ema13", "trade_plan_ema21",
+    "trade_plan_volume_ratio", "trade_plan_amount_ratio", "trade_plan_volume_ma5_ma20_ratio",
+    "trade_plan_support_1", "trade_plan_support_2",
+    "trade_plan_resistance_1", "trade_plan_resistance_2",
+    "trade_plan_entry_zone_low", "trade_plan_entry_zone_high",
+    "trade_plan_stop_loss", "trade_plan_stop_loss_pct",
+    "trade_plan_take_profit_1", "trade_plan_take_profit_2",
+    "trade_plan_rr_1", "trade_plan_rr_ok",
+    "trade_plan_pass", "trade_plan_reject_reasons",
     "strategy", "_eval_error",
 ]
 

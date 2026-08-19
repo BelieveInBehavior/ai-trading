@@ -345,29 +345,21 @@ async def search_web(query: str, topk: int = 5, trigger_time: str = None):
     response = []
     serp_api_key = cfg.serp_key
     bocha_api_key = cfg.bocha_key
-    volc_api_key, volc_base_url = _get_volc_search_config()
+    volc_api_key = getattr(cfg, "volc_api_key", "") or ""
 
-    if not volc_api_key and not serp_api_key and not bocha_api_key:
-        logger.warning(
-            "No search API keys are configured. Set VOLC_WEB_SEARCH_API_KEY in .env or env, or configure SERP/BOCHA."
-        )
-        return ""
-
-    # Priority 1: 豆包搜索 Custom 版（火山引擎联网搜索）
+    # Priority 1: Doubao / Volcengine custom web search (豆包搜索)
     if volc_api_key:
-        logger.info(
-            f"Attempting search with Doubao/Volcengine for query: '{query}', base_url='{volc_base_url}'"
-        )
+        logger.info(f"Attempting search with Doubao (Volcengine) for query: '{query}'")
         response = ask_volcengine(payload)
 
     # Priority 2: Try Google Search
     if not response and serp_api_key:
         logger.info(f"Attempting search with Google (SerpAPI) for query: '{query}'")
         response = ask_google(payload, serp_api_key)
-    
+
     # Priority 3: Fallback to Bocha if the first attempts fail
     if not response and bocha_api_key:
-        logger.warning("Volcengine/Google search failed or was not configured. Falling back to Bocha AI.")
+        logger.warning("Google search failed or was not configured. Falling back to Bocha AI.")
         logger.info(f"Attempting search with Bocha AI for query: '{query}'")
         response = ask_bocha(payload, bocha_api_key)
     

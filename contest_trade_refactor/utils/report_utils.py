@@ -68,6 +68,8 @@ def _format_technical_summary(signal: Dict) -> str:
             f"RSI={_format_optional_number(factor.get('rsi'))}, "
             f"MACD={_format_optional_number(factor.get('macd'), precision=3)}, "
             f"量比={_format_optional_number(factor.get('volume_ratio'))}, "
+            f"额比={_format_optional_number(factor.get('amount_ratio'))}, "
+            f"量趋势={_format_optional_number(factor.get('volume_ma5_ma20_ratio'))}, "
             f"布林={factor.get('bollinger') or 'N/A'}, "
             f"周线={weekly_trend}({weekly_score}), "
             f"相对强度20日={relative_strength_20d}, "
@@ -259,6 +261,35 @@ def refresh_combined_data_report(trigger_time: str) -> Optional[Path]:
     return save_path
 
 
+def _format_trade_plan(sig: Dict) -> str:
+    plan = sig.get("trade_plan") or {}
+    if not plan:
+        return "N/A"
+    if plan.get("status") != "ok":
+        return f"不可用({plan.get('error', plan.get('status', 'unknown'))})"
+    inds = plan.get("indicators") or {}
+    levels = plan.get("levels") or {}
+    p = plan.get("plan") or {}
+    pass_flag = sig.get("trade_plan_pass")
+    pass_label = "PASS" if pass_flag is True else ("FAIL" if pass_flag is False else "N/A")
+    return (
+        f"[{pass_label}] "
+        f"RSI={inds.get('rsi', 'N/A')}, "
+        f"VWAP20={inds.get('vwap_20', 'N/A')}, "
+        f"EMA8/13/21={inds.get('ema8', 'N/A')}/{inds.get('ema13', 'N/A')}/{inds.get('ema21', 'N/A')}, "
+        f"量比={inds.get('volume_ratio', 'N/A')}, "
+        f"额比={inds.get('amount_ratio', 'N/A')}, "
+        f"量趋势={inds.get('volume_ma5_ma20_ratio', 'N/A')}, "
+        f"支撑1/2={levels.get('support_1', 'N/A')}/{levels.get('support_2', 'N/A')}, "
+        f"压力1/2={levels.get('resistance_1', 'N/A')}/{levels.get('resistance_2', 'N/A')}, "
+        f"入场={p.get('entry_zone_low', 'N/A')}-{p.get('entry_zone_high', 'N/A')}, "
+        f"止损={p.get('stop_loss', 'N/A')}({p.get('stop_loss_pct', '')}%), "
+        f"目标1/2={p.get('take_profit_1', 'N/A')}/{p.get('take_profit_2', 'N/A')}, "
+        f"RR={p.get('rr_1', 'N/A')}, "
+        f"仓位={p.get('suggested_position_size_pct', 'N/A')}%"
+    )
+
+
 def generate_trade_decision_report(trade_result: Dict) -> Optional[Path]:
     """Generate final next-day buy decision report."""
     trigger_time = trade_result.get("trigger_time")
@@ -393,12 +424,14 @@ def generate_trade_decision_report(trade_result: Dict) -> Optional[Path]:
             consensus = sig.get("consensus_report") or {}
             failed = ", ".join(gate.get("failed_reasons") or []) or "none"
             technical_summary = _format_technical_summary(sig)
+            setup_meta = sig.get("setup_meta") or {}
             lines.extend([
                 f"### {i}. {name} ({code})",
                 "",
                 f"- `buy_score`: `{score}`",
-                f"- `probability_value`: `{prob}`",
-                f"- `expected_return_t1_pct`: `{er}`",
+                f"- `probability_value`: `{prob} `(subjective confidence, not backtested)`",
+                f"- `expected_return_t1_pct`: `{er} `(heuristic edge, not statistical expectation)`",
+                f"- `setup_state`: `{setup_meta.get('risk_state', '')} / driver={setup_meta.get('driver_quality', '')}`",
                 f"- `technical_summary`: `{technical_summary}`",
                 f"- `buy_decision`: `{sig.get('buy_decision', '')}`",
                 f"- `signal_contract_version`: `{sig.get('signal_contract_version', 'buy-signal.v1')}`",
@@ -410,7 +443,7 @@ def generate_trade_decision_report(trade_result: Dict) -> Optional[Path]:
                 f"- `agent_votes`: `buy={consensus.get('buy_vote_count', 0)}, watch={consensus.get('watch_vote_count', 0)}, sell={consensus.get('sell_vote_count', 0)}`",
                 f"- `gate_failed_reasons`: `{failed}`",
                 f"- `financial_consistency`: `{_format_financial_consistency(sig)}`",
-                f"- `financial_consistency`: `{_format_financial_consistency(sig)}`",
+                f"- `trade_plan`: `{_format_trade_plan(sig)}`",
                 "",
             ])
 
@@ -445,6 +478,7 @@ def generate_trade_decision_report(trade_result: Dict) -> Optional[Path]:
                 f"- `consensus_confidence`: `{consensus.get('consensus_confidence', '')}`",
                 f"- `agent_votes`: `buy={consensus.get('buy_vote_count', 0)}, watch={consensus.get('watch_vote_count', 0)}, sell={consensus.get('sell_vote_count', 0)}`",
                 f"- `gate_failed_reasons`: `{failed}`",
+                f"- `trade_plan`: `{_format_trade_plan(sig)}`",
                 "",
             ])
 

@@ -1,0 +1,452 @@
+{
+  "医疗服务": {
+    "sector_1d_return": 3.99,
+    "sector_rank": 1,
+    "stock_vs_sector_strength": null
+  },
+  "生物制品": {
+    "sector_1d_return": 2.0,
+    "sector_rank": 2,
+    "stock_vs_sector_strength": null
+  },
+  "中药": {
+    "sector_1d_return": 1.59,
+    "sector_rank": 3,
+    "stock_vs_sector_strength": null
+  },
+  "化学制药": {
+    "sector_1d_return": 1.38,
+    "sector_rank": 4,
+    "stock_vs_sector_strength": null
+  },
+  "医药商业": {
+    "sector_1d_return": 0.67,
+    "sector_rank": 5,
+    "stock_vs_sector_strength": null
+  },
+  "医疗器械": {
+    "sector_1d_return": 0.57,
+    "sector_rank": 6,
+    "stock_vs_sector_strength": null
+  },
+  "证券": {
+    "sector_1d_return": 0.3,
+    "sector_rank": 7,
+    "stock_vs_sector_strength": null
+  },
+  "银行": {
+    "sector_1d_return": 0.29,
+    "sector_rank": 8,
+    "stock_vs_sector_strength": null
+  },
+  "综合": {
+    "sector_1d_return": 0.26,
+    "sector_rank": 9,
+    "stock_vs_sector_strength": null
+  },
+  "电力": {
+    "sector_1d_return": 0.25,
+    "sector_rank": 10,
+    "stock_vs_sector_strength": null
+  },
+  "保险": {
+    "sector_1d_return": 0.14,
+    "sector_rank": 11,
+    "stock_vs_sector_strength": null
+  },
+  "厨卫电器": {
+    "sector_1d_return": 0.11,
+    "sector_rank": 12,
+    "stock_vs_sector_strength": null
+  },
+  "通信服务": {
+    "sector_1d_return": 0.09,
+    "sector_rank": 13,
+    "stock_vs_sector_strength": null
+  },
+  "饮料制造": {
+    "sector_1d_return": 0.08,
+    "sector_rank": 14,
+    "stock_vs_sector_strength": null
+  },
+  "白酒": {
+    "sector_1d_return": 0.06,
+    "sector_rank": 15,
+    "stock_vs_sector_strength": null
+  },
+  "养殖业": {
+    "sector_1d_return": -0.34,
+    "sector_rank": 16,
+    "stock_vs_sector_strength": null
+  },
+  "燃气": {
+    "sector_1d_return": -0.44,
+    "sector_rank": 17,
+    "stock_vs_sector_strength": null
+  },
+  "其他电源设备": {
+    "sector_1d_return": -0.5,
+    "sector_rank": 19,
+    "stock_vs_sector_strength": null
+  },
+  "通信设备": {
+    "sector_1d_return": -0.5,
+    "sector_rank": 18,
+    "stock_vs_sector_strength": null
+  },
+  "食品加工制造": {
+    "sector_1d_return": -0.57,
+    "sector_rank": 20,
+    "stock_vs_sector_strength": null
+  },
+  "文化传媒": {
+    "sector_1d_return": -0.64,
+    "sector_rank": 22,
+    "stock_vs_sector_strength": null
+  },
+  "计算机设备": {
+    "sector_1d_return": -0.64,
+    "sector_rank": 21,
+    "stock_vs_sector_strength": null
+  },
+  "农产品加工": {
+    "sector_1d_return": -0.7,
+    "sector_rank": 23,
+    "stock_vs_sector_strength": null
+  },
+  "电网设备": {
+    "sector_1d_return": -0.72,
+    "sector_rank": 24,
+    "stock_vs_sector_strength": null
+  },
+  "港口航运": {
+    "sector_1d_return": -0.84,
+    "sector_rank": 25,
+    "stock_vs_sector_strength": null
+  },
+  "环保设备": {
+    "sector_1d_return": -0.85,
+    "sector_rank": 26,
+    "stock_vs_sector_strength": null
+  },
+  "公路铁路运输": {
+    "sector_1d_return": -0.89,
+    "sector_rank": 28,
+    "stock_vs_sector_strength": null
+  },
+  "多元金融": {
+    "sector_1d_return": -0.89,
+    "sector_rank": 27,
+    "stock_vs_sector_strength": null
+  },
+  "电机": {
+    "sector_1d_return": -0.9,
+    "sector_rank": 29,
+    "stock_vs_sector_strength": null
+  },
+  "风电设备": {
+    "sector_1d_return": -0.95,
+    "sector_rank": 30,
+    "stock_vs_sector_strength": null
+  },
+  "小家电": {
+    "sector_1d_return": -0.96,
+    "sector_rank": 31,
+    "stock_vs_sector_strength": null
+  },
+  "塑料制品": {
+    "sector_1d_return": -1.01,
+    "sector_rank": 32,
+    "stock_vs_sector_strength": null
+  },
+  "机场航运": {
+    "sector_1d_return": -1.04,
+    "sector_rank": 33,
+    "stock_vs_sector_strength": null
+  },
+  "军工装备": {
+    "sector_1d_return": -1.05,
+    "sector_rank": 34,
+    "stock_vs_sector_strength": null
+  },
+  "旅游及酒店": {
+    "sector_1d_return": -1.06,
+    "sector_rank": 35,
+    "stock_vs_sector_strength": null
+  },
+  "煤炭开采加工": {
+    "sector_1d_return": -1.1,
+    "sector_rank": 36,
+    "stock_vs_sector_strength": null
+  },
+  "家居用品": {
+    "sector_1d_return": -1.1,
+    "sector_rank": 37,
+    "stock_vs_sector_strength": null
+  },
+  "光学光电子": {
+    "sector_1d_return": -1.12,
+    "sector_rank": 38,
+    "stock_vs_sector_strength": null
+  },
+  "汽车零部件": {
+    "sector_1d_return": -1.15,
+    "sector_rank": 39,
+    "stock_vs_sector_strength": null
+  },
+  "物流": {
+    "sector_1d_return": -1.19,
+    "sector_rank": 40,
+    "stock_vs_sector_strength": null
+  },
+  "零售": {
+    "sector_1d_return": -1.2,
+    "sector_rank": 41,
+    "stock_vs_sector_strength": null
+  },
+  "消费电子": {
+    "sector_1d_return": -1.2,
+    "sector_rank": 42,
+    "stock_vs_sector_strength": null
+  },
+  "黑色家电": {
+    "sector_1d_return": -1.22,
+    "sector_rank": 43,
+    "stock_vs_sector_strength": null
+  },
+  "军工电子": {
+    "sector_1d_return": -1.22,
+    "sector_rank": 44,
+    "stock_vs_sector_strength": null
+  },
+  "建筑装饰": {
+    "sector_1d_return": -1.24,
+    "sector_rank": 46,
+    "stock_vs_sector_strength": null
+  },
+  "纺织制造": {
+    "sector_1d_return": -1.24,
+    "sector_rank": 45,
+    "stock_vs_sector_strength": null
+  },
+  "石油加工贸易": {
+    "sector_1d_return": -1.25,
+    "sector_rank": 47,
+    "stock_vs_sector_strength": null
+  },
+  "轨交设备": {
+    "sector_1d_return": -1.3,
+    "sector_rank": 48,
+    "stock_vs_sector_strength": null
+  },
+  "种植业与林业": {
+    "sector_1d_return": -1.31,
+    "sector_rank": 49,
+    "stock_vs_sector_strength": null
+  },
+  "IT服务": {
+    "sector_1d_return": -1.31,
+    "sector_rank": 50,
+    "stock_vs_sector_strength": null
+  },
+  "美容护理": {
+    "sector_1d_return": -1.32,
+    "sector_rank": 51,
+    "stock_vs_sector_strength": null
+  },
+  "汽车服务及其他": {
+    "sector_1d_return": -1.34,
+    "sector_rank": 52,
+    "stock_vs_sector_strength": null
+  },
+  "橡胶制品": {
+    "sector_1d_return": -1.4,
+    "sector_rank": 53,
+    "stock_vs_sector_strength": null
+  },
+  "化学纤维": {
+    "sector_1d_return": -1.42,
+    "sector_rank": 54,
+    "stock_vs_sector_strength": null
+  },
+  "其他社会服务": {
+    "sector_1d_return": -1.45,
+    "sector_rank": 55,
+    "stock_vs_sector_strength": null
+  },
+  "电池": {
+    "sector_1d_return": -1.46,
+    "sector_rank": 56,
+    "stock_vs_sector_strength": null
+  },
+  "环境治理": {
+    "sector_1d_return": -1.47,
+    "sector_rank": 57,
+    "stock_vs_sector_strength": null
+  },
+  "白色家电": {
+    "sector_1d_return": -1.54,
+    "sector_rank": 58,
+    "stock_vs_sector_strength": null
+  },
+  "包装印刷": {
+    "sector_1d_return": -1.54,
+    "sector_rank": 60,
+    "stock_vs_sector_strength": null
+  },
+  "游戏": {
+    "sector_1d_return": -1.54,
+    "sector_rank": 59,
+    "stock_vs_sector_strength": null
+  },
+  "其他电子": {
+    "sector_1d_return": -1.56,
+    "sector_rank": 61,
+    "stock_vs_sector_strength": null
+  },
+  "化学制品": {
+    "sector_1d_return": -1.59,
+    "sector_rank": 62,
+    "stock_vs_sector_strength": null
+  },
+  "专用设备": {
+    "sector_1d_return": -1.59,
+    "sector_rank": 63,
+    "stock_vs_sector_strength": null
+  },
+  "自动化设备": {
+    "sector_1d_return": -1.6,
+    "sector_rank": 64,
+    "stock_vs_sector_strength": null
+  },
+  "通用设备": {
+    "sector_1d_return": -1.63,
+    "sector_rank": 65,
+    "stock_vs_sector_strength": null
+  },
+  "贸易": {
+    "sector_1d_return": -1.68,
+    "sector_rank": 66,
+    "stock_vs_sector_strength": null
+  },
+  "钢铁": {
+    "sector_1d_return": -1.73,
+    "sector_rank": 67,
+    "stock_vs_sector_strength": null
+  },
+  "化学原料": {
+    "sector_1d_return": -1.74,
+    "sector_rank": 68,
+    "stock_vs_sector_strength": null
+  },
+  "软件开发": {
+    "sector_1d_return": -1.78,
+    "sector_rank": 69,
+    "stock_vs_sector_strength": null
+  },
+  "建筑材料": {
+    "sector_1d_return": -1.79,
+    "sector_rank": 70,
+    "stock_vs_sector_strength": null
+  },
+  "服装家纺": {
+    "sector_1d_return": -1.82,
+    "sector_rank": 71,
+    "stock_vs_sector_strength": null
+  },
+  "金属新材料": {
+    "sector_1d_return": -1.83,
+    "sector_rank": 72,
+    "stock_vs_sector_strength": null
+  },
+  "造纸": {
+    "sector_1d_return": -1.85,
+    "sector_rank": 73,
+    "stock_vs_sector_strength": null
+  },
+  "互联网电商": {
+    "sector_1d_return": -1.86,
+    "sector_rank": 75,
+    "stock_vs_sector_strength": null
+  },
+  "工程机械": {
+    "sector_1d_return": -1.86,
+    "sector_rank": 74,
+    "stock_vs_sector_strength": null
+  },
+  "油气开采及服务": {
+    "sector_1d_return": -1.87,
+    "sector_rank": 76,
+    "stock_vs_sector_strength": null
+  },
+  "汽车整车": {
+    "sector_1d_return": -1.87,
+    "sector_rank": 77,
+    "stock_vs_sector_strength": null
+  },
+  "电子化学品": {
+    "sector_1d_return": -1.88,
+    "sector_rank": 78,
+    "stock_vs_sector_strength": null
+  },
+  "能源金属": {
+    "sector_1d_return": -1.9,
+    "sector_rank": 79,
+    "stock_vs_sector_strength": null
+  },
+  "半导体": {
+    "sector_1d_return": -1.91,
+    "sector_rank": 80,
+    "stock_vs_sector_strength": null
+  },
+  "元件": {
+    "sector_1d_return": -1.92,
+    "sector_rank": 81,
+    "stock_vs_sector_strength": null
+  },
+  "影视院线": {
+    "sector_1d_return": -1.95,
+    "sector_rank": 82,
+    "stock_vs_sector_strength": null
+  },
+  "非金属材料": {
+    "sector_1d_return": -2.0,
+    "sector_rank": 83,
+    "stock_vs_sector_strength": null
+  },
+  "房地产": {
+    "sector_1d_return": -2.26,
+    "sector_rank": 84,
+    "stock_vs_sector_strength": null
+  },
+  "农化制品": {
+    "sector_1d_return": -2.33,
+    "sector_rank": 85,
+    "stock_vs_sector_strength": null
+  },
+  "光伏设备": {
+    "sector_1d_return": -2.67,
+    "sector_rank": 86,
+    "stock_vs_sector_strength": null
+  },
+  "小金属": {
+    "sector_1d_return": -2.68,
+    "sector_rank": 87,
+    "stock_vs_sector_strength": null
+  },
+  "教育": {
+    "sector_1d_return": -3.14,
+    "sector_rank": 88,
+    "stock_vs_sector_strength": null
+  },
+  "工业金属": {
+    "sector_1d_return": -3.37,
+    "sector_rank": 89,
+    "stock_vs_sector_strength": null
+  },
+  "贵金属": {
+    "sector_1d_return": -5.2,
+    "sector_rank": 90,
+    "stock_vs_sector_strength": null
+  }
+}

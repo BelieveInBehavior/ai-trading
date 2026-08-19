@@ -27,6 +27,62 @@ def _history_frame(close_values):
 
 
 class TestQuantitativeUniverseScreener(unittest.TestCase):
+    def test_forward_opportunity_prefers_entry_room_over_past_strength(self):
+        screener = QuantitativeUniverseScreener(QuantitativeScreenerConfig())
+        common = {
+            "data_quality_valid": True,
+            "data_quality_status": "ok",
+            "weekly_data_available": True,
+            "relative_strength_available": True,
+            "weinstein_stage": "stage_2_uptrend",
+            "weekly_ma20_slope_pct": 3,
+            "weinstein_ma30_slope_pct": 3,
+            "weinstein_above_ma30_ratio_8w": 0.9,
+            "long_term_structure": {
+                "ma50_slope_pct": 3,
+                "ma200_deviation_pct": 10,
+                "distance_to_52w_high_pct": -8,
+            },
+        }
+        already_extended = {
+            **common,
+            "weekly_trend_score": 100,
+            "relative_strength_score": 100,
+            "relative_strength_20d_pct": 45,
+            "relative_strength_60d_pct": 80,
+            "stock_return_20d_pct": 42,
+            "daily_entry_score": 50,
+            "ma20_deviation_pct": 35,
+            "change_pct": 10,
+            "rsi": 82,
+            "volume_ratio": 2.6,
+        }
+        emerging_setup = {
+            **common,
+            "weekly_trend_score": 55,
+            "relative_strength_score": 55,
+            "relative_strength_20d_pct": 2,
+            "relative_strength_60d_pct": 4,
+            "stock_return_20d_pct": 3,
+            "daily_entry_score": 82,
+            "ma20_deviation_pct": 2,
+            "change_pct": 1,
+            "rsi": 55,
+            "volume_ratio": 1.3,
+        }
+
+        extended_eval = screener._evaluate_quality(already_extended)
+        emerging_eval = screener._evaluate_quality(emerging_setup)
+
+        self.assertGreater(
+            extended_eval["long_score"],
+            emerging_eval["long_score"],
+        )
+        self.assertGreater(
+            emerging_eval["forward_opportunity_score"],
+            extended_eval["forward_opportunity_score"],
+        )
+
     def test_screen_filters_full_universe_before_research(self):
         spot_df = pd.DataFrame(
             [
@@ -36,7 +92,7 @@ class TestQuantitativeUniverseScreener(unittest.TestCase):
         )
         benchmark_df = pd.DataFrame(
             {
-                "date": pd.date_range("2025-07-01", periods=260, freq="D").strftime("%Y-%m-%d"),
+                "date": pd.to_datetime(pd.date_range("2025-07-01", periods=260, freq="D")),
                 "close": [100 + i * 0.1 for i in range(260)],
             }
         )

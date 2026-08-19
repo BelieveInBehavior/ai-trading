@@ -184,7 +184,7 @@ class StockSelectorInput(BaseModel):
     close              float    最新价                12.07
     pct_chg            float    涨跌幅（%）           2.06
     turnover_rate      float    换手率（%）           2.06
-    volume_ratio       float    量比                  1.08
+    volume_ratio       float    量比=今量/前5日均量    1.26
     pe                 float    市盈率（动态）        21.22
     pb                 float    市净率                2.16
     total_share        float    总股本（万股）        34813.69

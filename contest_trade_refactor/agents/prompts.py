@@ -222,18 +222,35 @@ Please output {final_description} directly, do not include any other content.
 """
 
 prompt_for_research_invest_task = """
-As a professional researcher with specific belief, you need to find opportunities in the market today. You need to submit up to 5 critical analysis suggestions to the investor.
+Your job is to find the only reason a stock might rise over the NEXT 1-3 TRADING DAYS. You are not a long-term value analyst, not a fundamental reporter, and not a buy-and-hold advisor.
 
-Your submission should include following parts for EACH opportunity you identify:
-1. Does valuable opportunity exist in the market today?
-2. Symbol Information of the opportunity
-3. Evidence list you find to prove the opportunity is valuable. Judger will use these evidences to judge the opportunity is valuable or not.
-4. Based on the evidence_list, you need to give a probability to this opportunity.
-5. You need to give a limitation to your suggestion, such as risk, etc. No limitation will be rejected.
-6. You should provide between 1 to 5 opportunity suggestions based on what you find in the market. Only submit signals for opportunities you genuinely identify.
-7. If accepted, your suggestions will execute when the market opens and hold for one day. So you need to focus on short-term information.
-8. Each signal should be independent and focus on different stocks or strategies.
-9. If you cannot find 5 valuable opportunities, submit fewer high-quality signals rather than padding with low-quality ones.
+Your single question for each stock is:
+
+"What concrete event, if any, can make this stock move UP in the next 1-3 trading days?"
+
+Work allocation: if <research_scope></research_scope> is present, you MUST ONLY research stocks from that list. Treat it as the hard candidate universe: do NOT add stocks outside it, do NOT override with “hot themes” or “sector strength”. The quantitative screener is the only entry point for buy/watch/buy-decision candidates. Other names may appear in the background for context only and must NOT be emitted as signals.
+
+For each opportunity you MUST supply:
+1. T+1~T+3 core catalyst driver, what type, when expected, how certain, how market-moving.
+2. Catalysts MUST be differentiated into three quality buckets:
+   - company_level: specific order, earnings / pre-announcement, price hike, new product/customer, major contract, M&A, buyback, direct policy benefit.
+   - transaction_setup: first volume breakout, technical reversal with strong volume, repeated net-inflow, institutional / hot-money behavior, seal strength.
+   - sector_background: sector_flow, sector_strength, industry_rotation.
+   IMPORTANT: sector_strength / sector_flow is background context. It does NOT count as a standalone T+1~T+3 buy catalyst UNLESS the stock is the sector's clearest leader with strong volume/资金 confirmation.
+3. Catalyst horizon: T+1, T+2~3, T+4~5, or >T+5 (down-weight far horizons).
+4. Whether the market has already priced it in: fully priced / partly priced / not yet visible / unknown.
+5. Why the event can move the price in the next 1-3 days. Do not explain why the company is good long-term.
+6. Risk or reverse catalyst list: negative news, event miss, crowding, stretched, sell-on-news.
+7. Long-term fundamentals (valuation, ROE, multi-quarter growth) are BACKGROUND ONLY and must not be the primary buy reason.
+
+Rules:
+- If you cannot find a clear company-level or strong transaction-structure catalyst, do NOT fabricate one.
+- In that case set event_type=null, event_date=null, event_summary=null, catalyst_certainty=0.0, catalyst_market_impact=0.0, price_in_status="unknown".
+- `sector_flow` is NOT a default answer. Only use it when the stock is the sector's strongest candidate and you also specify concrete volume/breakthrough confirmation.
+- "No catalyst" is a valid answer. The quantitative screener can still decide whether to trade; you just do not add special credit.
+- Do not use "industry is strong / high ROE / cheap valuation" as the primary reason.
+- Each evidence item must be concrete and dated.
+Focus search effort on: recent news, order/contract announcements, earnings pre-announcements, policy changes, price hikes, financing, buyback/merger progress, block trades, and anything with a dated event window inside the next 1-3 trading days.
 """
 
 prompt_for_research_invest_output_format = """
@@ -246,22 +263,56 @@ Use this exact top-level shape:
       "action": "buy",
       "symbol_code": "600519.SH",
       "symbol_name": "贵州茅台",
+      "event_type": "earnings_surprise",
+      "event_date": "2026-08-15",
+      "event_summary": "中报业绩预增落地，短线资金关注度高",
+      "catalyst_certainty": 7.8,
+      "catalyst_market_impact": 6.0,
+      "price_in_status": "not yet visible",
       "evidence_list": [
         {
-          "description": "A detailed, dated reason supported by the available data.",
+          "description": "A detailed, dated description supported by the available data.",
           "time": "YYYY-MM-DD HH:MM:SS",
           "from_source": "source or tool name"
         }
       ],
       "limitations": ["A concrete limitation or risk."],
       "probability": 0.72
+    },
+    {
+      "has_opportunity": "yes",
+      "action": "buy",
+      "symbol_code": "000001.SZ",
+      "symbol_name": "平安银行",
+      "event_type": null,
+      "event_date": null,
+      "event_summary": null,
+      "catalyst_certainty": 0.0,
+      "catalyst_market_impact": 0.0,
+      "price_in_status": "unknown",
+      "evidence_list": [
+        {
+          "description": "A real, dated technical / flow setup supported by the available data.",
+          "time": "YYYY-MM-DD HH:MM:SS",
+          "from_source": "source or tool name"
+        }
+      ],
+      "limitations": ["No clear T+1~T+3 catalyst identified. Quantitative screen alone may still qualify."],
+      "probability": 0.55
     }
   ]
 }
 Rules:
 - `signals` contains only genuine opportunities, with at most 5 items.
 - `action` must be `buy` or `sell`.
-- `probability` must be a number from 0 to 1.
+- `event_type` uses one of: earnings_surprise | order_win | contract | policy | merger_restructuring | price_hike | new_product | sector_flow | technical_reversal | none. Use null when no catalyst exists.
+- If the only "catalyst" is sector strength / sector inflow with no company-level event or strong individual launch structure, PREFER `event_type=null` and state in limitations that this is a sector-follow / background-driven signal, not an independent catalyst.
+- `event_date` is the nearest expected event date in YYYY-MM-DD, or null when unknown.
+- `catalyst_certainty` is 0-10 (how likely the event actually materializes).
+- `catalyst_market_impact` is 0-10 (how much it can move the stock within T+1~T+3).
+- `price_in_status` is one of: fully priced | partly priced | not yet visible | unknown.
+- `probability` is a soft confidence score (0-1), NOT a calibrated statistical probability. It represents subjective confidence that the T+1~T+3 setup succeeds, not a backtested win rate.
 - Include at least one evidence item and at least one concrete limitation for every signal.
+- If there is no clear catalyst, set event_type/event_date/event_summary to null, catalyst_certainty and catalyst_market_impact to 0, price_in_status to "unknown", and say so in limitations.
 - Use only information available at or before the current analysis time.
 """

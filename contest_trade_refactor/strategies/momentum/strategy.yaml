@@ -1,0 +1,53 @@
+# Momentum strategy package.
+# 策略定义 + 筛选/研究/出场/回测参数；字段命名与 config/strategies.py 旧字典保持兼容。
+id: momentum
+name: 短期收益 / 动量交易
+short_name: Momentum
+description: >-
+  目标是短期高弹性。追求市场最强主线、资金共识、突破/强势加速；
+  允许一定程度追高，核心是跟随资金与情绪并严格控制止损。
+horizon: 短线 1~3 交易日
+style: 强势主线 / 资金动量
+risk_note: 高波动、高回撤，严格止损
+tags: [高弹性, 强势主线, 资金动量, 短线]
+
+# Stage 0 screener
+quantitative_screen_top_k: 120
+quantitative_screen_history_days: 260
+min_weekly_trend_score: 56.0
+min_relative_strength_score: 52.0
+min_relative_strength_20d_pct: 0.0
+min_daily_entry_score: 55.0
+min_flow_confirmation_score: 52.0
+min_regime_confirmation_score: 50.0
+max_prev_day_gain_pct: 14.0
+max_ma20_deviation_pct: 45.0
+quantitative_max_ma20_deviation_pct: 45.0
+quantitative_max_prev_day_gain_pct: 15.0
+quantitative_ma20_deviation_penalty: 0.5
+quantitative_hard_min_weekly_score: 0.0
+quantitative_hard_min_relative_score: 0.0
+quantitative_hard_min_relative_20d_pct: -100.0
+require_min_buys: 0
+max_research_rounds: 12
+
+# strong-stock lifecycle 相关阈值（后续接 strong_stock_lifecycle 参数化时使用）
+lifecycle:
+  board_count_min: 1
+  breakout_20d: true
+  breakout_60d: true
+  allow_one_word_limit_up: false
+  max_ma20_overextended_pct: 45
+  divergence_mode: []          # 留空表示不强依赖首阴/断板
+  weak_to_strong_min_score: 80
+  entry_quality_min_score: 70
+
+# 回测窗口默认值（同一回测引擎，策略只声明默认参数）
+backtest:
+  mode: replay
+  default_start: "2026-06-01"
+  default_end: "2026-08-18"
+  symbols_limit: 0
+  concurrency: 4
+  horizons: [1, 3, 5]
+  rule_pipeline: false

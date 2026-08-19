@@ -49,6 +49,7 @@ cp .env.example .env
 | `LLM_PROVIDER` / `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL_NAME` | 主 LLM |
 | `LLM_THINKING_*` | 思考模型（留空则复用 `LLM_*`） |
 | `VLM_*` | 视觉模型（留空则复用 `LLM_*`） |
+| `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL` / `DEEPSEEK_MODEL_NAME` | DeepSeek 附加配置（Host origin 默认 `https://api.deepseek.com`，不覆盖 `LLM_*`） |
 | `TUSHARE_KEY` | Tushare 数据 |
 | `JQDATA_USERNAME` / `JQDATA_PASSWORD` | [聚宽 JQData](https://www.joinquant.com/help/api/doc?name=JQDatadoc)（手机号 + 官网登录密码） |
 | `JQDATA_ACCOUNT_TYPE` | `formal`（默认，全量历史含最近交易日）或 `trial` |
@@ -95,12 +96,12 @@ signal_selection_config:
   consensus_enabled: true      # 启用多研究 Agent 的确定性共识
   consensus_method: weighted_majority
   consensus_require_majority: true
-  multi_timeframe_enabled: true       # 周线定方向、相对强度选股、日线找买点
+  multi_timeframe_enabled: true       # 周线/相对强度/日线仅作软评分，不硬阻断短线动量
   relative_strength_benchmark: sh000300 # 相对沪深300计算20/60日超额收益
-  min_weekly_trend_score: 55
-  min_relative_strength_score: 50
+  min_weekly_trend_score: 40
+  min_relative_strength_score: 30
   min_relative_strength_20d_pct: 0
-  min_daily_entry_score: 50
+  min_daily_entry_score: 40
   quantitative_screen_enabled: true
   quantitative_screen_fail_open: false
   quantitative_screen_max_symbols: 0  # 0 = 扫描全部股票
@@ -110,10 +111,54 @@ signal_selection_config:
 ```
 默认已改为 `require_min_buys: 0`，即只跑一轮研究，不再“没买到就强制重试”，避免制造假阳性信号。
 
-买入候选会先检查周线趋势和相对沪深 300 的 20/60 日相对强度，再用日线技术因子确认入场；缺少这些多周期数据时不会通过买入门控。
+买入候选现在定位为 T+3~T+5 事件驱动动量：基础过滤只排除不可交易/极端异常，短线动量 + 量价确认 + 板块强度 + 事件催化作为核心评分；周线趋势、相对强度、Stage2 不再作为硬门槛。
 启用全市场预筛选后，Research Agent 只能研究量化筛选通过的股票；首次扫描会请求全市场历史 K 线，后续运行复用 JQData/AkShare 磁盘缓存。
 
 
+
+
+### 全市场行业成分抓取（AkShare / 东财）
+
+如果本机可以访问东方财富接口，可以用脚本抓取全市场“股票→行业”映射：
+
+```bash
+# 冒烟：只抓前 5 个行业，避免全量耗时
+.venv/bin/python scripts/fetch_industry_map_akshare.py --limit 5
+
+# 全量：抓取全部行业并合并写入 industry_map.json
+.venv/bin/python scripts/fetch_industry_map_akshare.py
+```
+
+说明：
+- 脚本通过 `utils.akshare_utils.akshare_cached` 调用 `stock_board_industry_name_em` / `stock_board_industry_cons_em`；
+- 抓取失败会记录错误，**不会覆盖已有 `industry_map.json`**；
+- 在当前 Codex 运行环境里东方财富连接不稳定，脚本已做优雅失败；在能连到东财的机器上执行即可补全映射。
+
+### 板块快照验证（已有 agents_workspace 数据）
+
+如果暂时没有独立行业映射，可以用 `agents_workspace/factor_store/sector_fund_flow` 里的板块结果构建“行业名快照”，验证板块富化能算出 `sector_1d_return / sector_rank`。
+
+可用下面的方式验证：
+
+```bash
+.venv/bin/python - <<'PY'
+from utils.sector_enrichment import (
+    build_sector_snapshot_from_factor_store,
+    save_sector_snapshot,
+    enrich_factor_with_sector_by_name,
+)
+
+snap = build_sector_snapshot_from_factor_store(trade_date="20260813")
+save_sector_snapshot(snap)
+print(enrich_factor_with_sector_by_name(
+    {"symbol_code": "600276.SH", "symbol_name": "恒瑞医药"},
+    snap,
+    "化学制药",
+))
+PY
+```
+
+> 说明：`sector_1d_return` / `sector_rank` 已能从现有板块资金流结果计算出来。真正要让全市场个股因子都富化，还需要“股票代码/名称 → 行业/板块”映射；映射就绪后在 `config.yaml` 里将 `sector_enrichment_enabled` 改为 `true` 即可。
 
 ### 盘后 / 周度报告脚本
 
@@ -346,3 +391,53 @@ async def run(input_data):
 - Web 界面左下角选择“中长线/趋势”或“短期收益”。
 - 命令行：`scripts/run_pipeline_rerun.py --strategy swing` / `--strategy momentum`。
 - API：`POST /api/start {"strategy":"swing"}`；`GET /api/strategies` 获取策略详情。
+
+## 候选股交易计划层（Trade Plan）
+
+新增：对买入/观察候选生成 1-5 天可执行计划：
+
+```bash
+# 直接对自己捞出的股票批量生成计划
+.venv/bin/python scripts/build_trade_plan.py 600519 300502 000001
+.venv/bin/python scripts/build_trade_plan.py --date 20260814 --risk-budget 1.0 --file candidates.txt
+```
+
+`trade_plan` 会写入：
+- `utils/trade_plan_builder.py`：核心计算
+- `main_loop.py` run() 对 `buy_signals` / `watchlist` 自动附加
+- 日终 `trade_decision` 报告展示
+- 回测 CSV (`backtest_signal_closed_loop.py`) 输出 `trade_plan_stop_loss` / `trade_plan_take_profit_1` / `trade_plan_rr_1` 等列
+- 组合模拟 (`portfolio_simulator.py`) 优先使用每笔信号的 `trade_plan` 止损/止盈，而非全局 -5%/+8%
+
+字段示例：
+- RSI / VWAP20 / EMA8/13/21 / 量比(今日量/前5日均量) 与 额比(今日额/前5日均额)
+- 支撑1/2、阻力1/2
+- 入场区、止损、目标1/2、风险回报比、仓位建议
+
+### Trade Plan 灰度门控
+
+`trade_plan` 会附带 `trade_plan_pass` 标记（不直接删 buy，仅标记/展示/回测对比）：
+
+```
+PASS: 满足当前质量门槛（RR>=1.5 且止损明确等）
+FAIL: 建议只观察，不构成 buy
+```
+
+在日终报告和 CLI 里你都能看到：
+
+```
+600519: [FAIL] ['rr_below_1.5']
+000001: [PASS] ['below_vwap', 'low_volume_ratio']
+```
+
+注意：`PASS` 不代表推荐买入，只代表按当前 trade_plan 质量门槛可以进入候选；仍需要结合你自己的判断。未来可在确认有效后开启硬门控（RR < 1.5 不进 buy）。
+
+### trade_plan 在选股中的角色（灰度排序加分）
+
+当前实现为“灰度排序加分”，不硬删 buy：
+
+- `rank_signals` 中，如果某候选已带 `trade_plan_pass=True`，`buy_score` 轻微微分（+4）
+- `trade_plan_pass=False` 的小幅扣分（-1）
+- 最终 `buy_signals` / `watchlist` 排序里，`PASS` 也更靠前
+
+作用：把质量计划排在前面，但不会因为某个牌没有 pass 就强制不买。

@@ -1,0 +1,48 @@
+# Swing 策略包（中长线 / 趋势交易）。
+# 字段命名与 config/strategies.py 旧字典保持兼容。
+id: swing
+name: 中长线 / 趋势交易
+short_name: Swing·趋势
+description: >-
+  基本面定方向，技术面定买卖点。筛选趋势初期/回踩确认的机会，
+  宁可错过也不追已经大幅偏离 20 日线的标的。
+horizon: 中长线（趋势）
+style: 趋势确认 + 回踩 20 日线
+risk_note: 宁可错过也不追高，适合持有数周至数月
+tags: [不追高, 趋势确认, 回踩低吸, 中长线]
+
+# Stage 0 screener
+quantitative_screen_top_k: 80
+quantitative_screen_history_days: 260
+min_weekly_trend_score: 62.0
+min_relative_strength_score: 52.0
+min_relative_strength_20d_pct: 0.0
+min_daily_entry_score: 55.0
+min_flow_confirmation_score: 55.0
+min_regime_confirmation_score: 52.0
+max_prev_day_gain_pct: 5.0
+max_ma20_deviation_pct: 6.0
+quantitative_max_ma20_deviation_pct: 6.0
+quantitative_max_prev_day_gain_pct: 5.0
+quantitative_ma20_deviation_penalty: 3.0
+require_min_buys: 0
+max_research_rounds: 10
+
+lifecycle:
+  board_count_min: 1
+  breakout_20d: true
+  breakout_60d: true
+  allow_one_word_limit_up: false
+  max_ma20_overextended_pct: 35
+  divergence_mode: []
+  weak_to_strong_min_score: 80
+  entry_quality_min_score: 70
+
+backtest:
+  mode: replay
+  default_start: "2026-06-01"
+  default_end: "2026-08-18"
+  symbols_limit: 0
+  concurrency: 4
+  horizons: [1, 3, 5]
+  rule_pipeline: false
