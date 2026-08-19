@@ -75,8 +75,6 @@ def _apply_env_overrides(config: dict) -> dict:
     """Inject secrets and model settings from environment / .env."""
     secret_keys = {
         "tushare_key": "TUSHARE_KEY",
-        "jqdata_username": "JQDATA_USERNAME",
-        "jqdata_password": "JQDATA_PASSWORD",
         "bocha_key": "BOCHA_KEY",
         "serp_key": "SERP_KEY",
         "fmp_key": "FMP_KEY",
@@ -86,16 +84,6 @@ def _apply_env_overrides(config: dict) -> dict:
     }
     for attr, env_name in secret_keys.items():
         config[attr] = _env(env_name)
-
-    account_type = _env("JQDATA_ACCOUNT_TYPE", "formal").lower()
-    if account_type not in {"formal", "trial"}:
-        account_type = "formal"
-    config["jqdata_account_type"] = account_type
-
-    provider = _env("CN_MARKET_DATA_PROVIDER", "auto").lower()
-    if provider not in {"auto", "jqdata", "akshare"}:
-        provider = "auto"
-    config["cn_market_data_provider"] = provider
 
     config["llm"] = _build_llm_block("LLM")
     config["llm_thinking"] = _build_llm_block("LLM_THINKING", fallback_prefix="LLM")

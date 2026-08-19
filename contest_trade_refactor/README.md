@@ -50,9 +50,6 @@ cp .env.example .env
 | `LLM_THINKING_*` | 思考模型（留空则复用 `LLM_*`） |
 | `VLM_*` | 视觉模型（留空则复用 `LLM_*`） |
 | `TUSHARE_KEY` | Tushare 数据 |
-| `JQDATA_USERNAME` / `JQDATA_PASSWORD` | [聚宽 JQData](https://www.joinquant.com/help/api/doc?name=JQDatadoc)（手机号 + 官网登录密码） |
-| `JQDATA_ACCOUNT_TYPE` | `formal`（默认，全量历史含最近交易日）或 `trial` |
-| `CN_MARKET_DATA_PROVIDER` | 正式会员推荐 **`jqdata`**；`akshare` 仅作备用 |
 | `VOLC_WEB_SEARCH_API_KEY` | [豆包搜索](https://docs.volcengine.com/docs/87772/2272949?lang=zh) |
 | `BOCHA_KEY` / `SERP_KEY` | 搜索备用源 |
 | `FMP_KEY` / `FINNHUB_KEY` / `POLYGON_KEY` / `ALPHA_VANTAGE_KEY` | 美股数据源 |
@@ -61,29 +58,17 @@ cp .env.example .env
 
 首次运行或缺少股票映射缓存时，会自动从 AkShare 生成 `utils/cache/market_manager/stock_basic_cache.json` 与 `namechange_data.json`。
 
-**JQData（正式会员）**：`.env` 填入手机号、聚宽登录密码，并确认：
-
-```bash
-JQDATA_ACCOUNT_TYPE=formal
-CN_MARKET_DATA_PROVIDER=jqdata
-```
-
-正式账号：**2005 至今全量 K 线（含最近交易日）**，日流量 2 亿条，全市场预筛可直接跑。AkShare 仅在 JQData 请求失败时 fallback。
-
-验证：
+A 股日线与指数收盘走 **AkShare**（腾讯行情），失败则跳过该标的（不做 Yahoo 回退）。验证：
 
 ```bash
 PYTHONPATH=. python - <<'PY'
-from utils.jqdata_utils import ensure_jqdata_auth, is_jqdata_trial_account
 from utils.cn_price_provider import get_stock_zh_a_hist
-print("auth:", ensure_jqdata_auth())
-print("trial:", is_jqdata_trial_account())  # 应为 False
 df = get_stock_zh_a_hist("600519", "20260801", "20260811", adjust="qfq")
 print("bars:", len(df), "last:", df["日期"].iloc[-1] if len(df) else None)
 PY
 ```
 
-AkShare 结构化数据缺失时，各 Data Agent 会自动触发**豆包联网搜索**补充（融资融券、北向、龙虎榜、大宗等）；另有 `web_search_market_supplement_agent` 做通用市场信息补充。K 线历史数据仍走 AkShare/腾讯，失败则跳过该标的（不做 Yahoo 回退）。
+AkShare 结构化数据缺失时，各 Data Agent 会自动触发**豆包联网搜索**补充（融资融券、北向、龙虎榜、大宗等）；另有 `web_search_market_supplement_agent` 做通用市场信息补充。
 
 信号筛选（严格门控，不放宽阈值）：
 ```yaml
@@ -111,7 +96,7 @@ signal_selection_config:
 默认已改为 `require_min_buys: 0`，即只跑一轮研究，不再“没买到就强制重试”，避免制造假阳性信号。
 
 买入候选会先检查周线趋势和相对沪深 300 的 20/60 日相对强度，再用日线技术因子确认入场；缺少这些多周期数据时不会通过买入门控。
-启用全市场预筛选后，Research Agent 只能研究量化筛选通过的股票；首次扫描会请求全市场历史 K 线，后续运行复用 JQData/AkShare 磁盘缓存。
+启用全市场预筛选后，Research Agent 只能研究量化筛选通过的股票；首次扫描会请求全市场历史 K 线，后续运行复用 AkShare 磁盘缓存。
 
 
 
@@ -321,7 +306,7 @@ async def run(input_data):
 仓库根目录 `.gitignore` 已排除以下内容，**请勿手动 `git add`**：
 
 - `frontend/node_modules/`、`frontend/.next/`（前端依赖与构建缓存）
-- `utils/akshare_cache/`、`utils/jqdata_cache/`、`tools/stock_summary_akshare_cache/`（数据缓存）
+- `utils/akshare_cache/`、`tools/stock_summary_akshare_cache/`（数据缓存）
 - `__pycache__/`、`.venv/`、`.env`
 
 `agents_workspace/` 下的配置与运行数据（如 `factor_thresholds.yaml`、因子结果、回测报告等）会正常提交。

@@ -17,6 +17,5 @@ rich
 tabulate
 akshare
 yfinance
-jqdatasdk
 crawl4ai
 lightgbm
