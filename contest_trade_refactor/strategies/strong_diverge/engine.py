@@ -269,7 +269,8 @@ class StrongDivergeEngine:
                     errors.append(str(exc))
 
         total = len(universe)
-        if not mrkt_temp.get("passed", True):
+        market_enabled = _bool((self.config.market or {}).get("enabled", True))
+        if market_enabled and not mrkt_temp.get("passed", True):
             # 退潮期前置闸门：全市场直通空仓，不进 strength_watch，避免补涨末段。
             context = (
                 "市场情绪温度计：温度=" + str(mrkt_temp.get('temperature', 0))
@@ -290,7 +291,7 @@ class StrongDivergeEngine:
         batch_size = max(1, int(self.config.quantitative_concurrency) * 30)
         for offset in range(0, total, batch_size):
             batch = universe[offset: offset + batch_size]
-            await asyncio.gather(*[_scan(row) for row in batch])
+            await asyncio.gather(*[_score(row) for row in batch])
 
         # 分池
         lianban = [c for c in candidates if c.pool_type == "连板"]
@@ -730,11 +731,10 @@ class StrongDivergeEngine:
         one_word = 0
         try:
             df = ZT_SEAL_STORE.load(trade_date)
+            # 防未来泄漏：因子库没有当日数据时，不用原始涨停池兜底。
+            # 原始 stock_zt_pool_em 可能拉到“当前/最近”日期，会把未来涨停信息带进回测。
             if df is None or df.empty:
-                try:
-                    df = self._limit_up_pool(trade_date)
-                except Exception:
-                    df = pd.DataFrame()
+                available = False
             if df is not None and not df.empty:
                 zt_count = int(len(df))
                 for _, row in df.iterrows():
@@ -750,21 +750,6 @@ class StrongDivergeEngine:
                         zt_break += 1
                     if _bool(meta.get("one_word_limit_up", False)) or (b >= 1 and brk == 0 and float(_num(meta.get("turnover"), 99.0) or 99.0) <= 1.0):
                         one_word += 1
-            else:
-                # 使用原始涨停池（列名可能不一致）
-                try:
-                    zt_df = self._limit_up_pool(trade_date)
-                    if zt_df is not None and not zt_df.empty:
-                        zt_count = int(len(zt_df))
-                        for _, r in zt_df.iterrows():
-                            b = _int(r.get("连板数", 0), 0)
-                            top_limit = max(top_limit, b)
-                            if _int(r.get("炸板次数", 0), 0) > 0:
-                                zt_break += 1
-                            if _bool(r.get("一字"), 0) or (_num(r.get("换手率"), 99.0) or 99.0) <= 1.0:
-                                one_word += 1
-                except Exception:
-                    pass
         except Exception:
             available = False
         if zt_count == 0:
@@ -1442,7 +1427,6 @@ class StrongDivergeEngine:
                 item.state == "T+1买入候选"
                 and item.divergence_dates
                 and item.confirmation_dates
-                and item.divergence_event
                 and item.weak_to_strong_confirmed
             )
             if not chain_ok:

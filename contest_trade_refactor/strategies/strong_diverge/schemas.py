@@ -62,7 +62,7 @@ class DiscoveryPool:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "trade_date": self.trade_date,
-            "lian": [c.to_dict() for c in self.lian],
+            "lian": [c.to_dict() for c in self.lianban],
             "tupo": [c.to_dict() for c in self.tupo],
             "qushi": [c.to_dict() for c in self.qushi],
             "universe_count": self.universe_count,
@@ -125,6 +125,7 @@ class WatchlistItem:
     state: str = "强势观察池"
     divergence_dates: List[str] = field(default_factory=list)   # 出现过分歧的日期
     confirmation_dates: List[str] = field(default_factory=list)  # 确认转强日期
+    state_reasons: List[str] = field(default_factory=list)
     last_reasons: List[str] = field(default_factory=list)
 
     # 生命周期元数据 / 严格分歧定义
@@ -174,6 +175,7 @@ class WatchlistItem:
             "state": self.state,
             "divergence_dates": list(self.divergence_dates),
             "confirmation_dates": list(self.confirmation_dates),
+            "state_reasons": list(self.state_reasons),
             "last_reasons": list(self.last_reasons),
             "strong_phase_enter_date": self.strong_phase_enter_date,
             "consecutive_board_count": self.consecutive_board_count,

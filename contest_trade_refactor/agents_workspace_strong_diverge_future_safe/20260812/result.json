@@ -1,0 +1,42 @@
+{
+  "trade_date": "20260812",
+  "trigger_time": "2026-08-12 18:00:00",
+  "discovery": {
+    "trade_date": "20260812",
+    "lian": [],
+    "tupo": [],
+    "qushi": [],
+    "universe_count": 80,
+    "context_string": "市场情绪温度计：温度=40.0，退潮期闸门不过，不进入强势发现；涨停家数92>=40；炸板率48%>=35%，情绪弱",
+    "scan_errors": [],
+    "market_temperature": {
+      "temperature": 40.0,
+      "passed": false,
+      "available": true,
+      "limit_up_count": 92,
+      "break_count": 44,
+      "max_board": 7,
+      "one_word_limit_up_count": 3,
+      "break_ratio": 0.478,
+      "min_limit_up_count": 40,
+      "max_break_ratio": 0.35,
+      "min_top_limit": 3,
+      "min_ratio_zt": 0.4,
+      "reasons": [
+        "涨停家数92>=40",
+        "炸板率48%>=35%，情绪弱"
+      ]
+    }
+  },
+  "watchlist": {
+    "lian": [],
+    "tupo": [],
+    "qushi": [],
+    "all_items": []
+  },
+  "divergence_signals": [],
+  "confirmed_signals": [],
+  "buy_signals": [],
+  "state_signals": [],
+  "exit_decisions": []
+}
