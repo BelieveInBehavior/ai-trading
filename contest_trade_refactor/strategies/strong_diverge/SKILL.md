@@ -24,7 +24,11 @@
   Gate 严格定义：站上开盘、站上VWAP、回踩VWAP成功（low<=VWAP 且 close>=VWAP 且 close 接近 VWAP）、
   HH/HL 短线结构（前两日高点/低点均抬高）、量价确认（上涨放量或回调缩量+MA5）。
 - `entry_quality_score`：只回答这个价格值不值得买。
-- 四者是生命周期 Gate 依次通过，不是加权成一个总分。
+- `first_board_event` / `first_board_quality_score` / `first_board_continuation_score`：
+  首板延续（C类）独立生命线，不要求 weak_to_strong；T+1 只要求正常延续。
+- 四者是核心生命周期依次通过，不是加权成一个总分。
+- `first_board.continuation_gates`：首板延续的 T+1 继续性确认 Gate；
+  `require_prev_day_not_board` 控制首板严格识别。
 
 ## 调整入口
 - `strategy.yaml`：`discovery / watchlist / divergence / confirmation / t1_buy / holding`

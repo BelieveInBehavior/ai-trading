@@ -146,6 +146,19 @@ class WatchlistItem:
     weak_to_strong_confirmed: bool = False
     weak_to_strong_gate_detail: Dict[str, Any] = field(default_factory=dict)
     weak_to_strong_reasons: List[str] = field(default_factory=list)
+    # 首板延续（C类）生命周期：首板 -> 首板质量 -> T+1继续性确认 -> continuation_score
+    first_board_event: bool = False
+    first_board_date: str = ""
+    first_board_prev_not_board_date: str = ""
+    first_board_close: Optional[float] = None
+    first_board_quality_score: float = 0.0
+    first_board_quality_grade: str = ""                 # A类优质首板 / B类普通 / C类弱
+    first_board_quality_reasons: List[str] = field(default_factory=list)
+    first_board_continuation_confirmed: bool = False
+    first_board_continuation_gate_detail: Dict[str, Any] = field(default_factory=dict)
+    first_board_continuation_score: float = 0.0
+    first_board_continuation_reasons: List[str] = field(default_factory=list)
+    first_board_continuation_dates: List[str] = field(default_factory=list)
 
     def latest_factor(self) -> Dict[str, Any]:
         return self.factors[-1] if self.factors else {}
@@ -193,6 +206,18 @@ class WatchlistItem:
             "weak_to_strong_confirmed": self.weak_to_strong_confirmed,
             "weak_to_strong_gate_detail": self.weak_to_strong_gate_detail,
             "weak_to_strong_reasons": list(self.weak_to_strong_reasons),
+            "first_board_event": self.first_board_event,
+            "first_board_date": self.first_board_date,
+            "first_board_prev_not_board_date": self.first_board_prev_not_board_date,
+            "first_board_close": self.first_board_close,
+            "first_board_quality_score": self.first_board_quality_score,
+            "first_board_quality_grade": self.first_board_quality_grade,
+            "first_board_quality_reasons": list(self.first_board_quality_reasons),
+            "first_board_continuation_confirmed": self.first_board_continuation_confirmed,
+            "first_board_continuation_gate_detail": self.first_board_continuation_gate_detail,
+            "first_board_continuation_score": self.first_board_continuation_score,
+            "first_board_continuation_reasons": list(self.first_board_continuation_reasons),
+            "first_board_continuation_dates": list(self.first_board_continuation_dates),
         }
 
 
@@ -284,6 +309,13 @@ class BuySignal:
     weak_to_strong_gate_detail: Dict[str, Any] = field(default_factory=dict)
     weak_to_strong_reasons: List[str] = field(default_factory=list)
     entry_quality_reasons: List[str] = field(default_factory=list)
+    # 首板延续（C类）附加字段
+    first_board_event: bool = False
+    first_board_quality_score: float = 0.0
+    first_board_quality_grade: str = ""
+    first_board_continuation_confirmed: bool = False
+    first_board_continuation_score: float = 0.0
+    first_board_continuation_reasons: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -310,6 +342,12 @@ class BuySignal:
             "weak_to_strong_gate_detail": self.weak_to_strong_gate_detail,
             "weak_to_strong_reasons": list(self.weak_to_strong_reasons),
             "entry_quality_reasons": list(self.entry_quality_reasons),
+            "first_board_event": self.first_board_event,
+            "first_board_quality_score": self.first_board_quality_score,
+            "first_board_quality_grade": self.first_board_quality_grade,
+            "first_board_continuation_confirmed": self.first_board_continuation_confirmed,
+            "first_board_continuation_score": self.first_board_continuation_score,
+            "first_board_continuation_reasons": list(self.first_board_continuation_reasons),
         }
 
 

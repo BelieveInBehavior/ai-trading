@@ -386,3 +386,103 @@ class StrongDivergeStrictGateTest(unittest.TestCase):
         gate = engine._check_weak_to_strong_gates(item, "20260819")
         self.assertLess(gate["passed_count"], 4)
         self.assertFalse(gate["confirmed"])
+
+class StrongDivergeFirstBoardContinuationTest(unittest.TestCase):
+    def _engine(self):
+        return StrongDivergeEngine(StrongDivergeConfig.from_yaml())
+
+    def _fb_item(self, factor_extra=None, state_marker=True):
+        item = _sample_watch_item()
+        item.pool_type = "连板"
+        item.strong_tags = ["连板", "首板"]
+        item.strong_structure = {"board_count": 1, "break_count": 0, "seal_strength": 9.0}
+        item.limit_snapshot = {"seal_strength": 9.0, "continuous_board": 1, "break_count": 0}
+        f = _sample_factor(change_pct=10.0, board=1)
+        f.update({
+            "continuous_board": 1,
+            "symbol_code": "600001.SH",
+            "close": 11.0,
+            "vwap_20": 10.5,
+            "vwap": 10.5,
+            "low": 10.2,
+            "volume_ratio": 1.5,
+            "amount_ratio": 1.5,
+            "ret_3d_pct": 2.0,
+            "ret_5d_pct": 3.0,
+            "close_vs_20d_high_pct": 2.0,
+        })
+        if factor_extra:
+            f.update(factor_extra)
+        item.factors = [f]
+        if state_marker:
+            item.first_board_event = True
+            item.first_board_date = "20260818"
+            item.first_board_close = 11.0
+            item.first_board_prev_not_board_date = "20260817"
+        return item, _single_pool(item)
+
+    def test_refresh_marks_first_board_from_series(self):
+        engine = self._engine()
+        item = WatchlistItem(
+            symbol_code="600001.SH", symbol_name="测试", trade_date="20260819",
+            pool_type="连板", strong_tags=["首板"],
+            factors=[
+                {"report_date": "20260818", "change_pct": 10.0, "close": 11.0, "continuous_board": 1},
+                {"report_date": "20260817", "change_pct": -1.0, "close": 10.0, "continuous_board": 0},
+            ],
+        )
+        pool = _single_pool(item)
+        engine.refresh_lifecycle_metadata(pool)
+        self.assertTrue(item.first_board_event)
+        self.assertEqual(item.first_board_date, "20260818")
+        self.assertAlmostEqual(item.first_board_close or 0, 11.0)
+
+    def test_first_board_quality_pass(self):
+        engine = self._engine()
+        item, pool = self._fb_item()
+        engine.detect_first_board(pool, "20260818")
+        self.assertGreaterEqual(item.first_board_quality_score, 60)
+        self.assertIn(item.first_board_quality_grade, {"A", "B"})
+
+    def test_continuation_gate_passes_next_day(self):
+        engine = self._engine()
+        item, pool = self._fb_item()
+        engine.refresh_lifecycle_metadata(pool)
+        cont_factor = dict(pool.all_items[0].factors[0])
+        cont_factor.update({
+            "report_date": "20260819",
+            "change_pct": 2.0,
+            "open": 10.8,
+            "close": 11.5,
+            "volume_ratio": 1.2,
+            "low": 10.8,
+            "vwap": 10.5,
+            "close_above_ma5": True,
+            "continuous_board": 0,
+        })
+        item.factors.append(cont_factor)
+        engine.advance_first_board_state(pool, "20260819")
+        self.assertTrue(item.first_board_continuation_confirmed)
+        self.assertGreaterEqual(item.first_board_continuation_score, 60)
+
+    def test_first_board_buy_ready_only_after_continuation(self):
+        engine = self._engine()
+        item, pool = self._fb_item()
+        engine.detect_first_board(pool, "20260818")
+        self.assertFalse(any(r["buy_ready"] for r in engine.apply_first_board_state_machine(pool, "20260818")))
+        cont_factor = dict(item.latest_factor())
+        cont_factor.update({
+            "report_date": "20260819",
+            "change_pct": 2.0,
+            "open": 10.6,
+            "close": 11.2,
+            "volume_ratio": 1.2,
+            "low": 10.9,
+            "vwap": 10.5,
+            "close_above_ma5": True,
+            "continuous_board": 0,
+        })
+        item.factors.append(cont_factor)
+        engine.advance_first_board_state(pool, "20260819")
+        rows = engine.apply_first_board_state_machine(pool, "20260819")
+        self.assertTrue(any(r["buy_ready"] for r in rows))

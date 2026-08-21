@@ -19,6 +19,9 @@ flowchart TD
     F --> G{是否进入强势阶段}
     G -- 否 --> F
     G -- 是 --> H[首次断板/首阴 = Divergence Event]
+    G -- 首板 --> FB[first_board_event + 首板质量]
+    FB --> FC[T+1继续性确认 Gate]
+    FC --> FC2[first_board_continuation_score + entry_quality]
     H --> I[divergence_quality_score 健康/中性/弱]
     I --> |A/B健康中性| J[WAIT_CONFIRM]
     I --> |C级恶性分歧| X[EXIT / 基本淘汰]
@@ -83,6 +86,26 @@ flowchart TD
 
 只有 **≥4 个** 通过才允许 `weak_to_strong_confirmed=True`。
 
+
+### 首板后延续（C类机会，V1.0 新增）
+
+首板延续与“强势分歧→弱转强”不同，不要求 weak-to-strong：
+
+- 严格识别 `first_board_event`：前一交易日未涨停 + 今日涨停
+  （日线 `change_pct` 或 ZT 快照 `continuous_board==1`），记录 `first_board_date / first_board_close`。
+- `first_board_quality_score / grade`：首板质量评分，覆盖封板强度、炸板次数、成交换手、
+  价格位置、首板前动量、板块地位；低于阈值不高配。
+- `first_board_continuation_confirmed`：T+1 继续性确认 Gate，只要求**正常延续**：
+  - 未快速跌破关键位
+  - 未异常放量砸盘
+  - 收盘不深跌（默认 ≥ -3%）
+  - VWAP / MA5 承接优先
+  - 板块/入口评分合格（数据缺失不算 FAIL）
+- `first_board_continuation_score`：T+1 延续强度，独立于 weak_to_strong_score。
+- 买入必须：`first_board_event + 首板质量>=阈值 + continuation_gate通过 + entry_quality>=阈值`，
+  不要求 weak_to_strong。
+
+配置入口：`strategy.yaml` 的 `first_board:` 段。
 
 ## 三类强势行为
 

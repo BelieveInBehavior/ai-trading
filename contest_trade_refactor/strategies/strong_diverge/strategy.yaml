@@ -95,6 +95,40 @@ confirmation:
     - HH/HL短线结构         # 最近两个已完成交易日高点抬高 AND 低点抬高
     - 量价健康             # 上涨放量 OR 回踩缩量+站上MA5
 
+# 首板后延续（C类机会）：首板 -> 首板质量 -> T+1继续性确认 -> continuation_score
+first_board:
+  enabled: true
+  # 首板严格识别：前一天未涨停 AND 今天涨停（可基于日线 change_pct 或 continuous_board==1 的 ZT 快照）
+  require_prev_day_not_board: true
+  allow_lt20cm_board: true
+  min_first_board_quality_score: 60
+  min_continuation_score: 60
+  min_entry_quality_score: 70
+  # 首板质量评分权重（参考设计：封板质量/板块共振/成交换手/价格位置/首板前动量/资金趋势/板块地位/市场环境）
+  seal_weight: 20
+  sector_weight: 20
+  volume_weight: 15
+  position_weight: 10
+  momentum_weight: 10
+  fund_weight: 10
+  sector_role_weight: 10
+  market_weight: 5
+  # T+1 继续性确认：只要求“正常延续”，不要求弱转强
+  continuation_gates_required: 2
+  continuation_gates:
+    - 未快速跌破关键位      # 当日最低/收盘不跌破首板关键价位（例如首板盘中低点/涨停价回撤阈值）
+    - 未异常放量砸盘        # 不出现 volume_ratio 极端爆量 + 大跌
+    - 收盘不深跌            # change_pct >= continuation_min_change_pct（默认 -3）
+    - VWAP/MA5承接优先      # close >= vwap_20 或 close >= MA5 的承接结构
+    - 板块/入口评分合格     # 同板块共振或有板块地位加分（数据缺失时不算 FAIL）
+  continuation_min_change_pct: -3.0
+  continuation_max_volume_ratio: 4.0
+  continuation_key_level_pct: -6.0        # 相对首板收盘的深破阈值
+  # 首板延续不会走 weak_to_strong；使用独立的 continuation score + entry quality
+  max_position_pct: 40
+  stop_loss_pct: -6.0
+  take_profit_pct: 5.0
+
 # T+1 买入判断
 t1_buy:
   enabled: true

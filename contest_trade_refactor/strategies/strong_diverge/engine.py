@@ -153,6 +153,7 @@ class StrongDivergeConfig:
     watchlist: Dict[str, Any] = field(default_factory=dict)
     divergence: Dict[str, Any] = field(default_factory=dict)
     confirmation: Dict[str, Any] = field(default_factory=dict)
+    first_board: Dict[str, Any] = field(default_factory=dict)
     t1_buy: Dict[str, Any] = field(default_factory=dict)
     holding: Dict[str, Any] = field(default_factory=dict)
     market: Dict[str, Any] = field(default_factory=dict)
@@ -168,6 +169,7 @@ class StrongDivergeConfig:
             watchlist=dict(cfg.get("watchlist") or {}),
             divergence=dict(cfg.get("divergence") or {}),
             confirmation=dict(cfg.get("confirmation") or {}),
+            first_board=dict(cfg.get("first_board") or {}),
             t1_buy=dict(cfg.get("t1_buy") or {}),
             holding=dict(cfg.get("holding") or {}),
             market=dict(cfg.get("market") or {}),
@@ -207,9 +209,12 @@ class StrongDivergeEngine:
         )
         divergences = self.detect_divergence(watch_pool, trade_date)
         self.advance_lifecycle_states(watch_pool, trade_date)
-        # 状态机 + 评分：真正把 “强势->分歧->确认->再确认” 作为候选条件。
+        self.detect_first_board(watch_pool, trade_date)
+        self.advance_first_board_state(watch_pool, trade_date)
+        # 状态机 + 评分：真正用“强势->分歧->确认->再确认” 作为候选条件。
         # confirm_buy 仍基于单日评分，仅作兼容；state_signals 是新链路用于 T+1。
         state_signals_raw = self.apply_state_machine(watch_pool, trade_date)
+        state_signals_raw += self.apply_first_board_state_machine(watch_pool, trade_date)
         state_signals = self._build_buy_signals_from_state(state_signals_raw, trade_date)
         clarified = [s for s in state_signals if s.buy_ready]  # only state-validated ready
         buy_signals = self.build_t1_buy_plan(clarified)
@@ -949,8 +954,14 @@ class StrongDivergeEngine:
         last_board_close = item.last_board_close
         first_non_board = item.first_non_board_date or ""
         first_negative = item.first_negative_date or ""
+        fb_cfg = self.config.first_board or {}
+        fb_enabled = _bool(fb_cfg.get("enabled", True))
+        require_prev_not_board = _bool(fb_cfg.get("require_prev_day_not_board", True))
 
         # 用历史序列重新推导（若已有值则保留最早，不主动清空）
+        prev_limit_up = False
+        first_board_seen = False
+        last_non_board_date = ""
         for i, factor in enumerate(item.factors):
             report_date = str(factor.get("report_date") or "")
             if not report_date:
@@ -974,15 +985,34 @@ class StrongDivergeEngine:
                 last_board_close = close
                 if not item.strong_phase_enter_date:
                     item.strong_phase_enter_date = report_date
+                # 首板：前一交易日未涨停且今天涨停（continuous_board 为 1 也天然首板）
+                is_first_board = bool(
+                    fb_enabled
+                    and not first_board_seen
+                    and (
+                        (require_prev_not_board and not prev_limit_up)
+                        or (not require_prev_not_board and board_in_factor == 1)
+                    )
+                )
+                if is_first_board and not item.first_board_date:
+                    item.first_board_date = report_date
+                    item.first_board_close = close
+                    item.first_board_event = True
+                    item.first_board_prev_not_board_date = last_non_board_date
+                first_board_seen = True
+                prev_limit_up = True
                 continue
 
+            last_non_board_date = report_date
             if not last_board_date:
+                prev_limit_up = False
                 continue
 
             if not first_non_board:
                 first_non_board = report_date
             if change is not None and change < 0 and not first_negative:
                 first_negative = report_date
+            prev_limit_up = False
 
         # 写入 / 保留
         if last_board_date:
@@ -1310,6 +1340,256 @@ class StrongDivergeEngine:
                     item.state_reasons = ["状态机：C级弱分歧确认失败 -> 基本淘汰"]
             item.last_reasons = list(item.state_reasons or [])
 
+    # ================= 首板延续（C类）生命周期 =================
+
+    def _compute_first_board_quality(self, item: WatchlistItem, factor: Dict[str, Any]) -> Dict[str, Any]:
+        """首板质量评分：回答首板本身质量（封板、成交量、价格位置、首板前动量、板块）。"""
+        cfg = self.config.first_board or {}
+        if item.first_board_quality_score and item.first_board_quality_reasons:
+            return {
+                "score": item.first_board_quality_score,
+                "grade": item.first_board_quality_grade,
+                "reasons": list(item.first_board_quality_reasons),
+                "passed": bool(item.first_board_quality_score >= float(cfg.get("min_first_board_quality_score", 60) or 60)),
+            }
+        score = 0.0
+        reasons: List[str] = []
+        seal = _num(item.limit_snapshot.get("seal_strength"), _num(factor.get("seal_strength"), 0.0)) or 0.0
+        break_count = _int(item.strong_structure.get("break_count"), _int(item.limit_snapshot.get("break_count"), 0))
+        vol = _num(factor.get("volume_ratio"))
+        amount = _num(factor.get("amount_ratio"))
+        close_vs_20h = _num(factor.get("close_vs_20d_high_pct"))
+        ret_3d = _num(factor.get("ret_3d_pct"))
+        ret_5d = _num(factor.get("ret_5d_pct"))
+        if seal >= 8:
+            score += 18
+            reasons.append(f"封单强({seal:.1f}%)")
+        elif seal >= 4:
+            score += 12
+            reasons.append("封单较好")
+        else:
+            score += 5
+        if break_count <= 1:
+            score += 8
+            reasons.append("炸板少")
+        else:
+            score -= 8
+            reasons.append(f"炸板{break_count}次")
+        if vol is not None:
+            if 1.0 <= vol <= 3.0:
+                score += 15
+                reasons.append("有效放量")
+            elif vol > 3.0:
+                score -= 5
+                reasons.append("极端爆量")
+        if amount is not None and amount >= 1.2:
+            score += 8
+            reasons.append("成交额放大")
+        if close_vs_20h is not None:
+            if -2 <= close_vs_20h <= 8:
+                score += 12
+                reasons.append("贴近/突破20日新高")
+            elif close_vs_20h < -8:
+                score -= 10
+                reasons.append("偏离20日高点偏远")
+        mom = ret_3d if ret_3d is not None else ret_5d
+        if mom is not None:
+            if 0 <= mom <= 8:
+                score += 10
+                reasons.append(f"首板前动量健康({mom:.1f}%)")
+            elif mom > 8:
+                score += 4
+                reasons.append("首板前已明显上涨")
+            elif mom < 0:
+                score -= 8
+                reasons.append("超跌反弹式首板")
+        if str(factor.get("sector_name") or factor.get("industry_name") or "").strip():
+            score += 6
+            reasons.append("有板块归属")
+        score = _clamp(score)
+        grade = "A" if score >= 75 else ("B" if score >= 60 else "C")
+        passed = bool(score >= float(cfg.get("min_first_board_quality_score", 60) or 60))
+        return {"score": round(score, 2), "grade": grade, "reasons": reasons, "passed": passed}
+
+    def detect_first_board(self, watch_pool: WatchlistPool, trade_date: str) -> List[dict]:
+        """扫描观察池中已被 refresh_lifecycle 标记的首板事件，计算首板质量。"""
+        self.refresh_lifecycle_metadata(watch_pool)
+        out: List[dict] = []
+        for item in watch_pool.all_items:
+            if not item.first_board_event:
+                continue
+            factor = item.latest_factor()
+            if not factor:
+                continue
+            qual = self._compute_first_board_quality(item, factor)
+            item.first_board_quality_score = qual["score"]
+            item.first_board_quality_grade = qual["grade"]
+            item.first_board_quality_reasons = list(qual["reasons"])
+            out.append({
+                "symbol_code": item.symbol_code,
+                "symbol_name": item.symbol_name,
+                "trade_date": trade_date,
+                "first_board_date": item.first_board_date,
+                "first_board_event": True,
+                "first_board_quality_score": qual["score"],
+                "first_board_quality_grade": qual["grade"],
+                "first_board_quality_passed": qual["passed"],
+                "reasons": list(qual["reasons"]),
+            })
+        return out
+
+    def _compute_first_board_continuation_gates(self, item: WatchlistItem, factor: Dict[str, Any]) -> Dict[str, Any]:
+        """T+1 首板延续确认 Gate：不要求弱转强，只要求正常延续。"""
+        cfg = self.config.first_board or {}
+        required = int(cfg.get("continuation_gates_required", 2) or 2)
+        gate_names = cfg.get("continuation_gates") or [
+            "未快速跌破关键位",
+            "未异常放量砸盘",
+            "收盘不深跌",
+            "VWAP/MA5承接优先",
+            "板块/入口评分合格",
+        ]
+        min_change = float(cfg.get("continuation_min_change_pct", -3.0) or -3.0)
+        max_vol = float(cfg.get("continuation_max_volume_ratio", 4.0) or 4.0)
+        key_level_pct = float(cfg.get("continuation_key_level_pct", -6.0) or -6.0)
+        first_close = item.first_board_close
+        change = _num(factor.get("change_pct"))
+        vol = _num(factor.get("volume_ratio"))
+        low = _num(factor.get("low"))
+        close = _num(factor.get("close")) or _num(factor.get("close_price"))
+        close_above_ma5 = _bool(factor.get("close_above_ma5"))
+        vwap = _num(factor.get("vwap_20")) or _num(factor.get("vwap"))
+        sector_ok = _bool(factor.get("sector_breadth_ok")) or _bool(factor.get("sector_confirmed"))
+
+        key_ok = True
+        if first_close and low is not None:
+            key_ok = bool(low >= first_close * (1 + key_level_pct / 100.0))
+        elif first_close and close is not None:
+            key_ok = bool(close >= first_close * (1 + key_level_pct / 100.0))
+        no_dump = True
+        if change is not None and vol is not None:
+            no_dump = bool(change >= min_change and vol <= max_vol)
+        close_ok = bool(change is not None and change >= min_change)
+        hold = False
+        if vwap is not None and close is not None:
+            hold = bool(close >= vwap)
+        elif close_above_ma5:
+            hold = True
+        gates = {
+            "未快速跌破关键位": key_ok,
+            "未异常放量砸盘": no_dump,
+            "收盘不深跌": close_ok,
+            "VWAP/MA5承接优先": hold,
+            "板块/入口评分合格": True if sector_ok else True,  # 数据缺失不算 FAIL
+        }
+        detail = {}
+        passed = 0
+        for name in gate_names:
+            val = bool(gates.get(name, False))
+            detail[name] = val
+            if val:
+                passed += 1
+        confirmed = bool(passed >= required)
+        reasons = [f"{k}:{'是' if v else '否'}" for k, v in detail.items()]
+        return {"confirmed": confirmed, "passed_count": passed, "required": required, "gates": detail, "reasons": reasons}
+
+    def _compute_first_board_continuation_score(self, item: WatchlistItem, factor: Dict[str, Any]) -> float:
+        """首板延续分：只回答 T+1 延续强度，不与 weak_to_strong 混淆。"""
+        score = 50.0
+        change = _num(factor.get("change_pct"))
+        vol = _num(factor.get("volume_ratio"))
+        close = _num(factor.get("close")) or _num(factor.get("close_price"))
+        vwap = _num(factor.get("vwap_20")) or _num(factor.get("vwap"))
+        close_above_ma5 = _bool(factor.get("close_above_ma5"))
+        if change is not None:
+            if 0 <= change <= 7:
+                score += 20
+            elif 7 < change <= 9.5:
+                score += 10
+            elif change < 0:
+                score -= 15
+        if vwap is not None and close is not None and close >= vwap:
+            score += 15
+        if close_above_ma5:
+            score += 10
+        if vol is not None:
+            if 1.0 <= vol <= 3.0:
+                score += 10
+            elif vol > 3.0:
+                score -= 10
+        return round(_clamp(score), 2)
+
+    def advance_first_board_state(self, watch_pool: WatchlistPool, trade_date: str) -> None:
+        """首板事件后，在 T+1 次日/后续确认正常延续。"""
+        self.refresh_lifecycle_metadata(watch_pool)
+        for item in watch_pool.all_items:
+            if not item.first_board_event:
+                continue
+            if item.first_board_continuation_confirmed:
+                continue
+            if item.first_board_date == trade_date:
+                continue
+            factor = item.latest_factor()
+            if not factor:
+                continue
+            gate = self._compute_first_board_continuation_gates(item, factor)
+            if gate["confirmed"]:
+                item.first_board_continuation_confirmed = True
+                item.first_board_continuation_gate_detail = gate
+                item.first_board_continuation_score = self._compute_first_board_continuation_score(item, factor)
+                item.first_board_continuation_reasons = list(gate["reasons"])
+                if trade_date not in item.first_board_continuation_dates:
+                    item.first_board_continuation_dates.append(trade_date)
+            else:
+                item.first_board_continuation_score = self._compute_first_board_continuation_score(item, factor)
+                item.first_board_continuation_reasons = list(gate["reasons"])
+
+    def apply_first_board_state_machine(self, watch_pool: WatchlistPool, trade_date: str) -> List[Dict[str, Any]]:
+        """首板延续买入候选：首板事件 + 质量>=阈值 + 延续 Gate 通过 + entry_quality>=阈值。不要求 weak_to_strong。"""
+        cfg = self.config.first_board or {}
+        if not _bool(cfg.get("enabled", True)):
+            return []
+        min_cont = float(cfg.get("min_continuation_score", 60) or 60)
+        min_entry = float(cfg.get("min_entry_quality_score", 70) or 70)
+        min_quality = float(cfg.get("min_first_board_quality_score", 60) or 60)
+        out: List[Dict[str, Any]] = []
+        for item in watch_pool.all_items:
+            if not item.first_board_event:
+                continue
+            factor = item.latest_factor()
+            if not factor or not item.first_board_continuation_confirmed:
+                continue
+            entry = self._compute_entry_quality(item, factor)
+            cont = item.first_board_continuation_score
+            ready = bool(cont >= min_cont and entry >= min_entry and item.first_board_quality_score >= min_quality)
+            reasons = list(item.first_board_quality_reasons) + list(item.first_board_continuation_reasons)
+            reasons.append(f"首板质量{item.first_board_quality_score:.1f}/{item.first_board_quality_grade}")
+            reasons.append(f"延续分{cont:.1f}/{min_cont}")
+            reasons.append(f"入场质量{entry:.1f}/{min_entry}")
+            if not ready:
+                reasons.append("延续或入场质量不足")
+            out.append({
+                "symbol_code": item.symbol_code,
+                "symbol_name": item.symbol_name,
+                "trade_date": trade_date,
+                "lifecycle_state": "T+1买入候选" if ready else "首板延续观察",
+                "pool_type": item.pool_type,
+                "divergence_mode": "first_board",
+                "divergence_score": item.first_board_quality_score,
+                "entry_quality_score": round(entry, 2),
+                "weak_to_strong_score": 0.0,
+                "first_board_continuation_score": round(cont, 2),
+                "first_board_quality_score": item.first_board_quality_score,
+                "first_board_quality_grade": item.first_board_quality_grade,
+                "first_board_continuation_confirmed": item.first_board_continuation_confirmed,
+                "first_board_event": item.first_board_event,
+                "t1_buy_score": round((cont + entry) / 2.0, 2),
+                "buy_ready": ready,
+                "state": item.state,
+                "reasons": reasons,
+            })
+        return out
+
     def _check_weak_to_strong_gates(self, item: WatchlistItem, trade_date: str) -> Dict[str, Any]:
         """Weak-to-Strong 硬条件（严格 Gate）：5 个条件 ≥ 4 才返回 confirmed=True。
 
@@ -1622,6 +1902,12 @@ class StrongDivergeEngine:
                 weak_to_strong_gate_detail=d.get("weak_to_strong_gate_detail", {}),
                 weak_to_strong_reasons=list(d.get("weak_to_strong_reasons", [])),
                 entry_quality_reasons=list(d.get("entry_quality_reasons", [])),
+                first_board_event=d.get("first_board_event", False),
+                first_board_quality_score=d.get("first_board_quality_score", 0.0),
+                first_board_quality_grade=d.get("first_board_quality_grade", ""),
+                first_board_continuation_confirmed=d.get("first_board_continuation_confirmed", False),
+                first_board_continuation_score=d.get("first_board_continuation_score", 0.0),
+                first_board_continuation_reasons=list(d.get("first_board_continuation_reasons", [])),
             ))
         return out
 
