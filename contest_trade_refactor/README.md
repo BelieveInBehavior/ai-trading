@@ -284,6 +284,19 @@ flowchart TD
 
 更多见 `strategies/strong_diverge/README.md`。
 
+项目另有一个**独立首板延续策略包**：`strategies/first_board_continue/`，只做“首板 → T+1 正常延续”，不要求 weak-to-strong。
+
+```bash
+# 独立运行
+.venv/bin/python scripts/first_board_continue_backtest.py --date 2026-08-18 --symbols-limit 200
+
+# 统一入口
+.venv/bin/python scripts/strategy_backtest.py --strategy first_board_continue --run-replay
+
+# 测试
+.venv/bin/python -m unittest test_first_board_continue -v
+```
+
 ## 运行测试
 
 

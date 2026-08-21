@@ -27,3 +27,17 @@
   ```bash
   .venv/bin/python scripts/strategy_backtest.py --strategy strong_diverge --run-replay
   ```
+
+## First Board Continue（首板后延续）
+
+- 位置：`strategies/first_board_continue/`。
+- **完全独立**：有自己的规则引擎 `engine.py`，不依赖旧 `main_loop` / Research Agent 链路。
+- 做“首板 → T+1 正常延续”的 C 类机会，不要求 weak-to-strong。
+- 独立运行：
+  ```bash
+  .venv/bin/python scripts/first_board_continue_backtest.py --start 2026-08-11 --end 2026-08-18 --symbols-limit 200
+  ```
+- 统一入口会自动分发到独立脚本：
+  ```bash
+  .venv/bin/python scripts/strategy_backtest.py --strategy first_board_continue --run-replay
+  ```

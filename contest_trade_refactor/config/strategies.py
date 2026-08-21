@@ -19,7 +19,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 STRATEGIES_DIR = PROJECT_ROOT / "strategies"
 
 
-STRATEGY_NAMES = ("swing", "momentum", "strong_diverge")
+STRATEGY_NAMES = ("swing", "momentum", "strong_diverge", "first_board_continue")
 
 DEFAULTS = {
     "quantitative_screen_top_k": 80,

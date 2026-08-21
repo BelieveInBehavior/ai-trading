@@ -209,6 +209,21 @@ def _run_replay_with_subprocess(strategy: str, start_compact: str, end_compact: 
                                 symbols_limit: int, concurrency: int, output_dir: Path) -> None:
     """调用 replay_historical_no_future.py 主入口，避免其 subprocess 内部 sys.path 副作用。"""
     vpy = PROJECT_ROOT / ".venv" / "bin" / "python"
+    if strategy == "first_board_continue":
+        script = PROJECT_ROOT / "scripts" / "first_board_continue_backtest.py"
+        cmd = [
+            str(vpy if vpy.exists() else sys.executable),
+            "-u",
+            str(script),
+            "--start", _fmt_compact(start_compact),
+            "--end", _fmt_compact(end_compact),
+            "--output-dir", str(output_dir),
+            "--symbols-limit", str(symbols_limit),
+            "--concurrency", str(concurrency),
+        ]
+        print(f"[replay] {cmd}", flush=True)
+        subprocess.run(cmd, cwd=PROJECT_ROOT, check=True, env=os.environ.copy())
+        return
     if strategy == "strong_diverge":
         # 独立策略：走本策略自带的回放 CLI，不调用旧 main_loop
         script = PROJECT_ROOT / "scripts" / "strong_diverge_backtest.py"
