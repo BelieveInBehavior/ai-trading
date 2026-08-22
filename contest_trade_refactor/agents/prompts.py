@@ -266,6 +266,17 @@ Use this exact top-level shape:
       "event_type": "earnings_surprise",
       "event_date": "2026-08-15",
       "event_summary": "中报业绩预增落地，短线资金关注度高",
+      "event_level": "A",
+      "freshness": 0.1,
+      "company_specific": true,
+      "credibility": 0.9,
+      "source_quality": "公告",
+      "earnings_impact": 0.8,
+      "expected_return_pct": 3.0,
+      "actual_return_pct": 4.2,
+      "gap_pct": 1.5,
+      "intraday_return_pct": 1.2,
+      "price_reaction": "positive",
       "catalyst_certainty": 7.8,
       "catalyst_market_impact": 6.0,
       "price_in_status": "not yet visible",
@@ -287,6 +298,17 @@ Use this exact top-level shape:
       "event_type": null,
       "event_date": null,
       "event_summary": null,
+      "event_level": null,
+      "freshness": 0,
+      "company_specific": false,
+      "credibility": 0,
+      "source_quality": "unknown",
+      "earnings_impact": 0,
+      "expected_return_pct": null,
+      "actual_return_pct": null,
+      "gap_pct": null,
+      "intraday_return_pct": null,
+      "price_reaction": "neutral",
       "catalyst_certainty": 0.0,
       "catalyst_market_impact": 0.0,
       "price_in_status": "unknown",
@@ -308,11 +330,17 @@ Rules:
 - `event_type` uses one of: earnings_surprise | order_win | contract | policy | merger_restructuring | price_hike | new_product | sector_flow | technical_reversal | none. Use null when no catalyst exists.
 - If the only "catalyst" is sector strength / sector inflow with no company-level event or strong individual launch structure, PREFER `event_type=null` and state in limitations that this is a sector-follow / background-driven signal, not an independent catalyst.
 - `event_date` is the nearest expected event date in YYYY-MM-DD, or null when unknown.
-- `catalyst_certainty` is 0-10 (how likely the event actually materializes).
-- `catalyst_market_impact` is 0-10 (how much it can move the stock within T+1~T+3).
-- `price_in_status` is one of: fully priced | partly priced | not yet visible | unknown.
+- `event_level` is one of: S | A | B | C (event importance).
+- `freshness` is 0-1 (0=fresh event today, 1=old/stale).
+- `company_specific` true only when event is specific to this company.
+- `credibility` is 0-1 (source/official-anchor credibility).
+- `source_quality` one of: official | exchange | 公告 | news | unknown.
+- `earnings_impact` is 0-1 (how much it can move stock within T+1~T+3).
+- `expected_return_pct` / `actual_return_pct` / `gap_pct` / `intraday_return_pct` are percentage numbers (optional).
+- `price_reaction` is one of: positive | negative | neutral.
+- `price_in_status` remains one of: fully priced | partly priced | not yet visible | unknown (legacy).
 - `probability` is a soft confidence score (0-1), NOT a calibrated statistical probability. It represents subjective confidence that the T+1~T+3 setup succeeds, not a backtested win rate.
 - Include at least one evidence item and at least one concrete limitation for every signal.
-- If there is no clear catalyst, set event_type/event_date/event_summary to null, catalyst_certainty and catalyst_market_impact to 0, price_in_status to "unknown", and say so in limitations.
+- If there is no clear catalyst, set event_type/event_date/event_summary to null, event_level/freshness/credibility/earnings_impact to 0, price_reaction to "neutral", catalyst_certainty and catalyst_market_impact to 0, price_in_status to "unknown", and say so in limitations.
 - Use only information available at or before the current analysis time.
 """

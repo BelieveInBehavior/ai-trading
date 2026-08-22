@@ -192,3 +192,40 @@ ENTRY -> HOLD -> ADD / HOLD / DECAY / REDUCE -> EXIT
   }
 }
 ```
+
+
+## LLM 的最终位置（Architecture Rule）
+
+```
+非结构化世界（新闻/事件/盘口）
+        │
+        ▼
+      LLM 只做：
+      - 新闻解析
+      - 事件分类
+      - 异常解释
+        │
+        ▼
+  Structured Event:
+  event_type / event_level / freshness / company_specific /
+  credibility / source_quality / earnings_impact /
+  expected_return_pct / actual_return_pct / price_reaction
+        │
+        ▼
+  Deterministic Trading Engine（独断决策）
+        ├── Eligibility（准入 Gate）
+        ├── Position（风险预算定仓位）
+        └── Exit（HOLD / ADD / REDUCE / EXIT）
+```
+
+### LLM 不能
+- 决定买多少仓位
+- 改止损
+- 自己判断“看起来很强”
+- 根据新闻自由改变因子权重
+- 覆盖风险预算
+
+### 兼容旧输出
+- 新结构化 schema：`event_level / credibility / source_quality / earnings_impact / price_reaction / expected_return_pct ...`
+- 旧字段 `catalyst_certainty / catalyst_market_impact` 依然会被 `validate_research_signal()` 自动映射到新字段，保证已训练/已有 LLM 输出不丢失。
+

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Dict, List, Literal, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -42,15 +42,35 @@ class EvidenceRecord(BaseModel):
 
 
 class ResearchSignal(BaseModel):
-    """Validated signal emitted by a research agent."""
+    """Validated signal emitted by a research agent.
+
+    Catalyst output follows the final architecture: LLM produces only structured
+    event variables; the deterministic engine decides on eligibility/position/risk.
+    """
 
     has_opportunity: Union[str, bool] = ""
     action: str = ""
     symbol_code: str = ""
     symbol_name: str = ""
-    event_type: str = ""
-    event_date: str = ""
-    event_summary: str = ""
+    event_type: Optional[str] = ""
+    event_date: Optional[str] = ""
+    event_summary: Optional[str] = ""
+    event_level: Optional[str] = "B"
+
+    # --- Catalyst × Price Reaction structured fields (Engine consumes) ---
+    event_level: str = "B"
+    freshness: float = 0.0
+    company_specific: bool = False
+    credibility: float = 0.0
+    source_quality: str = "unknown"
+    earnings_impact: float = 0.0
+    expected_return_pct: Optional[float] = None
+    actual_return_pct: Optional[float] = None
+    gap_pct: Optional[float] = None
+    intraday_return_pct: Optional[float] = None
+    price_reaction: str = "neutral"
+
+    # Legacy fields backfilled / preserved
     catalyst_certainty: float = 0.0
     catalyst_market_impact: float = 0.0
     price_in_status: str = ""
@@ -87,8 +107,72 @@ def _model_dump(model: BaseModel) -> Dict[str, Any]:
     return model.dict()
 
 
+def _to_float(v: Any, default: float = 0.0) -> float:
+    try:
+        if v in (None, ""):
+            return default
+        return float(v)
+    except (TypeError, ValueError):
+        return default
+
+
+def _normalize_catalyst_structured(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Back-fill new structured catalyst fields from legacy LLM fields and vice versa.
+
+    LLM produces only structured event variables. The deterministic engine consumes
+    these structured fields; legacy `catalyst_certainty` / `catalyst_market_impact`
+    are mapped into event_level / credibility / earnings_impact so old model output
+    still flows into the new engine without being dropped.
+    """
+    out = dict(payload or {})
+    event_type = str(out.get("event_type") or "").strip().lower()
+    has_event = bool(event_type and event_type != "none")
+    if not has_event:
+        out["event_level"] = ""
+        out["freshness"] = 0.0
+        out["company_specific"] = False
+        out["credibility"] = 0.0
+        out["source_quality"] = "unknown"
+        out["earnings_impact"] = 0.0
+        out["price_reaction"] = "neutral"
+        return out
+
+    if not out.get("event_level"):
+        legacy_impact = _to_float(out.get("catalyst_market_impact"), 0.0)
+        legacy_certainty = _to_float(out.get("catalyst_certainty"), 0.0)
+        combined = (legacy_impact + legacy_certainty) / 2.0
+        out["event_level"] = (
+            "S" if combined >= 8 else "A" if combined >= 6.5 else "B" if combined >= 4.5 else "C"
+        )
+
+    if (out.get("credibility") is None or _to_float(out.get("credibility"), -1) < 0) and out.get("catalyst_certainty") is not None:
+        out["credibility"] = max(0.0, min(1.0, _to_float(out["catalyst_certainty"], 0.0) / 10.0))
+
+    if (out.get("earnings_impact") is None or _to_float(out.get("earnings_impact"), -1) < 0) and out.get("catalyst_market_impact") is not None:
+        out["earnings_impact"] = max(0.0, min(1.0, _to_float(out["catalyst_market_impact"], 0.0) / 10.0))
+
+    if not out.get("source_quality"):
+        out["source_quality"] = "unknown"
+
+    if out.get("price_reaction") in (None, ""):
+        reaction = str(out.get("price_in_status") or "").lower()
+        if reaction in ("not yet visible", "partly priced"):
+            out["price_reaction"] = "positive"
+        elif reaction == "fully priced":
+            out["price_reaction"] = "neutral"
+        elif reaction == "unknown":
+            out["price_reaction"] = "neutral"
+        else:
+            out["price_reaction"] = "neutral"
+
+    if out.get("expected_return_pct") is None and out.get("gap_pct") is not None:
+        out["expected_return_pct"] = _to_float(out["gap_pct"], 0.0)
+    return out
+
+
 def validate_research_signal(payload: Dict[str, Any], thinking: str = "") -> Dict[str, Any]:
     """Validate and normalize a raw research signal payload."""
+    payload = _normalize_catalyst_structured(payload or {})
     normalized = dict(payload or {})
     normalized["thinking"] = thinking or normalized.get("thinking") or ""
     normalized["probability"] = parse_probability(normalized.get("probability"))
