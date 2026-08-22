@@ -448,6 +448,23 @@ def compute_stock_technical_factor_from_history(
 
     ma20 = float(closes.rolling(20).mean().iloc[-1])
     ma20_dist = (current_close - ma20) / ma20 * 100 if ma20 > 0 else float("nan")
+    ma60 = float(closes.rolling(60).mean().iloc[-1]) if len(closes) >= 60 else float("nan")
+    # MA60 5-day normalized LR slope
+    ma60_5d_slope_pct = None
+    if len(closes) >= 64 and ma60 == ma60 and ma60 > 0:
+        ma60_series = closes.rolling(60).mean().dropna().tail(5)
+        x = [0.0, 1.0, 2.0, 3.0, 4.0]
+        y = ma60_series.tolist()
+        if len(y) == 5 and all(v == v for v in y):
+            n = 5
+            x_sum = sum(x)
+            y_sum = sum(y)
+            xy_sum = sum(a*b for a,b in zip(x,y))
+            xx_sum = sum(a*a for a in x)
+            denom = n*xx_sum - x_sum*x_sum
+            if denom != 0:
+                slope = (n*xy_sum - x_sum*y_sum) / denom
+                ma60_5d_slope_pct = round((slope / ma60) * 100.0, 4)
     rsi = _compute_rsi(closes, 14)
     dif, dea, macd_hist = _compute_macd(closes)
     atr = _compute_atr(highs, lows, closes, 14)
@@ -654,6 +671,11 @@ def compute_stock_technical_factor_from_history(
         "ma20_deviation_pct": None if np.isnan(ma20_dist) else round(float(ma20_dist), 1),
         "close_above_ma5": close_above_ma5,
         "ma5_slope_pct": None if np.isnan(ma5_slope_pct) else round(float(ma5_slope_pct), 3),
+        "ma60": None if np.isnan(ma60) else round(float(ma60), 4),
+        "ma20_ge_ma60": None if (np.isnan(ma20) or np.isnan(ma60)) else bool(ma20 > ma60),
+        "ma60_5d_slope_pct": ma60_5d_slope_pct,
+        "trading_days": int(len(closes)),
+        "median_amount_20d": None if not amounts_series.tail(20).dropna().empty else round(float(amounts_series.tail(20).median()), 2),
         "ret_1d_pct": ret_1d_pct,
         "ret_3d_pct": ret_3d_pct,
         "ret_5d_pct": ret_5d_pct,
@@ -673,6 +695,7 @@ def compute_stock_technical_factor_from_history(
             if np.isnan(daily_volatility_20d_pct)
             else round(float(daily_volatility_20d_pct), 3)
         ),
+        "amount": None if np.isnan(today_amount) else round(float(today_amount), 2),
         "volume_ratio": None if np.isnan(volume_ratio) else round(float(volume_ratio), 2),
         "amount_ratio": None if np.isnan(amount_ratio) else round(float(amount_ratio), 2),
         "volume_ma5_ma20_ratio": None if np.isnan(volume_ma5_ma20_ratio) else round(float(volume_ma5_ma20_ratio), 2),

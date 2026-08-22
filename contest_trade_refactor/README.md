@@ -503,3 +503,19 @@ FAIL: 建议只观察，不构成 buy
 - 最终 `buy_signals` / `watchlist` 排序里，`PASS` 也更靠前
 
 作用：把质量计划排在前面，但不会因为某个牌没有 pass 就强制不买。
+
+## Main Trend（主升浪趋势跟踪系统 / MTF）
+
+- 位置：`strategies/main_trend/`。
+- **完全独立**：有自己的规则引擎 `engine.py`，不依赖旧 `main_loop` / Research Agent 链路。
+- 对齐最终架构：DataQuality / MarketRegime / TrendState / TrendQuality / SectorState / CatalystState / T+1 Execution / RiskBudget / PositionStateMachine。
+- 状态机不是总分：T日候选资格 → T+1执行确认 → 持仓期 MA20+ATR 双轨退出。
+- 独立运行：
+  ```bash
+  .venv/bin/python scripts/main_trend_backtest.py --start 2026-01-01 --end 2026-08-18 --symbols-limit 200
+  ```
+- 统一入口：
+  ```bash
+  .venv/bin/python scripts/strategy_backtest.py --strategy main_trend --run-replay
+  ```
+

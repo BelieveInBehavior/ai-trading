@@ -150,10 +150,45 @@ def _load_strong_diverge_frame(workspace: Path) -> pd.DataFrame:
         return pd.DataFrame()
     return pd.DataFrame(records)
 
+
+
+def _load_main_trend_frame(workspace: Path) -> pd.DataFrame:
+    """Load Main Trend rule-based result.json files as a lightweight signal frame."""
+    records = []
+    if workspace.exists():
+        for result_json in workspace.rglob("result.json"):
+            try:
+                data = json.loads(result_json.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            trade_date = str(data.get("trade_date") or "").strip()
+            for sig in data.get("buy_signals") or []:
+                records.append({
+                    "strategy": "main_trend",
+                    "trigger_date": trade_date,
+                    "signal_group": "buy_passed" if sig.get("buy_ready") else "watch",
+                    "symbol_code": sig.get("symbol_code"),
+                    "symbol_name": sig.get("symbol_name"),
+                    "candidate": sig.get("candidate"),
+                    "lifecycle_state": sig.get("lifecycle_state"),
+                    "trend_state": sig.get("trend_state"),
+                    "trend_quality": sig.get("trend_quality"),
+                    "market_regime": sig.get("market_regime"),
+                    "entry_quality_score": sig.get("entry_quality_score"),
+                    "t1_buy_score": sig.get("t1_buy_score"),
+                    "suggested_position_pct": sig.get("suggested_position_pct"),
+                })
+    if not records:
+        return pd.DataFrame()
+    return pd.DataFrame(records)
+
+
 def _metrics(strategy: str, workspace: Path, horizons: Tuple[int, ...]) -> Dict[str, Any]:
     df = _load_signal_frame(workspace)
     if strategy == "strong_diverge" and df.empty:
         df = _load_strong_diverge_frame(workspace)
+    if strategy == "main_trend" and df.empty:
+        df = _load_main_trend_frame(workspace)
     if df.empty:
         discovered = _discover_existing_signal_frames(strategy)
         frames = []
@@ -209,6 +244,21 @@ def _run_replay_with_subprocess(strategy: str, start_compact: str, end_compact: 
                                 symbols_limit: int, concurrency: int, output_dir: Path) -> None:
     """调用 replay_historical_no_future.py 主入口，避免其 subprocess 内部 sys.path 副作用。"""
     vpy = PROJECT_ROOT / ".venv" / "bin" / "python"
+    if strategy == "main_trend":
+        script = PROJECT_ROOT / "scripts" / "main_trend_backtest.py"
+        cmd = [
+            str(vpy if vpy.exists() else sys.executable),
+            "-u",
+            str(script),
+            "--start", _fmt_compact(start_compact),
+            "--end", _fmt_compact(end_compact),
+            "--output-dir", str(output_dir),
+            "--symbols-limit", str(symbols_limit),
+            "--concurrency", str(concurrency),
+        ]
+        print(f"[replay] {' '.join(cmd)}", flush=True)
+        subprocess.run(cmd, cwd=PROJECT_ROOT, check=True, env=os.environ.copy())
+        return
     if strategy == "first_board_continue":
         script = PROJECT_ROOT / "scripts" / "first_board_continue_backtest.py"
         cmd = [

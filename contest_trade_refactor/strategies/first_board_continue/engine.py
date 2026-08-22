@@ -30,6 +30,7 @@ from utils.akshare_utils import akshare_cached
 from utils.cn_price_provider import get_index_daily, get_stock_zh_a_hist
 from utils.date_utils import get_latest_completed_trading_date, get_trading_date_range
 from utils.market_manager import GLOBAL_MARKET_MANAGER
+from utils.factor_store import ZT_SEAL_STORE
 
 from strategies.first_board_continue.schemas import (
     BuySignal,

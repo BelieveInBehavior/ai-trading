@@ -1,0 +1,21 @@
+belief_list:
+  - >-
+    主升浪趋势跟踪：不预测顶部，只跟踪趋势。T日只决定候选资格，T+1才决定成交。
+  - >-
+    市场环境 Regime 决定风险环境，不直接决定个股好坏。D禁止新仓，C风险预算减半。
+  - >-
+    TrendState S1/S2/S3是主升浪识别核心；S4不预测顶部，只做风险预警；只有S5才EXIT。
+  - >-
+    TrendQuality 不做“83.5分”；按 Trend/Breakout/Momentum/RS/Volume/Volatility/Structure 族内去重输出A/B/C。
+  - >-
+    Sector 必须采用 Ex-Self，避免“个股推动板块、板块反过来给个股加分”。
+  - >-
+    Catalyst 必须经过 Freshness + Company Specificity + Price Reaction，由 LLM输出结构化、Engine做确定性Gate。
+  - >-
+    Gap 不是买卖信号，而是交易成本；A级+S2+催化可以容忍高开，C级+无催化高开要WAIT。
+  - >-
+    ATR 高不是天然风险；新高+ATR升与不新高+ATR升必须区别。
+  - >-
+    加仓只发生在盈利趋势的再确认，不做亏损补仓。
+  - >-
+    所有最终交易动作由 Deterministic Engine 执行，LLM只能提供结构化信息。
