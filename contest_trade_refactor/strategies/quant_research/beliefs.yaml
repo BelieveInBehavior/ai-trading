@@ -1,0 +1,14 @@
+belief_list:
+  - >-
+    AgentLoop 经典流程：先做全市场量化预筛，要求可选周线趋势/相对强度/MA20 位置等，
+    但当前默认不硬卡太高分，只排除明显异常或超速热个股。再由 Research Agent
+    依明确 catalyst + 资金 + 量价确认买入。
+  - >-
+    AgentLoop 采用多 Research Agent 分片研究，所有信号必须来自量化候选池；
+    依靠 consensus/ranker 保留严格门控，不因“研究喜欢某只票”就绕过量池。
+  - >-
+    AgentLoop 保留旧 Trade Plan 层：生成 1~5 天计划（止损/止盈/仓位/风险回报），
+    trade_plan_pass 作为排序加分，不用它硬删 buy。
+  - >-
+    AgentLoop 兼容回测：strict replay 通过 CONTEST_TRADE_ASOF_DATE 限制 K 线 end 不超过触发日，
+    以降低价格未来泄漏；仍以 main_loop/legacy 输出 buy/watch/reject。

@@ -1,0 +1,17 @@
+{
+  "agent_name": "margin_trading_agent",
+  "trigger_time": "2026-08-19 19:30:00",
+  "source_list": [
+    "data_source.margin_trading_akshare.MarginTradingAkshare"
+  ],
+  "bias_goal": "",
+  "context_string": "Batch 1 Documents:\n<doc id=1> Title: 20260819:融资融券异动分析\nPublish Time: 2026-08-19 19:30:00\nRelevance Score: 7\nRelevance Label: high\nEvent Type: margin_trading\nDirection: neutral\nSignal Confidence: 0.65\nContent: ## 20260819 融资融券异动分析\n\n> ⚠️ 数据质量警示：目标交易日的沪深两融明细暂未返回（数据源可能延迟发布）。\n> 以下使用全市场两融汇总与上一交易日/最近可用数据，仅作背景参考；个股的融资净买入/净偿还等信号不可用时，不应据此下结论。\n\n### 一、全市场融资融券汇总（东财两融账户统计）\n- 日期: 2026-08-18\n- 全市场融资余额: 26708.50亿\n- 全市场融券余额: 270.57亿\n- 当日融资买入额: 2295.52亿\n\n### 二、沪深交易所口径汇总（请注意不等于全市场）\n- 沪市(20260818): 融资余额13672.67亿, 融资买入1182.27亿, 融券余额171.81亿\n- 深市(2026-08-18): 融资余额12952.49亿, 融资买入1105.78亿, 融券余额98.64亿\n（注意：沪市1.36万亿、深市1.30万亿均为“单交易所口径”，不能直接当作全市场融资余额；全市场口径请以上述账户统计为准。）</doc>\n",
+  "references": [],
+  "batch_summaries": [
+    {
+      "batch_id": 1,
+      "summary": "Batch 1 Documents:\n<doc id=1> Title: 20260819:融资融券异动分析\nPublish Time: 2026-08-19 19:30:00\nRelevance Score: 7\nRelevance Label: high\nEvent Type: margin_trading\nDirection: neutral\nSignal Confidence: 0.65\nContent: ## 20260819 融资融券异动分析\n\n> ⚠️ 数据质量警示：目标交易日的沪深两融明细暂未返回（数据源可能延迟发布）。\n> 以下使用全市场两融汇总与上一交易日/最近可用数据，仅作背景参考；个股的融资净买入/净偿还等信号不可用时，不应据此下结论。\n\n### 一、全市场融资融券汇总（东财两融账户统计）\n- 日期: 2026-08-18\n- 全市场融资余额: 26708.50亿\n- 全市场融券余额: 270.57亿\n- 当日融资买入额: 2295.52亿\n\n### 二、沪深交易所口径汇总（请注意不等于全市场）\n- 沪市(20260818): 融资余额13672.67亿, 融资买入1182.27亿, 融券余额171.81亿\n- 深市(2026-08-18): 融资余额12952.49亿, 融资买入1105.78亿, 融券余额98.64亿\n（注意：沪市1.36万亿、深市1.30万亿均为“单交易所口径”，不能直接当作全市场融资余额；全市场口径请以上述账户统计为准。）</doc>\n",
+      "references": []
+    }
+  ]
+}

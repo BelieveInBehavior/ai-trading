@@ -1,0 +1,17 @@
+{
+  "agent_name": "block_trade_agent",
+  "trigger_time": "2026-08-03 18:00:00",
+  "source_list": [
+    "data_source.block_trade_akshare.BlockTradeAkshare"
+  ],
+  "bias_goal": "",
+  "context_string": "Batch 1 Documents:\n<doc id=1> Title: 20260803:大宗交易折溢价分析\nPublish Time: 2026-08-03 18:00:00\nRelevance Score: 7\nRelevance Label: high\nEvent Type: block_trade\nDirection: neutral\nSignal Confidence: 0.6\nContent: ## 20260803 大宗交易折溢价分析\n\n### 一、溢价成交（机构抢筹信号）\n逻辑：成交价高于收盘价，买方愿意付出溢价，极度看好\n\n- *ST棒杰(002634): 溢价率+0.11% 成交额0.00亿 成交价4.59\n- 中国平安(601318): 溢价率+0.00% 成交额0.00亿 成交价55.5501\n- 贵州茅台(600519): 溢价率+0.00% 成交额0.00亿 成交价1358.9805\n\n### 六、大宗交易市场统计\n- 当日大宗交易笔数: 35\n- 当日大宗交易总额: 0.00亿\n- 溢价成交笔数: 3\n- 深度折价成交笔数: 0</doc>\n",
+  "references": [],
+  "batch_summaries": [
+    {
+      "batch_id": 1,
+      "summary": "<doc id=1> Title: 20260803:大宗交易折溢价分析\nPublish Time: 2026-08-03 18:00:00\nRelevance Score: 7\nRelevance Label: high\nEvent Type: block_trade\nDirection: neutral\nSignal Confidence: 0.6\nContent: ## 20260803 大宗交易折溢价分析\n\n### 一、溢价成交（机构抢筹信号）\n逻辑：成交价高于收盘价，买方愿意付出溢价，极度看好\n\n- *ST棒杰(002634): 溢价率+0.11% 成交额0.00亿 成交价4.59\n- 中国平安(601318): 溢价率+0.00% 成交额0.00亿 成交价55.5501\n- 贵州茅台(600519): 溢价率+0.00% 成交额0.00亿 成交价1358.9805\n\n### 六、大宗交易市场统计\n- 当日大宗交易笔数: 35\n- 当日大宗交易总额: 0.00亿\n- 溢价成交笔数: 3\n- 深度折价成交笔数: 0</doc>\n",
+      "references": []
+    }
+  ]
+}

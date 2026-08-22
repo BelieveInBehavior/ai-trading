@@ -145,7 +145,7 @@ def _has_successful_manifest(output_dir: Path, date_compact: str) -> bool:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--strategy", default="momentum", choices=["momentum", "swing", "strong_diverge"])
+    parser.add_argument("--strategy", default="momentum", choices=["momentum", "swing", "strong_diverge", "quant_research"])
     parser.add_argument("--start-date", required=True, help="YYYY-MM-DD or YYYYMMDD")
     parser.add_argument("--end-date", default=None)
     parser.add_argument("--output-dir", default="agents_workspace_replays/historical_no_future")

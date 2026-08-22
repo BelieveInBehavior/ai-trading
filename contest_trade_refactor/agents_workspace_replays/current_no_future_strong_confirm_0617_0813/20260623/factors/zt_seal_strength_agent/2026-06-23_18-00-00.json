@@ -1,0 +1,17 @@
+{
+  "agent_name": "zt_seal_strength_agent",
+  "trigger_time": "2026-06-23 18:00:00",
+  "source_list": [
+    "data_source.zt_seal_strength_akshare.ZtSealStrengthAkshare"
+  ],
+  "bias_goal": "",
+  "context_string": "Batch 1 Documents:\n<doc id=1> Title: 20260623:涨停封单强度分析\nPublish Time: 2026-06-23 18:00:00\nRelevance Score: 9\nRelevance Label: high\nEvent Type: limit_up\nDirection: bullish\nSignal Confidence: 0.7\nContent: 涨停池数据获取失败\n\n### 涨停封板联网补充\n来源：豆包搜索联网补充\n\n<search_result id=1>\n<title>2026.6.17涨停复盘</title>\n<time>2026-06-17T20:06:00+08:00</time>\n<url>https://caifuhao.eastmoney.com/news/20260617200608953087740</url>\n<summary>2026.6.17涨停复盘\n来自专栏  诸葛飞天复盘  2026年06月17日 20:06  广东\n炒股第一步，先开个股票账户\n科技主线全线爆发\n今日A股市场题材轮动清晰，全市场合计96只个股封死涨停，市场短线情绪全面回暖，资金集中涌向AI算力半导体、新能源固态电池、PCB光模块、玻璃基板先进封装四大科技核心赛道，同时ST摘帽重组、中字头央企、人形机器人、光伏设备形成支线助攻，涨停梯队完整、板块辨识度分化明显，下面从涨停结构、主线赛道、...</summary>\n</search_result>\n\n\n<search_result id=2>\n<title>6月3日涨跌停分析：81股涨停27股跌停，电力、汽车零部件领涨，节能铁汉、郑州煤电、红星发展晋级3连板</title>\n<time>2026-06-03T18:07:34+08:00</time>\n<url>http://m.toutiao.com/group/7647108702939529791/?upstream_biz=VolcEngine</url>\n<summary>6月3日，A股全天共有81股涨停、27股跌停。板块方面，电力概念领涨，豫能控股、恒盛能源、新中港等7股强势封板；汽车零部件概念掀起涨停潮，模塑科技、一彬科技、长华集团等5股封住涨停；专用设备概念集中爆发，*ST威领、泰禾智能、中重科技涨停；通信设备概念表现活跃，亨通光电、大唐电信、移远通信封板；基础建设概念强势崛起，节能铁汉、园林股份、*ST岭南强势封板。连板梯队3连板：节能铁汉、郑州煤电（供给收缩+补库需求+数智化转型）、红星发展（玻...</summary>\n</search_result>\n</doc>\n",
+  "references": [],
+  "batch_summaries": [
+    {
+      "batch_id": 1,
+      "summary": "<doc id=1> Title: 20260623:涨停封单强度分析\nPublish Time: 2026-06-23 18:00:00\nRelevance Score: 9\nRelevance Label: high\nEvent Type: limit_up\nDirection: bullish\nSignal Confidence: 0.7\nContent: 涨停池数据获取失败\n\n### 涨停封板联网补充\n来源：豆包搜索联网补充\n\n<search_result id=1>\n<title>2026.6.17涨停复盘</title>\n<time>2026-06-17T20:06:00+08:00</time>\n<url>https://caifuhao.eastmoney.com/news/20260617200608953087740</url>\n<summary>2026.6.17涨停复盘\n来自专栏  诸葛飞天复盘  2026年06月17日 20:06  广东\n炒股第一步，先开个股票账户\n科技主线全线爆发\n今日A股市场题材轮动清晰，全市场合计96只个股封死涨停，市场短线情绪全面回暖，资金集中涌向AI算力半导体、新能源固态电池、PCB光模块、玻璃基板先进封装四大科技核心赛道，同时ST摘帽重组、中字头央企、人形机器人、光伏设备形成支线助攻，涨停梯队完整、板块辨识度分化明显，下面从涨停结构、主线赛道、...</summary>\n</search_result>\n\n\n<search_result id=2>\n<title>6月3日涨跌停分析：81股涨停27股跌停，电力、汽车零部件领涨，节能铁汉、郑州煤电、红星发展晋级3连板</title>\n<time>2026-06-03T18:07:34+08:00</time>\n<url>http://m.toutiao.com/group/7647108702939529791/?upstream_biz=VolcEngine</url>\n<summary>6月3日，A股全天共有81股涨停、27股跌停。板块方面，电力概念领涨，豫能控股、恒盛能源、新中港等7股强势封板；汽车零部件概念掀起涨停潮，模塑科技、一彬科技、长华集团等5股封住涨停；专用设备概念集中爆发，*ST威领、泰禾智能、中重科技涨停；通信设备概念表现活跃，亨通光电、大唐电信、移远通信封板；基础建设概念强势崛起，节能铁汉、园林股份、*ST岭南强势封板。连板梯队3连板：节能铁汉、郑州煤电（供给收缩+补库需求+数智化转型）、红星发展（玻...</summary>\n</search_result>\n</doc>\n",
+      "references": []
+    }
+  ]
+}

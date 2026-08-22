@@ -1,0 +1,69 @@
+[
+  {
+    "trigger_time": "2026-08-10 18:00:00",
+    "symbol_code": "601899.SH",
+    "symbol_name": "紫金矿业",
+    "action": "buy",
+    "buy_decision": "buy",
+    "probability": 0.7108,
+    "probability_value": 0.7108,
+    "buy_score": 67.18,
+    "expected_return_t1_pct": 1.129,
+    "gate_report": {
+      "passed": true,
+      "failed_reasons": [],
+      "risk_veto_reasons": []
+    },
+    "agent_name": "agent_1",
+    "scorecard": {
+      "catalyst_score": 55.0,
+      "capital_flow_score": 65.4,
+      "market_regime_score": 62.0,
+      "tradeability_score": 68.0,
+      "risk_reward_score": 53.23,
+      "data_quality_score": 70.0,
+      "technical_score": 57.0,
+      "weekly_trend_score": 46.0,
+      "relative_strength_score": 100.0,
+      "daily_entry_score": 72.0,
+      "fundamental_score": 78.0,
+      "valuation_score": 50.0,
+      "research_quality_score": 74.75,
+      "forward_opportunity_score": 67.18,
+      "atr_pct": 4.078,
+      "daily_volatility_20d_pct": 2.838,
+      "prev_day_gain_pct": 0.85,
+      "ma20_deviation_pct": 11.3,
+      "future_evidence_count": 0,
+      "consensus_score": 10.0,
+      "flow_data_available": true,
+      "primary_catalyst": false,
+      "risk_veto_report": {
+        "passed": true,
+        "reasons": [],
+        "risk_flags": []
+      },
+      "catalyst_reason": "events=none,freshness=1.00,official=True",
+      "capital_flow_reason": "text_fallback,strong_hits=1,weak_hits=1,inst=0.0,amount_hits=3,amt_bonus=15.4,rank_bonus=4.0",
+      "market_regime_reason": "trend=neutral,risk=risk_on,flow_data=True",
+      "tradeability_reason": "buy-action",
+      "risk_reward_reason": "limitation_severity=2,direction_score=3.0",
+      "data_quality_reason": "ok",
+      "technical_reason": "tech_bull=1,tech_bear=0,above_ma20=11.3%,ma_alignment=missing",
+      "weekly_trend_reason": "weekly=neutral,weekly_score=46.0",
+      "relative_strength_reason": "relative_strength_score=100.0,rs20=29.427,rs60=15.925",
+      "daily_entry_reason": "daily_entry_score=72.0",
+      "fundamental_reason": "profit_yoy=97.5,revenue_yoy=24.7938",
+      "valuation_reason": "valuation_data_missing_neutral",
+      "weekly_data_available": true,
+      "relative_strength_available": true,
+      "daily_data_available": true
+    },
+    "metadata": {
+      "strategy": null,
+      "market_trend": null,
+      "risk_sentiment": null,
+      "source": "performance_tracker"
+    }
+  }
+]

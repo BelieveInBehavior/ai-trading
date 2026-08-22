@@ -1,0 +1,9 @@
+# AgentLoop 使用与 momentum/swing 相同的研究工具；留空可回退 config.yaml research_agent_config.tools
+tools:
+  - "tools.stock_symbol_search_akshare.stock_symbol_search"
+  - "tools.stock_selector_akshare.stock_selector"
+  - "tools.corp_info_akshare.company_financial_info"
+  - "tools.price_info_akshare.price_info"
+  - "tools.search_web.search_web"
+  - "tools.stock_summary_akshare.stock_summary"
+  - "tools.final_report.final_report"

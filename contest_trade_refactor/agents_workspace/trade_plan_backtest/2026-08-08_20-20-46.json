@@ -1,0 +1,104 @@
+{
+  "trigger_time": "2026-08-08 20:20:46",
+  "research_signals": [
+    {
+      "symbol_code": "300502.SZ"
+    }
+  ],
+  "buy_signals": [],
+  "watchlist": [
+    {
+      "symbol_code": "300502.SZ",
+      "symbol_name": "新易盛",
+      "buy_score": 96.73,
+      "probability_value": 0.5636,
+      "expected_return_t1_pct": 0.632,
+      "buy_decision": "watch",
+      "technical_factor": {
+        "report_date": "20260810",
+        "close": 399.6,
+        "change_pct": -5.07,
+        "ma20_deviation_pct": -14.0,
+        "rsi": 29.3,
+        "macd": -7.021,
+        "volume_ratio": 1.08,
+        "bollinger": "中下"
+      },
+      "next_day_gate_report": {
+        "passed": false,
+        "failed_reasons": [
+          "risk_reward<50.0",
+          "data_quality<45.0"
+        ]
+      },
+      "trade_plan": {
+        "symbol_code": "300502",
+        "symbol_name": "新易盛",
+        "trade_date": "20260808",
+        "status": "ok",
+        "close": 420.95,
+        "prev_close": 421.87,
+        "change_pct": -0.22,
+        "indicators": {
+          "rsi": 38.5,
+          "vwap_20": 464.1,
+          "vwap_5": 421.83,
+          "ema8": 426.57,
+          "ema13": 439.92,
+          "ema21": 458.96,
+          "ema50": 476.27,
+          "atr": 47.235,
+          "atr_pct": 11.221,
+          "volume_ratio": 1.02,
+          "volume_ratio_20d_5d": 1.02
+        },
+        "levels": {
+          "support_1": 347.0,
+          "support_2": 347.0,
+          "resistance_1": 453.18,
+          "resistance_2": 554.4,
+          "recent_low_20": 347.0,
+          "recent_low_60": 347.0
+        },
+        "plan": {
+          "entry_zone_low": 420.95,
+          "entry_zone_high": 464.1,
+          "entry_trigger": "价格回踩 VWAP/EMA 区间企稳",
+          "stop_loss": 345.26,
+          "stop_loss_pct": -17.98,
+          "take_profit_1": 453.18,
+          "take_profit_2": 554.4,
+          "reward_per_share_1": 32.23,
+          "risk_per_share": 75.685,
+          "rr_1": 0.43,
+          "rr_ok": false,
+          "suggested_position_size_pct": 5.56,
+          "invalidation": "收盘跌破止损位（支撑 1 下方约 0.5%）"
+        },
+        "risk": {
+          "risk_budget_pct": 1.0,
+          "atr_pct": 11.221,
+          "max_position_pct": 20.0
+        },
+        "horizon": "1-5 天",
+        "notes": [
+          "RSI>75 或昨日涨幅过大时谨慎追高",
+          "VWAP 下方且无支撑时避免左侧买入",
+          "止损至少放在支撑下方 0.5%"
+        ]
+      },
+      "trade_plan_pass": false,
+      "trade_plan_reject_reasons": [
+        "low_signal_group",
+        "rr_below_1.0"
+      ],
+      "trade_plan_notes": [
+        "wide_stop_-17.98",
+        "below_vwap"
+      ]
+    }
+  ],
+  "best_signals": [],
+  "market_context": {},
+  "system_health": {}
+}

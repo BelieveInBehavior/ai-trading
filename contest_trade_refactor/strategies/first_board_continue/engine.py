@@ -219,7 +219,7 @@ class FirstBoardContinueEngine:
         if board_in_factor and board_in_factor > 1:
             return None
         quality = self._compute_first_board_quality(factor)
-        return FirstBoardCandidate(
+        cand = FirstBoardCandidate(
             symbol_code=code,
             symbol_name=str(factor.get("symbol_name") or ""),
             trade_date=str(factor.get("report_date") or ""),
@@ -232,6 +232,16 @@ class FirstBoardContinueEngine:
             factor=factor,
             technical_factor=factor,
         )
+        sec = self._compute_sector_breadth_gate(factor)
+        up = self._compute_upside_room_gate(factor)
+        cand.sector_breadth_score = sec["score"]
+        cand.sector_breadth_passed = sec["passed"]
+        cand.sector_breadth_reason = sec["reason"]
+        cand.upside_room_score = up["score"]
+        cand.upside_room_passed = up["passed"]
+        cand.upside_room_reason = up["reason"]
+        cand.gates = {"sector_breadth": sec, "upside_room": up}
+        return cand
 
     def _compute_first_board_quality(self, factor: Dict[str, Any]) -> Dict[str, Any]:
         cfg = self.config.first_board or {}
@@ -319,6 +329,14 @@ class FirstBoardContinueEngine:
                 item.first_board_quality_score = cand.first_board_quality_score
                 item.first_board_quality_grade = cand.first_board_quality_grade
                 item.first_board_quality_reasons = list(cand.first_board_quality_reasons)
+                item.candidate = cand.candidate_type
+                item.sector_breadth_score = cand.sector_breadth_score
+                item.sector_breadth_passed = cand.sector_breadth_passed
+                item.sector_breadth_reason = cand.sector_breadth_reason
+                item.upside_room_score = cand.upside_room_score
+                item.upside_room_passed = cand.upside_room_passed
+                item.upside_room_reason = cand.upside_room_reason
+                item.gates = dict(cand.gates)
         return list(by_code.values())
 
     # ================= 生命周期 =================
@@ -343,6 +361,15 @@ class FirstBoardContinueEngine:
                         item.first_board_quality_score = quality["score"]
                         item.first_board_quality_grade = quality["grade"]
                         item.first_board_quality_reasons = list(quality["reasons"])
+                        sec = self._compute_sector_breadth_gate(factor)
+                        up = self._compute_upside_room_gate(factor)
+                        item.sector_breadth_score = sec["score"]
+                        item.sector_breadth_passed = sec["passed"]
+                        item.sector_breadth_reason = sec["reason"]
+                        item.upside_room_score = up["score"]
+                        item.upside_room_passed = up["passed"]
+                        item.upside_room_reason = up["reason"]
+                        item.gates = {"sector_breadth": sec, "upside_room": up}
                     prev_limit = True
                 else:
                     prev_limit = False
@@ -446,6 +473,169 @@ class FirstBoardContinueEngine:
                 item.first_board_continuation_reasons = list(gate["reasons"])
                 item.first_board_continuation_score = self._compute_first_board_continuation_score(factor)
 
+    # ================= Gate Pipeline（目标：P(MFE[T+1,T+3]>=+3%）最大化）=================
+    def _compute_sector_breadth_gate(self, factor: Dict[str, Any]) -> Dict[str, Any]:
+        cfg = self.config.first_board or {}
+        sector_ok = _bool(factor.get("sector_breadth_ok")) or _bool(factor.get("sector_confirmed"))
+        sector_name = str(factor.get("sector_name") or factor.get("industry_name") or "").strip()
+        sector_score_raw = _num(factor.get("sector_breadth_score"))
+        score = float(sector_score_raw) if sector_score_raw is not None else (70.0 if sector_ok or sector_name else 50.0)
+        reasons = []
+        if sector_name:
+            reasons.append(f"板块:{sector_name}")
+        if sector_ok:
+            reasons.append("板块共振/确认")
+        elif sector_score_raw is not None:
+            reasons.append(f"板块共振分{sector_score_raw:.0f}")
+        if not sector_name and sector_score_raw is None:
+            reasons.append("板块数据缺失，默认放行")
+        min_score = float(cfg.get("min_sector_breadth_score", 50) or 50)
+        passed = bool(score >= min_score or (not sector_name and sector_score_raw is None))
+        reason = "; ".join(reasons) if reasons else ("通过" if passed else "板块共振不足")
+        return {"score": round(float(score), 2), "passed": passed, "reason": reason, "detail": {"sector_name": sector_name, "sector_breadth_score": sector_score_raw, "sector_breadth_ok": sector_ok}}
+
+    def _compute_upside_room_gate(self, factor: Dict[str, Any]) -> Dict[str, Any]:
+        cfg = self.config.first_board or {}
+        min_room = float(cfg.get("min_upside_room_pct", 3.0) or 3.0)
+        close_vs20 = _num(factor.get("close_vs_20d_high_pct"))
+        close_vs60 = _num(factor.get("close_vs_60d_high_pct"))
+        breakout20 = _bool(factor.get("breakout_20d"))
+        breakout60 = _bool(factor.get("breakout_60d"))
+        ma20dev = _num(factor.get("ma20_deviation_pct"))
+        score = 50.0
+        reasons = []
+        nearest_resist_pct = None
+        if close_vs20 is not None:
+            if close_vs20 < 0:
+                dist = -close_vs20
+                nearest_resist_pct = dist if nearest_resist_pct is None else min(nearest_resist_pct, dist)
+            elif close_vs20 >= 0:
+                score = max(score, 90.0)
+                reasons.append("贴近/突破20日高点，上方压力少")
+        if close_vs60 is not None and close_vs60 < 0:
+            dist = -close_vs60
+            nearest_resist_pct = dist if nearest_resist_pct is None else min(nearest_resist_pct, dist)
+        if breakout20:
+            score = max(score, 75.0)
+            reasons.append("20日突破")
+        if breakout60:
+            score = max(score, 95.0)
+            reasons.append("60日突破")
+        if nearest_resist_pct is not None and nearest_resist_pct < min_room:
+            score = min(score, 30.0)
+            reasons.append(f"距压力仅{nearest_resist_pct:.1f}%<{min_room:.1f}%")
+        elif nearest_resist_pct is not None and nearest_resist_pct >= min_room:
+            score = max(score, 60.0)
+            reasons.append(f"距压力{nearest_resist_pct:.1f}%>={min_room:.1f}%")
+        if ma20dev is not None and ma20dev > 35:
+            score = min(score, 35.0)
+            reasons.append("MA20偏离过大")
+        passed = bool(score >= float(cfg.get("min_upside_room_score", 50) or 50))
+        reason = "; ".join(reasons) if reasons else ("通过" if passed else "上行空间不足")
+        return {"score": round(float(score), 2), "passed": passed, "reason": reason, "detail": {"close_vs_20d_high_pct": close_vs20, "close_vs_60d_high_pct": close_vs60, "breakout_20d": breakout20, "breakout_60d": breakout60, "min_room": min_room}}
+
+    def _compute_market_regime_gate(self, trade_date: str) -> Dict[str, Any]:
+        """市场环境 Gate：优先使用涨停池情绪温度，缺数据时为放行（避免回测误杀）。"""
+        cfg = self.config.market or {}
+        min_zt = int(cfg.get("min_limit_up_count", 30) or 30)
+        score = 100.0 if not cfg.get("enabled", True) else 50.0
+        passed = not bool(cfg.get("enabled", True))
+        reasons = []
+        if cfg.get("enabled", True):
+            if ZT_SEAL_STORE is None:
+                reasons.append("涨停池模块缺失，默认放行")
+                return {"score": 50.0, "passed": True, "reason": "; ".join(reasons), "detail": {"market_regime_gates": {}}}
+            try:
+                df = ZT_SEAL_STORE.load(trade_date)
+            except Exception:
+                df = None
+            if df is None or df.empty:
+                reasons.append("涨停池数据缺失，默认放行")
+                return {"score": 50.0, "passed": True, "reason": "; ".join(reasons), "detail": {"market_regime_gates": {}}}
+            zt_count = int(len(df))
+            reasons.append(f"涨停家数{zt_count}")
+            if zt_count >= min_zt:
+                score = max(score, 70.0)
+            else:
+                score = min(score, 35.0)
+                reasons.append(f"涨停家数<{min_zt}")
+            passed = bool(score >= float(cfg.get("min_market_score", 50) or 50))
+        else:
+            passed = True
+        if not reasons:
+            reasons.append("通过")
+        return {"score": round(float(score), 2), "passed": passed, "reason": "; ".join(reasons), "detail": {"market_regime_gates": {}}}
+
+    def _compute_risk_gate(self, factor: Dict[str, Any]) -> Dict[str, Any]:
+        cfg = self.config.holding or {}
+        reasons = []
+        score = 70.0
+        name = str(factor.get("symbol_name") or "")
+        ma20dev = _num(factor.get("ma20_deviation_pct"))
+        vol = _num(factor.get("volume_ratio"))
+        if "ST" in name.upper() or "退" in name:
+            score = 0.0
+            reasons.append("ST/退市风险")
+        if ma20dev is not None and ma20dev > 40:
+            score -= 20.0
+            reasons.append("偏离MA20过高")
+        if vol is not None and vol > float(cfg.get("max_volume_ratio", 6.0) or 6.0):
+            score -= 15.0
+            reasons.append("极端爆量")
+        passed = score >= float(cfg.get("min_risk_score", 50) or 50)
+        if not reasons:
+            reasons.append("风险GATE通过")
+        return {"score": round(float(score), 2), "passed": passed, "reason": "; ".join(reasons), "detail": {}}
+
+    def compute_gates(self, item: WatchlistItem, factor: Dict[str, Any], trade_date: str) -> Dict[str, Any]:
+        """生成7大Gate；BUY 只在 required gates 全部 PASS 时为 True。"""
+        cfg = dict(self.config.confirmation or {})
+        required = list(cfg.get("required_gates") or ["first_board_quality", "sector_breadth", "upside_room", "market_regime", "continuation", "entry_quality", "risk"])
+        gates: Dict[str, Any] = {}
+        fb_passed = bool(item.first_board_quality_score >= float((self.config.first_board or {}).get("min_first_board_quality_score", 60) or 60))
+        gates["first_board_quality"] = {"name": "首板质量", "passed": fb_passed, "score": item.first_board_quality_score, "reason": f"首板质量{item.first_board_quality_score:.0f}/{item.first_board_quality_grade}", "detail": {}}
+        sec = self._compute_sector_breadth_gate(factor)
+        item.sector_breadth_score = sec["score"]
+        item.sector_breadth_passed = sec["passed"]
+        item.sector_breadth_reason = sec["reason"]
+        gates["sector_breadth"] = sec
+        up = self._compute_upside_room_gate(factor)
+        item.upside_room_score = up["score"]
+        item.upside_room_passed = up["passed"]
+        item.upside_room_reason = up["reason"]
+        gates["upside_room"] = up
+        mrkt = self._compute_market_regime_gate(trade_date)
+        item.market_regime_score = mrkt["score"]
+        item.market_regime_passed = mrkt["passed"]
+        item.market_regime_reason = mrkt["reason"]
+        gates["market_regime"] = mrkt
+        cont = {
+            "name": "T+1延续确认",
+            "passed": bool(item.first_board_continuation_confirmed),
+            "score": item.first_board_continuation_score,
+            "reason": "; ".join(item.first_board_continuation_reasons) if item.first_board_continuation_reasons else ("延续通过" if item.first_board_continuation_confirmed else "未通过延续"),
+            "detail": item.first_board_continuation_gate_detail,
+        }
+        gates["continuation"] = cont
+        entry = self._compute_entry_quality(factor)
+        item.entry_quality_score = round(entry, 2)
+        item.entry_quality_passed = bool(entry >= float(cfg.get("min_entry_quality_score", 70) or 70))
+        gates["entry_quality"] = {"name": "入场质量", "passed": item.entry_quality_passed, "score": round(entry, 2), "reason": f"入场质量{entry:.0f}", "detail": {}}
+        risk = self._compute_risk_gate(factor)
+        item.risk_gate_passed = risk["passed"]
+        item.risk_gate_reason = risk["reason"]
+        gates["risk"] = risk
+        all_pass = True
+        first_failed = ""
+        for k in required:
+            g = gates.get(k)
+            if not g or not bool(g.get("passed")):
+                all_pass = False
+                first_failed = first_failed or k
+        item.gates = gates
+        item.first_failed_gate = first_failed
+        return gates
+
     def build_buy_signals(self, watchlist: List[WatchlistItem], trade_date: str) -> List[BuySignal]:
         cfg = self.config.confirmation or {}
         min_cont = float(cfg.get("min_continuation_score", 60) or 60)
@@ -456,17 +646,30 @@ class FirstBoardContinueEngine:
             factor = item.latest_factor()
             if not item.first_board_event or not item.first_board_continuation_confirmed or not factor:
                 continue
-            entry = self._compute_entry_quality(factor)
-            item.entry_quality_score = round(entry, 2)
+            gates = self.compute_gates(item, factor, trade_date)
+            entry = item.entry_quality_score
             cont = item.first_board_continuation_score
-            ready = bool(cont >= min_cont and entry >= min_entry and item.first_board_quality_score >= min_quality)
+            gate_ready = bool(item.first_board_quality_score >= min_quality
+                              and cont >= min_cont
+                              and entry >= min_entry)
+            # Gate 化核心：所有 required gate 通过才 BUY。
+            required = list(cfg.get("required_gates") or ["first_board_quality", "sector_breadth", "upside_room", "market_regime", "continuation", "entry_quality", "risk"])
+            all_pass = True
+            first_failed = ""
+            for k in required:
+                g = gates.get(k)
+                if not g or not bool(g.get("passed")):
+                    all_pass = False
+                    first_failed = first_failed or k
+            ready = bool(gate_ready and all_pass)
             reasons = list(item.first_board_quality_reasons) + list(item.first_board_continuation_reasons)
             reasons.append(f"首板质量{item.first_board_quality_score:.1f}/{item.first_board_quality_grade}")
             reasons.append(f"延续分{cont:.1f}/{min_cont}")
             reasons.append(f"入场质量{entry:.1f}/{min_entry}")
-            if not ready:
-                reasons.append("延续或入场质量不足")
+            if not all_pass:
+                reasons.append(f"Gate未全过:{first_failed}")
             item.buy_ready = ready
+            item.first_failed_gate = first_failed
             out.append(BuySignal(
                 symbol_code=item.symbol_code,
                 symbol_name=item.symbol_name,
@@ -475,7 +678,9 @@ class FirstBoardContinueEngine:
                 pool_type="首板",
                 divergence_mode="first_board",
                 divergence_score=item.first_board_quality_score,
+                candidate=item.candidate,
                 entry_quality_score=round(entry, 2),
+                entry_quality_passed=item.entry_quality_passed,
                 weak_to_strong_score=0.0,
                 first_board_continuation_score=round(cont, 2),
                 first_board_quality_score=item.first_board_quality_score,
@@ -483,6 +688,12 @@ class FirstBoardContinueEngine:
                 first_board_continuation_confirmed=item.first_board_continuation_confirmed,
                 first_board_event=item.first_board_event,
                 first_board_continuation_reasons=list(item.first_board_continuation_reasons),
+                gates=gates,
+                sector_breadth_passed=item.sector_breadth_passed,
+                upside_room_passed=item.upside_room_passed,
+                market_regime_passed=item.market_regime_passed,
+                risk_gate_passed=item.risk_gate_passed,
+                first_failed_gate=first_failed,
                 t1_buy_score=round((cont + entry) / 2.0, 2),
                 buy_ready=ready,
                 reasons=reasons,
@@ -556,7 +767,49 @@ class FirstBoardContinueEngine:
         """Backward-compat: alias for _compute_first_board_quality."""
         return self._compute_first_board_quality(factor)
 
-    # ================= 导出辅助 =================
+    # ================= 回测标签（P0） =================
+    def compute_outcome_for_signal(
+        self,
+        symbol_code: str,
+        entry_date: str,
+        horizon_days: int = 3,
+        positive_pct: float = 3.0,
+        start_date: str = "",
+    ) -> Optional[Any]:
+        """Fetch historical OHLCV and compute Entry + MFE/MAE/CloseReturn labels.
+
+        必须用实际可能买点（T+1 开盘），不能直接用首板后最高价。
+        """
+        from strategies.first_board_continue.outcome import compute_outcome_metrics, normalize_dates
+        code = _normalize_code(symbol_code)
+        if not code or not entry_date:
+            return None
+        # 用交易日期列表确定 未来 horizon_days 个交易日（回测标签用，不在当日触发逻辑中使用）。
+        try:
+            if not start_date:
+                from utils.date_utils import get_trading_date_range
+                start_date, _ = get_trading_date_range(end_date=entry_date, count=60, include_end=True)
+            trade_dates = GLOBAL_MARKET_MANAGER.get_trade_date(market_name="CN-Stock")
+            trade_dates = [str(d).replace("-", "").replace("/", "") for d in trade_dates]
+            compact_entry = "".join(ch for ch in str(entry_date) if ch.isdigit())[:8]
+            future = [d for d in sorted(trade_dates) if d > compact_entry][: horizon_days]
+            if not future:
+                return None
+            end_future = future[-1]
+            hist = get_stock_zh_a_hist(
+                symbol=code[:6],
+                start_date=start_date,
+                end_date=end_future,
+                adjust="qfq",
+                verbose=False,
+            )
+            row_map = normalize_dates(hist)
+            metrics = compute_outcome_metrics(row_map, compact_entry, horizon_days=horizon_days, positive_pct=positive_pct)
+            return metrics.to_dict() if metrics else None
+        except Exception:
+            return None
+
+    # ================= 导出 - 辅助 =================
     def _write_result(self, result: Dict[str, Any], output_dir: str) -> None:
         out = Path(output_dir)
         out.mkdir(parents=True, exist_ok=True)

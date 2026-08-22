@@ -1,0 +1,12 @@
+factor,ic_t1,n,q1_avg_t1,q4_avg_t1,monotonic_q1_q4_up
+tradeability_score,0.769,5,,,False
+probability_value,0.3821,5,-2.5932,1.1348,True
+relative_strength_score,0.2335,33,-5.6778,-3.4255,True
+prev_day_gain_pct,0.1622,33,-2.1342,-3.2871,False
+ma20_deviation_pct,0.0687,33,-2.508,-3.2871,False
+buy_score,-0.0127,5,-2.5932,-2.508,True
+daily_entry_score,-0.2855,33,-2.508,-3.8438,False
+weekly_trend_score,-0.3041,33,-3.168,-5.8091,False
+capital_flow_score,-0.814,5,,,False
+catalyst_score,-0.8148,5,-0.7292,-9.7937,False
+risk_reward_score,-0.9288,5,0.1938,-9.7937,False

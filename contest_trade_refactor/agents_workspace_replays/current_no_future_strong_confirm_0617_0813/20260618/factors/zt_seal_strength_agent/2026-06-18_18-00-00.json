@@ -1,0 +1,17 @@
+{
+  "agent_name": "zt_seal_strength_agent",
+  "trigger_time": "2026-06-18 18:00:00",
+  "source_list": [
+    "data_source.zt_seal_strength_akshare.ZtSealStrengthAkshare"
+  ],
+  "bias_goal": "",
+  "context_string": "Batch 1 Documents:\n<doc id=1> Title: 20260618:涨停封单强度分析\nPublish Time: 2026-06-18 18:00:00\nRelevance Score: 9\nRelevance Label: high\nEvent Type: limit_up\nDirection: bullish\nSignal Confidence: 0.7\nContent: 涨停池数据获取失败\n\n### 涨停封板联网补充\n来源：豆包搜索联网补充\n\n<search_result id=1>\n<title>98只股涨停 最大封单资金14.41亿元</title>\n<time>2026-06-17T16:03:00+08:00</time>\n<url>https://www.stcn.com/article/detail/3966263.html</url>\n<summary>98只股涨停 最大封单资金14.41亿元\n来源：证券时报网 作者：数据宝 2026-06-17 16:03\n截至收盘，上证指数报收4108.08点，上涨0.40%；深证成指收于15880.95点，上涨1.31%；创业板指上涨1.56%；科创50指数上涨4.69%。\n不含当日上市新股，今日可交易A股中，上涨个股有1723只，占比31.28%，下跌个股有3734只，平盘个股52只。其中，收盘股价涨停的有98只，跌停股有21只。\n证券时报·数...</summary>\n</search_result>\n</doc>\n",
+  "references": [],
+  "batch_summaries": [
+    {
+      "batch_id": 1,
+      "summary": "<doc id=1> Title: 20260618:涨停封单强度分析\nPublish Time: 2026-06-18 18:00:00\nRelevance Score: 9\nRelevance Label: high\nEvent Type: limit_up\nDirection: bullish\nSignal Confidence: 0.7\nContent: 涨停池数据获取失败\n\n### 涨停封板联网补充\n来源：豆包搜索联网补充\n\n<search_result id=1>\n<title>98只股涨停 最大封单资金14.41亿元</title>\n<time>2026-06-17T16:03:00+08:00</time>\n<url>https://www.stcn.com/article/detail/3966263.html</url>\n<summary>98只股涨停 最大封单资金14.41亿元\n来源：证券时报网 作者：数据宝 2026-06-17 16:03\n截至收盘，上证指数报收4108.08点，上涨0.40%；深证成指收于15880.95点，上涨1.31%；创业板指上涨1.56%；科创50指数上涨4.69%。\n不含当日上市新股，今日可交易A股中，上涨个股有1723只，占比31.28%，下跌个股有3734只，平盘个股52只。其中，收盘股价涨停的有98只，跌停股有21只。\n证券时报·数...</summary>\n</search_result>\n</doc>\n",
+      "references": []
+    }
+  ]
+}

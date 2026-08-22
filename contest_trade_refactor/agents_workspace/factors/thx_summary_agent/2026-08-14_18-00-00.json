@@ -1,0 +1,11 @@
+{
+  "agent_name": "thx_summary_agent",
+  "trigger_time": "2026-08-14 18:00:00",
+  "source_list": [
+    "data_source.thx_news_crawl.ThxNewsCrawl"
+  ],
+  "bias_goal": "",
+  "context_string": "No valid summaries",
+  "references": [],
+  "batch_summaries": []
+}

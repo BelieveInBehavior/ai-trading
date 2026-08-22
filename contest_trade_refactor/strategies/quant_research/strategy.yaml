@@ -1,0 +1,75 @@
+# 量化研究共识 legacy strategy package.
+# 该策略把旧的 SimpleTradeCompany / main_loop 流程参数化：全市场量化预筛 →
+# 多 Research Agent 研究 + 共识 + Ranker → Trade Plan → 信号/回测。
+# 目的：把 changqi 分支语境下的“旧 量化研究共识 系统”（原 V1 系统）以策略模式保留在当前分支，
+#       不与 momentum / swing / strong_diverge / first_board_continue 耦合。
+id: quant_research
+name: 量化研究共识策略
+short_name: 量化研究共识
+description: >-
+  旧 量化研究共识 完整主流程：全市场量化预筛（温斯坦/周线趋势/相对强度），
+  多 Research Agent 并行研究并带严格门控，经 consensus + ranker 输出 buy/watch，
+  再挂 Trade Plan。与 V2 的机会发现器不同：量化研究共识 更依赖研究 Agent 共识与周线/RS 门控。
+horizon: 短线 T+1~T+5
+style: Research Agent + 共识门控 + Trade Plan
+risk_note: 依赖 LLM 研究质量，严格门控，不硬凑买入
+tags: [量化研究共识, 旧主流程, ResearchAgent, TradePlan, 严格门控]
+
+# Stage 0（与 config.yaml 当前生产一致，容忍启动略弱）
+quantitative_screen_top_k: 0          # 0 = 不截断，全部量化通过候选都交给 Research Agent
+quantitative_screen_history_days: 260
+min_weekly_trend_score: 40
+min_relative_strength_score: 30
+min_relative_strength_20d_pct: 0
+min_daily_entry_score: 40
+min_flow_confirmation_score: 50
+min_regime_confirmation_score: 50
+max_prev_day_gain_pct: 10
+max_ma20_deviation_pct: 12
+quantitative_max_ma20_deviation_pct: 12
+quantitative_max_prev_day_gain_pct: 15
+require_min_buys: 0
+max_research_rounds: 3
+quantitative_screen_enabled: true
+quantitative_screen_fail_open: false
+consensus_enabled: true
+consensus_method: weighted_majority
+consensus_require_majority: true
+multi_timeframe_enabled: true
+enforce_multi_timeframe: false
+enforce_flow_confirmation_if_available: false
+reject_future_evidence: true
+risk_veto_enabled: true
+
+# 旧 量化研究共识 的 Ranker 门控（宽松于 Swing，但比 V2 更依赖研究共识）
+ranker_overrides:
+  min_buy_score: 55.0
+  min_probability: 0.45
+  min_risk_reward_score: 50.0
+  reject_below_rr_without_company_catalyst: true
+  min_rr_without_company_catalyst: 1.0
+  expected_return_floor_pct: -999.0
+  max_prev_day_gain_pct: 10.0
+  max_ma20_deviation_pct: 12.0
+  min_relative_strength_20d_pct: 0.0
+  min_flow_confirmation_score: 50.0
+  min_regime_confirmation_score: 50.0
+  strong_trend_penalty_bias: -3.0
+
+# 回测默认值：走旧 main_loop / replay_historical_no_future
+backtest:
+  mode: replay
+  default_start: "2026-06-01"
+  default_end: "2026-08-18"
+  symbols_limit: 0
+  concurrency: 4
+  horizons: [1, 3, 5]
+  rule_pipeline: false
+
+# 量化研究共识 附加元数据（自定义字段，仅供 README/UI 展示）
+quant_research_flow:
+  stage0: "全市场量化预筛（周线/相对强度/MA20/前日涨幅）"
+  stage1: "Data Agents 并行"
+  stage2_3: "Research Agents 分片研究 + consensus + ranker"
+  stage4: "Trade Plan / Performance tracking"
+  content_from: "config.yaml + config/strategies.py legacy SWING/MOMENTUM"

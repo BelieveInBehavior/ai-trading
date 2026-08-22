@@ -1,0 +1,17 @@
+{
+  "agent_name": "margin_trading_agent",
+  "trigger_time": "2026-08-19 19:15:00",
+  "source_list": [
+    "data_source.margin_trading_akshare.MarginTradingAkshare"
+  ],
+  "bias_goal": "",
+  "context_string": "Batch 1 Documents:\n<doc id=1> Title: 20260819:融资融券异动分析\nPublish Time: 2026-08-19 19:15:00\nRelevance Score: 7\nRelevance Label: high\nEvent Type: margin_trading\nDirection: neutral\nSignal Confidence: 0.65\nContent: ## 20260819 融资融券异动分析\n\n> ⚠️ 数据质量警示：目标交易日（20260819）的沪深两融明细尚未披露。\n> 当前**无当日可信融资融券明细数据**，相关融资净买入/净偿还信号不可用。\n> 请勿使用上一交易日或单交易所口径代替当日全市场融资余额；待交易所 T+1 披露后重新获取。</doc>\n",
+  "references": [],
+  "batch_summaries": [
+    {
+      "batch_id": 1,
+      "summary": "Batch 1 Documents:\n<doc id=1> Title: 20260819:融资融券异动分析\nPublish Time: 2026-08-19 19:15:00\nRelevance Score: 7\nRelevance Label: high\nEvent Type: margin_trading\nDirection: neutral\nSignal Confidence: 0.65\nContent: ## 20260819 融资融券异动分析\n\n> ⚠️ 数据质量警示：目标交易日（20260819）的沪深两融明细尚未披露。\n> 当前**无当日可信融资融券明细数据**，相关融资净买入/净偿还信号不可用。\n> 请勿使用上一交易日或单交易所口径代替当日全市场融资余额；待交易所 T+1 披露后重新获取。</doc>\n",
+      "references": []
+    }
+  ]
+}

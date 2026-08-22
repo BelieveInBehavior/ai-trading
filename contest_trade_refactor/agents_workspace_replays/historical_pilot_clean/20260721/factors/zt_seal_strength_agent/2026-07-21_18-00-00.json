@@ -1,0 +1,17 @@
+{
+  "agent_name": "zt_seal_strength_agent",
+  "trigger_time": "2026-07-21 18:00:00",
+  "source_list": [
+    "data_source.zt_seal_strength_akshare.ZtSealStrengthAkshare"
+  ],
+  "bias_goal": "",
+  "context_string": "Batch 1 Documents:\n<doc id=1> Title: 20260721:涨停封单强度分析\nPublish Time: 2026-07-21 18:00:00\nRelevance Score: 9\nRelevance Label: high\nEvent Type: limit_up\nDirection: bullish\nSignal Confidence: 0.7\nContent: 涨停池数据获取失败\n\n### 涨停封板联网补充\n来源：豆包搜索联网补充\n\n<search_result id=1>\n<title>55只股涨停 最大封单资金1.90亿元</title>\n<time>2026-07-20T15:47:00+08:00</time>\n<url>https://www.stcn.com/article/detail/4029050.html</url>\n<summary>55只股涨停 最大封单资金1.90亿元\n来源：证券时报网 作者：数据宝 2026-07-20 15:47\n截至收盘，上证指数报收3796.28点，上涨0.85%；深证成指收于13610.23点，下跌0.71%；创业板指上涨0.42%；科创50指数上涨0.19%。\n不含当日上市新股，今日可交易A股中，上涨个股有1740只，占比31.50%，下跌个股有3710只，平盘个股74只。其中，收盘股价涨停的有55只，跌停股有267只。\n证券时报·数...</summary>\n</search_result>\n\n\n<search_result id=2>\n<title>揭秘涨停丨21股封单资金超1亿元</title>\n<time>2026-07-02T19:39:00+08:00</time>\n<url>https://www.stcn.com/article/detail/3995624.html</url>\n<summary>揭秘涨停丨21股封单资金超1亿元\n来源：证券时报网 作者：周莎 2026-07-02 19:39\n（原标题：揭秘涨停 | 21股封单资金超1亿元）\n以封单金额计算，21股封单资金超1亿元，天娱数科、先导基电、恒尚节能等涨停板封单资金最多，分别有5.02亿元、4.61亿元、3.90亿元。\n截至今日（7月2日）收盘，上证指数报收4028.90点，下跌2.03%；深证成指收于15498.81点，下跌3.85%。创业板指下跌5.71%；科创50...</summary>\n</search_result>\n</doc>\n",
+  "references": [],
+  "batch_summaries": [
+    {
+      "batch_id": 1,
+      "summary": "<doc id=1> Title: 20260721:涨停封单强度分析\nPublish Time: 2026-07-21 18:00:00\nRelevance Score: 9\nRelevance Label: high\nEvent Type: limit_up\nDirection: bullish\nSignal Confidence: 0.7\nContent: 涨停池数据获取失败\n\n### 涨停封板联网补充\n来源：豆包搜索联网补充\n\n<search_result id=1>\n<title>55只股涨停 最大封单资金1.90亿元</title>\n<time>2026-07-20T15:47:00+08:00</time>\n<url>https://www.stcn.com/article/detail/4029050.html</url>\n<summary>55只股涨停 最大封单资金1.90亿元\n来源：证券时报网 作者：数据宝 2026-07-20 15:47\n截至收盘，上证指数报收3796.28点，上涨0.85%；深证成指收于13610.23点，下跌0.71%；创业板指上涨0.42%；科创50指数上涨0.19%。\n不含当日上市新股，今日可交易A股中，上涨个股有1740只，占比31.50%，下跌个股有3710只，平盘个股74只。其中，收盘股价涨停的有55只，跌停股有267只。\n证券时报·数...</summary>\n</search_result>\n\n\n<search_result id=2>\n<title>揭秘涨停丨21股封单资金超1亿元</title>\n<time>2026-07-02T19:39:00+08:00</time>\n<url>https://www.stcn.com/article/detail/3995624.html</url>\n<summary>揭秘涨停丨21股封单资金超1亿元\n来源：证券时报网 作者：周莎 2026-07-02 19:39\n（原标题：揭秘涨停 | 21股封单资金超1亿元）\n以封单金额计算，21股封单资金超1亿元，天娱数科、先导基电、恒尚节能等涨停板封单资金最多，分别有5.02亿元、4.61亿元、3.90亿元。\n截至今日（7月2日）收盘，上证指数报收4028.90点，下跌2.03%；深证成指收于15498.81点，下跌3.85%。创业板指下跌5.71%；科创50...</summary>\n</search_result>\n</doc>\n",
+      "references": []
+    }
+  ]
+}

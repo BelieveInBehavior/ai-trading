@@ -1,0 +1,167 @@
+{
+  "trigger_time": "2026-08-08 20:19:46",
+  "research_signals": [
+    {
+      "symbol_code": "600519.SH"
+    }
+  ],
+  "consensus_signals": [
+    {
+      "symbol_code": "600519.SH",
+      "trade_plan": {
+        "symbol_code": "600519",
+        "symbol_name": "",
+        "trade_date": "20260808",
+        "status": "ok",
+        "close": 1309.22,
+        "prev_close": 1308.55,
+        "change_pct": 0.05,
+        "indicators": {
+          "rsi": 45.3,
+          "vwap_20": 1296.92,
+          "vwap_5": 1326.4,
+          "ema8": 1318.08,
+          "ema13": 1311.14,
+          "ema21": 1296.67,
+          "ema50": 1281.28,
+          "atr": 27.817,
+          "atr_pct": 2.125,
+          "volume_ratio": 0.65,
+          "volume_ratio_20d_5d": 0.65
+        },
+        "levels": {
+          "support_1": 1279.58,
+          "support_2": 1151.01,
+          "resistance_1": 1344.7,
+          "resistance_2": 1363.35,
+          "recent_low_20": 1190.19,
+          "recent_low_60": 1151.01
+        },
+        "plan": {
+          "entry_zone_low": 1296.92,
+          "entry_zone_high": 1309.22,
+          "entry_trigger": "回踩 VWAP/EMA 附近企稳，不破支撑",
+          "stop_loss": 1273.18,
+          "stop_loss_pct": -2.75,
+          "take_profit_1": 1344.7,
+          "take_profit_2": 1363.35,
+          "reward_per_share_1": 35.48,
+          "risk_per_share": 36.038,
+          "rr_1": 0.98,
+          "rr_ok": false,
+          "suggested_position_size_pct": 12.0,
+          "invalidation": "收盘跌破止损位（支撑 1 下方约 0.5%）"
+        },
+        "risk": {
+          "risk_budget_pct": 1.0,
+          "atr_pct": 2.125,
+          "max_position_pct": 20.0
+        },
+        "horizon": "1-5 天",
+        "notes": [
+          "RSI>75 或昨日涨幅过大时谨慎追高",
+          "VWAP 下方且无支撑时避免左侧买入",
+          "止损至少放在支撑下方 0.5%"
+        ]
+      },
+      "trade_plan_pass": false,
+      "trade_plan_reject_reasons": [
+        "rr_below_1.0",
+        "volume_ratio_below_1.0"
+      ],
+      "trade_plan_notes": [
+        "low_volume_ratio"
+      ]
+    }
+  ],
+  "best_signals": [
+    {
+      "symbol_code": "600519.SH",
+      "symbol_name": "贵州茅台",
+      "buy_score": 78.2,
+      "probability_value": 0.72,
+      "expected_return_t1_pct": 1.15,
+      "buy_decision": "buy",
+      "signal_contract_version": "buy-signal.v1",
+      "entry_timing": "next_trading_day_open",
+      "analysis_as_of_date": "2026-08-08",
+      "risk_flags": [],
+      "next_day_gate_report": {
+        "passed": true,
+        "failed_reasons": []
+      },
+      "trade_plan": {
+        "symbol_code": "600519",
+        "symbol_name": "贵州茅台",
+        "trade_date": "20260808",
+        "status": "ok",
+        "close": 1309.22,
+        "prev_close": 1308.55,
+        "change_pct": 0.05,
+        "indicators": {
+          "rsi": 45.3,
+          "vwap_20": 1296.92,
+          "vwap_5": 1326.4,
+          "ema8": 1318.08,
+          "ema13": 1311.14,
+          "ema21": 1296.67,
+          "ema50": 1281.28,
+          "atr": 27.817,
+          "atr_pct": 2.125,
+          "volume_ratio": 0.65,
+          "volume_ratio_20d_5d": 0.65
+        },
+        "levels": {
+          "support_1": 1279.58,
+          "support_2": 1151.01,
+          "resistance_1": 1344.7,
+          "resistance_2": 1363.35,
+          "recent_low_20": 1190.19,
+          "recent_low_60": 1151.01
+        },
+        "plan": {
+          "entry_zone_low": 1296.92,
+          "entry_zone_high": 1309.22,
+          "entry_trigger": "回踩 VWAP/EMA 附近企稳，不破支撑",
+          "stop_loss": 1273.18,
+          "stop_loss_pct": -2.75,
+          "take_profit_1": 1344.7,
+          "take_profit_2": 1363.35,
+          "reward_per_share_1": 35.48,
+          "risk_per_share": 36.038,
+          "rr_1": 0.98,
+          "rr_ok": false,
+          "suggested_position_size_pct": 12.0,
+          "invalidation": "收盘跌破止损位（支撑 1 下方约 0.5%）"
+        },
+        "risk": {
+          "risk_budget_pct": 1.0,
+          "atr_pct": 2.125,
+          "max_position_pct": 20.0
+        },
+        "horizon": "1-5 天",
+        "notes": [
+          "RSI>75 或昨日涨幅过大时谨慎追高",
+          "VWAP 下方且无支撑时避免左侧买入",
+          "止损至少放在支撑下方 0.5%"
+        ]
+      },
+      "trade_plan_pass": false,
+      "trade_plan_reject_reasons": [
+        "rr_below_1.0",
+        "volume_ratio_below_1.0"
+      ],
+      "trade_plan_notes": [
+        "low_volume_ratio"
+      ]
+    }
+  ],
+  "market_context": {
+    "market_trend": "up",
+    "risk_sentiment": "risk_on",
+    "has_sector_flow_data": true
+  },
+  "system_health": {
+    "tool_error_count": 0
+  }
+}
