@@ -104,6 +104,17 @@ def build_sector_snapshot(
     industry_by_name = {str(k).strip(): v for k, v in industry_map.items()}  # ts_code -> industry
     code_to_industry = industry_map
 
+    # 尝试拉板块日线（失败降级，不影响既有快照）
+    board_names = sorted({str(v).strip() for v in industry_map.values() if v and str(v).strip()})
+    daily_by_board = {}
+    if board_names and trade_date:
+        try:
+            start, end = _default_history_range(trade_date)
+            from utils.sector_flow_provider import get_industry_daily_history_map
+            daily_by_board = get_industry_daily_history_map(board_names, start, end)
+        except Exception as exc:
+            logger.warning("板块日线拉取失败，退化到区间收益: {}", exc)
+
     for ts_code, industry in code_to_industry.items():
         if not industry:
             continue
@@ -114,12 +125,22 @@ def build_sector_snapshot(
         row = row.iloc[0]
         s1 = float(row.get("涨跌幅", 0.0))
         rank = int(row.get("sector_rank", rank_max))
+        daily = daily_by_board.get(str(industry).strip().upper())
+        sector_daily_returns = []
+        if daily is not None and not daily.empty and {"date", "pct_chg"}.issubset(daily.columns):
+            dd = daily[daily["date"] <= pd.to_datetime(str(trade_date).replace("-", ""), format="%Y%m%d")]
+            sector_daily_returns = [
+                {"date": str(r.date.date()), "pct_chg": round(float(r.pct_chg), 4)}
+                for r in dd.tail(30).itertuples(index=False)
+                if pd.notna(r.pct_chg)
+            ]
         # stock_vs_sector_strength 由调用方填：stock_ret_3d - sector_3d，这里先给 s1 占位，避免 None
         sector_map[ts_code.upper()] = {
             "sector_1d_return": round(s1, 3),
             "sector_3d_return": None if "板块3日涨跌幅" not in row else round(float(row["板块3日涨跌幅"]), 3),
             "sector_rank": rank,
             "stock_vs_sector_strength": None,
+            "sector_daily_returns": sector_daily_returns,
         }
     if sector_map:
         logger.info("板块富化完成，映射 {} 只股票: {}", len(sector_map), list(sector_map.keys())[:5])
@@ -147,6 +168,111 @@ def enrich_factor_with_sector(factor: dict, sector_snapshot: Dict[str, Dict[str,
     for k, v in info.items():
         if v is not None:
             factor[k] = v
+
+    # 板块 OLS 残差（金融口径）：股票日收益 vs 板块日收益
+    stock_daily = factor.get("stock_daily_returns")
+    sector_daily = factor.get("sector_daily_returns")
+    if isinstance(stock_daily, list) and isinstance(sector_daily, list):
+        ols20 = _compute_sector_residual(stock_daily, sector_daily, 20)
+        if ols20.get("residual") is not None:
+            factor["residual_rs_vs_sector_20d"] = ols20["residual"]
+            factor["beta_20d_vs_sector"] = ols20["beta"]
+            factor["alpha_20d_vs_sector"] = ols20["alpha"]
+            factor["r2_20d_vs_sector"] = ols20["r2"]
+        ols60 = _compute_sector_residual(stock_daily, sector_daily, 60)
+        if ols60.get("residual") is not None:
+            factor["residual_rs_vs_sector_60d"] = ols60["residual"]
+            factor["beta_60d_vs_sector"] = ols60["beta"]
+            factor["alpha_60d_vs_sector"] = ols60["alpha"]
+            factor["r2_60d_vs_sector"] = ols60["r2"]
+
+    # 计算 个股 vs 板块 超额强度（原快照里 stock_vs_sector_strength 只是 None 占位）。
+    stock_vs_sector_factor(factor)
+    return factor
+
+
+def _compute_sector_residual(
+    stock_daily: list,
+    sector_daily: list,
+    window: int = 20,
+) -> dict:
+    """对个股日收益 / 板块日收益做金融 OLS 残差。
+
+    输入都是 [{"date": "YYYY-MM-DD", "pct_chg": float}, ...]。
+    返回 {alpha, beta, residual, r2, n}。
+    """
+    if not stock_daily or not sector_daily:
+        return {"alpha": None, "beta": None, "residual": None, "r2": None, "n": 0}
+
+    def _to_df(items):
+        df = pd.DataFrame(items)
+        if df.empty or not {"date", "pct_chg"} <= set(df.columns):
+            return pd.DataFrame()
+        df["date"] = pd.to_datetime(df["date"])
+        df["pct_chg"] = pd.to_numeric(df["pct_chg"], errors="coerce")
+        return df.dropna(subset=["date", "pct_chg"])
+
+    sdf = _to_df(stock_daily)
+    bdf = _to_df(sector_daily)
+    if sdf.empty or bdf.empty:
+        return {"alpha": None, "beta": None, "residual": None, "r2": None, "n": 0}
+    m = sdf.merge(bdf, on="date", suffixes=("_stock", "_sector"))
+    m = m.tail(window)
+    if len(m) < max(10, int(window * 0.5)):
+        return {"alpha": None, "beta": None, "residual": None, "r2": None, "n": len(m)}
+    x = m["pct_chg_sector"].to_numpy(dtype=float)
+    y = m["pct_chg_stock"].to_numpy(dtype=float)
+    import numpy as np
+    if np.std(x) == 0 or np.std(y) == 0:
+        return {"alpha": None, "beta": None, "residual": None, "r2": None, "n": len(m)}
+    x_mean = np.mean(x); y_mean = np.mean(y)
+    var_x = np.sum((x - x_mean) ** 2) / (len(x) - 1)
+    cov = np.sum((x - x_mean) * (y - y_mean)) / (len(x) - 1)
+    beta = cov / var_x
+    alpha = y_mean - beta * x_mean
+    pred = alpha + beta * x
+    resid = y - pred
+    ss_tot = np.sum((y - y_mean) ** 2)
+    ss_res = np.sum(resid ** 2)
+    r2 = 1.0 - ss_res / ss_tot if ss_tot != 0 else np.nan
+    return {
+        "alpha": round(float(alpha), 6) if np.isfinite(alpha) else None,
+        "beta": round(float(beta), 6) if np.isfinite(beta) else None,
+        "residual": round(float(resid[-1] * 100.0), 4) if np.isfinite(resid[-1]) else None,
+        "r2": round(float(r2), 6) if np.isfinite(r2) else None,
+        "n": int(len(m)),
+    }
+
+
+def stock_vs_sector_factor(factor: dict) -> dict:
+    """在已富化板块的 factor 上补算 stock_vs_sector_strength 系列字段。
+
+    板块快照的 stock_vs_sector_strength 字段是 None 占位，因为构建快照时拿不到个股收益。
+    个股的 ret_{lookback}d_pct / change_pct 和板块的 sector_{lookback}d_return 都在 factor 上可用时，
+    这里直接相减得到“超额/跑赢板块”的强度。
+    """
+    if not factor:
+        return factor
+    for lookback in (1, 3, 5, 10):
+        stock_col = "change_pct" if lookback == 1 else f"ret_{lookback}d_pct"
+        sector_col = f"sector_{lookback}d_return"
+        stock_val = factor.get(stock_col)
+        sector_val = factor.get(sector_col)
+        if stock_val is None or sector_val is None:
+            continue
+        try:
+            stock_val = float(stock_val)
+            sector_val = float(sector_val)
+        except (TypeError, ValueError):
+            continue
+        factor[f"stock_vs_sector_{lookback}d"] = round(stock_val - sector_val, 3)
+
+    # 默认 stock_vs_sector_strength 用 5 日版本，和原语义一致。
+    f5 = factor.get("stock_vs_sector_5d")
+    if f5 is not None:
+        factor["stock_vs_sector_strength"] = f5
+    elif factor.get("stock_vs_sector_1d") is not None:
+        factor["stock_vs_sector_strength"] = factor["stock_vs_sector_1d"]
     return factor
 
 
@@ -240,6 +366,18 @@ def build_sector_snapshot_from_factor_store(
     return snapshot
 
 
+def _default_history_range(trade_date: str) -> tuple[str, str]:
+    """默认拉取板块日线区间：最近 ~160 个自然日（更宽松，实际数据按交易日截断）。"""
+    end = str(trade_date).replace("-", "")
+    try:
+        from datetime import datetime, timedelta
+        dt = datetime.strptime(end, "%Y%m%d")
+    except Exception:
+        return "20250101", end
+    start = (dt - timedelta(days=240)).strftime("%Y%m%d")
+    return start, end
+
+
 def _date_compact(path) -> str:
     import re as _re
     m = _re.findall(r"(20\d{6})", str(path))
@@ -271,6 +409,10 @@ def enrich_factor_with_sector_by_name(
     for k, v in info.items():
         if v is not None:
             factor[k] = v
+
+    # 计算 个股 vs 板块 超额强度（原快照里 stock_vs_sector_strength 只是 None 占位）。
+    # 板块快照只有板块数据，个股收益在 factor 里，所以在这里补算。
+    stock_vs_sector_factor(factor)
     return factor
 
 

@@ -19,6 +19,27 @@ Layer 0 DataQuality（硬过滤）
 .venv/bin/python scripts/strategy_backtest.py --strategy main_trend --run-replay
 ```
 
+## Layer 1 Market Regime（A/B/C/D 七维输入）
+
+指数趋势 / 指数动量 / 市场广度 / 新高-新低 / 市场成交额 / 板块广度 / 市场波动
+
+- A/B: allow_new=True, risk_multiplier=1.0
+- C: allow_new=True, risk_multiplier=0.5
+- D: allow_new=False, risk_multiplier=0.0
+
+对应实现：`engine.evaluate_market_regime()`。
+
+## Layer 2 Trend State（S0~S5 主升浪状态机）
+
+- S0 Base Preparation：尚未形成有效主升浪，PASS。
+- S1 Breakout / Launch：平台突破 + 量扩张 + 短期均线转强 + RS增强；价格站上关键成本区（筹码/成本仅辅助加分，不硬条件）。
+- S2 Acceleration：创新高 + RS强 + 量价健康 + MA多头（MA5>MA20>MA60），允许正常建仓和加仓。
+- S3 Continuation / Consolidation：涨后盘整、缩量、MA20继续上行、重新突破；不因未创新高判死。
+- S4 Exhaustion：主升末端，不预测顶部，只记录趋势质量下降维度（创新高减速 / RS 回调 / ATR 异常 / 量异常 / 板块转弱）风险预警，不新增。
+- S5 Trend Breakdown：趋势破坏硬退出，Close<MA20+RSI 弱；ATR Trailing Stop / 次日无法站回在持仓状态机处理。
+
+对应实现：`engine.assess_trend_state()`。
+
 ## T 日硬过滤（最终 8 条）
 
 | # | 硬过滤 | 条件 |
@@ -26,7 +47,7 @@ Layer 0 DataQuality（硬过滤）
 | 1 | Market Regime | Regime != D |
 | 2 | 交易状态 | 非 ST / 非停牌 / 非退市整理 |
 | 3 | 上市时间 | TradingDays >= 120 |
-| 4 | 流动性 | 20D Median Turnover >= 全市场 P20 |
+| 4 | 流动性 | 20D Median Turnover >= 全市场横截面 P20 |
 | 5 | 价格生命线 | Close > MA20 |
 | 6 | 趋势结构 | MA20 > MA60 |
 | 7 | MA60 方向 | 5日 LR slope > 0 |

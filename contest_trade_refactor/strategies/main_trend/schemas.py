@@ -377,6 +377,8 @@ class Holding:
     signal_tier: str = "A"
     trade_plan: Dict[str, Any] = field(default_factory=dict)
     stop_loss_price: Optional[float] = None
+    atr_trailing_stop: Optional[float] = None   # ATR trailing stop（价格绝对值）
+    prev_close: Optional[float] = None          # 前一日收盘，用于“次日站回”
 
 
 @dataclass
@@ -395,6 +397,8 @@ class ExitDecision:
     state: str = "HOLD"
     position_state: str = "HOLD"
     decay_score: float = 0.0
+    atr_trailing_stop_triggered: bool = False
+    recapture_triggered: bool = False
     reasons: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -413,5 +417,7 @@ class ExitDecision:
             "state": self.state,
             "position_state": self.position_state,
             "decay_score": round(self.decay_score, 2),
+            "atr_trailing_stop_triggered": self.atr_trailing_stop_triggered,
+            "recapture_triggered": self.recapture_triggered,
             "reasons": list(self.reasons),
         }

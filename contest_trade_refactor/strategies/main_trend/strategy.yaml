@@ -30,10 +30,29 @@ market:
   d_forbid_new: true
 
 trend:
+  # --- S1: 启动（筹码只用辅助，不硬条件） ---
   min_s1_breakout_volume: 1.1
+  min_s1_rs: 55
+  min_s1_cost_strength: 0.0      # close vs cost proxy (MA20/VWAP20)，>0 视为站上关键成本区；缺省不硬拒
+  s1_cost_strength_aux: true     # 筹码/成本仅作为 S1 辅助加分，不参与硬条件
+  # --- S2: 加速 ---
   min_s2_rs: 58
   min_s2_volume: 0.9
+  require_s2_ma20_gt_ma60: true  # MA5>MA20>MA60 需要时由 hard filter / quality 保证
   allow_high_atr_new_high: true
+  # --- S3: 中继 ---
+  s3_max_volume_for_consolidation: 1.0
+  # --- S4: 末端（多维趋势质量下降，不预测顶） ---
+  s4_min_quality_hits: 2          # 多维度命中次数达到则判 S4
+  s4_min_rsi: 70
+  s4_min_volume_surge: 1.5
+  s4_min_ret20: 30
+  s4_enable_rs_decline: true       # RS 20d<60d 视为维度之一
+  s4_enable_volume_anomaly: true
+  s4_enable_sector_weak: true
+  # --- S5: 趋势破坏 ---
+  s5_break_rsi_below: 45
+  s5_next_day_recapture_allowance_pct: 1.0   # 用于“次日站回”的宽容差
   min_trading_days: 120
   require_close_gt_ma20: true
   require_ma20_gt_ma60: true

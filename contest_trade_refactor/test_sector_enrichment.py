@@ -34,6 +34,33 @@ class TestSectorEnrichment(unittest.TestCase):
         self.assertEqual(out["sector_rank"], 3)
         self.assertEqual(out["stock_vs_sector_strength"], 1.2)
 
+
+    def test_enrich_calculates_stock_vs_sector_never_none(self):
+        factor = {
+            "symbol_code": "600519.SH",
+            "symbol_name": "贵州茅台",
+            "change_pct": 5.0,
+            "ret_3d_pct": 9.0,
+            "ret_5d_pct": 12.0,
+            "ret_10d_pct": 20.0,
+        }
+        sector_map = {
+            "600519.SH": {
+                "sector_1d_return": 2.0,
+                "sector_3d_return": 5.0,
+                "sector_5d_return": 8.0,
+                "sector_10d_return": 15.0,
+                "sector_rank": 3,
+                "stock_vs_sector_strength": None,
+            }
+        }
+        out = enrich_factor_with_sector(factor, sector_map)
+        self.assertEqual(out["stock_vs_sector_1d"], 3.0)
+        self.assertEqual(out["stock_vs_sector_3d"], 4.0)
+        self.assertEqual(out["stock_vs_sector_5d"], 4.0)
+        self.assertEqual(out["stock_vs_sector_10d"], 5.0)
+        self.assertEqual(out["stock_vs_sector_strength"], 4.0)
+
     def test_enrich_no_sector_keeps_neutral(self):
         factor = {"symbol_code": "000001.SZ", "symbol_name": "平安银行"}
         out = enrich_factor_with_sector(factor, {})

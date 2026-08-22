@@ -152,6 +152,52 @@ def _return_pct(series: pd.Series, lookback: int) -> float | None:
     return (latest / base - 1.0) * 100.0
 
 
+def _rolling_ols_residual(
+    stock_ret: pd.Series,
+    bench_ret: pd.Series,
+    window: int,
+) -> dict:
+    """时间序列 OLS 残差/alpha/beta（金融口径）。
+
+    对最近 window 个交易日：
+        R_stock = alpha + beta * R_bench + epsilon
+    返回 {alpha, beta, residual, r2}，按收益率小数计算。
+    样本不足/方差为 0 -> 全 None。
+    """
+    import numpy as _np
+
+    stock = pd.to_numeric(stock_ret, errors="coerce")
+    bench = pd.to_numeric(bench_ret, errors="coerce")
+    df = pd.concat([stock, bench], axis=1).dropna()
+    df = df.tail(window)
+    if len(df) < int(window * 0.6):
+        return {"alpha": None, "beta": None, "residual": None, "r2": None, "n": 0}
+
+    x = df.iloc[:, 1].to_numpy(dtype=float)
+    y = df.iloc[:, 0].to_numpy(dtype=float)
+    if _np.std(x) == 0 or _np.std(y) == 0:
+        return {"alpha": None, "beta": None, "residual": None, "r2": None, "n": 0}
+
+    x_mean = _np.mean(x)
+    y_mean = _np.mean(y)
+    cov_xy = _np.sum((x - x_mean) * (y - y_mean)) / (len(x) - 1)
+    var_x = _np.sum((x - x_mean) ** 2) / (len(x) - 1)
+    beta = cov_xy / var_x if var_x != 0 else _np.nan
+    alpha = y_mean - beta * x_mean
+    pred = alpha + beta * x
+    resid = y - pred
+    ss_tot = _np.sum((y - y_mean) ** 2)
+    ss_res = _np.sum(resid ** 2)
+    r2 = 1.0 - ss_res / ss_tot if ss_tot != 0 else _np.nan
+    return {
+        "alpha": round(float(alpha), 6) if _np.isfinite(alpha) else None,
+        "beta": round(float(beta), 6) if _np.isfinite(beta) else None,
+        "residual": round(float(resid[-1] * 100.0), 4) if _np.isfinite(resid[-1]) else None,
+        "r2": round(float(r2), 6) if _np.isfinite(r2) else None,
+        "n": int(len(df)),
+    }
+
+
 def _compute_weekly_factor(price_frame: pd.DataFrame) -> dict:
     if price_frame.empty:
         return {
@@ -353,6 +399,14 @@ def _compute_relative_strength_factor(
         score += rs20 * 2.0
     if rs60 is not None:
         score += rs60
+
+    # ---- 金融口径：时间序列 OLS 残差 / alpha / beta / R2 ----
+    # 基于日收益率（小数）对基准做回归，避免用“简单相减”冒充残差。
+    stock_daily = aligned["close_stock"].pct_change()
+    bench_daily = aligned["close_benchmark"].pct_change()
+    ols20 = _rolling_ols_residual(stock_daily, bench_daily, 20)
+    ols60 = _rolling_ols_residual(stock_daily, bench_daily, 60)
+
     result.update(
         {
             "relative_strength_available": rs20 is not None and rs60 is not None,
@@ -364,6 +418,15 @@ def _compute_relative_strength_factor(
             "benchmark_return_20d_pct": round(benchmark_returns[20], 3) if 20 in benchmark_returns else None,
             "benchmark_return_60d_pct": round(benchmark_returns[60], 3) if 60 in benchmark_returns else None,
             "relative_strength_observation_count": int(len(aligned)),
+            # 金融残差（OLS 回归残差）
+            "residual_rs_vs_index_20d": ols20["residual"],
+            "alpha_20d_vs_index": ols20["alpha"],
+            "beta_20d_vs_index": ols20["beta"],
+            "r2_20d_vs_index": ols20["r2"],
+            "residual_rs_vs_index_60d": ols60["residual"],
+            "alpha_60d_vs_index": ols60["alpha"],
+            "beta_60d_vs_index": ols60["beta"],
+            "r2_60d_vs_index": ols60["r2"],
         }
     )
     return result
@@ -524,11 +587,27 @@ def compute_stock_technical_factor_from_history(
     ma5 = float(closes.rolling(5).mean().iloc[-1]) if len(closes) >= 5 else float("nan")
     ma10 = float(closes.rolling(10).mean().iloc[-1]) if len(closes) >= 10 else float("nan")
     close_above_ma5 = bool(current_close > ma5) if not np.isnan(ma5) else False
+    close_above_ma10 = bool(current_close > ma10) if not np.isnan(ma10) else False
+    close_above_ma20 = bool(current_close > ma20) if not np.isnan(ma20) else False
     # MA5 slope: compare latest MA5 to the MA5 from 3 bars earlier (approximates初速)
     ma5_slope_base = float(closes.rolling(5).mean().iloc[-4]) if len(closes) >= 7 else float("nan")
     ma5_slope_pct = (
         (ma5 / ma5_slope_base - 1.0) * 100.0
         if not np.isnan(ma5_slope_base) and ma5_slope_base > 0
+        else float("nan")
+    )
+    # MA10 slope: compare latest MA10 to MA10 from 3 bars earlier
+    ma10_slope_base = float(closes.rolling(10).mean().iloc[-4]) if len(closes) >= 13 else float("nan")
+    ma10_slope_pct = (
+        (ma10 / ma10_slope_base - 1.0) * 100.0
+        if not np.isnan(ma10_slope_base) and ma10_slope_base > 0
+        else float("nan")
+    )
+    # MA20 slope: compare latest MA20 to MA20 from 3 bars earlier
+    ma20_slope_base = float(closes.rolling(20).mean().iloc[-4]) if len(closes) >= 23 else float("nan")
+    ma20_slope_pct = (
+        (ma20 / ma20_slope_base - 1.0) * 100.0
+        if not np.isnan(ma20_slope_base) and ma20_slope_base > 0
         else float("nan")
     )
     # ---- Weak-to-Strong strict HH/HL and pullback metrics ----
@@ -656,6 +735,20 @@ def compute_stock_technical_factor_from_history(
     # Long-term structure factors (MA50/MA200/52w, used by long_score)
     long_factors = _compute_long_term_factors(closes, current_close)
 
+    # 个股日收益序列（最近 30 个交易日），用于板块 OLS 残差对齐
+    try:
+        _date_col = next((c for c in ("日期", "date") if c in hist_df.columns), None)
+        _pct_col = next((c for c in ("涨跌幅", "pct_chg", "change") if c in hist_df.columns), None)
+        stock_daily_returns = []
+        if _date_col and _pct_col:
+            for _di, _row in hist_df.tail(31).iterrows():
+                _dt = pd.to_datetime(_row[_date_col], errors="coerce")
+                _pc = pd.to_numeric(_row[_pct_col], errors="coerce")
+                if pd.notna(_dt) and pd.notna(_pc):
+                    stock_daily_returns.append({"date": str(_dt.date()), "pct_chg": round(float(_pc), 4)})
+    except Exception:
+        stock_daily_returns = []
+
     factor = {
         "symbol_code": code,
         "symbol_name": symbol_name,
@@ -670,8 +763,19 @@ def compute_stock_technical_factor_from_history(
         "change_pct": change_pct,
         "ma20_deviation_pct": None if np.isnan(ma20_dist) else round(float(ma20_dist), 1),
         "close_above_ma5": close_above_ma5,
+        "close_above_ma10": close_above_ma10,
+        "close_above_ma20": close_above_ma20,
+        "ma5": None if np.isnan(ma5) else round(float(ma5), 4),
+        "ma10": None if np.isnan(ma10) else round(float(ma10), 4),
+        "ma20": None if np.isnan(ma20) else round(float(ma20), 4),
         "ma5_slope_pct": None if np.isnan(ma5_slope_pct) else round(float(ma5_slope_pct), 3),
+        "ma10_slope_pct": None if np.isnan(ma10_slope_pct) else round(float(ma10_slope_pct), 3),
+        "ma20_slope_pct": None if np.isnan(ma20_slope_pct) else round(float(ma20_slope_pct), 3),
         "ma60": None if np.isnan(ma60) else round(float(ma60), 4),
+        "ma5_gt_ma20": None if (np.isnan(ma5) or np.isnan(ma20)) else bool(ma5 > ma20),
+        "ma10_gt_ma20": None if (np.isnan(ma10) or np.isnan(ma20)) else bool(ma10 > ma20),
+        "ma20_gt_ma5": None if (np.isnan(ma20) or np.isnan(ma5)) else bool(ma20 > ma5),
+        "ma5_gt_ma60": None if (np.isnan(ma5) or np.isnan(ma60)) else bool(ma5 > ma60),
         "ma20_ge_ma60": None if (np.isnan(ma20) or np.isnan(ma60)) else bool(ma20 > ma60),
         "ma60_5d_slope_pct": ma60_5d_slope_pct,
         "trading_days": int(len(closes)),
@@ -714,6 +818,7 @@ def compute_stock_technical_factor_from_history(
         "data_quality_warnings": quality_report.warnings,
         "data_quality_last_date": quality_report.last_date,
         "observation_count": int(len(hist_df)),
+        "stock_daily_returns": stock_daily_returns,
     }
     factor.update(weekly_factor)
     factor.update(weinstein_factor)

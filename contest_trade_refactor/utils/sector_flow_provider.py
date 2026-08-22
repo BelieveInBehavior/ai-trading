@@ -183,6 +183,132 @@ def _first_available(
     return pd.DataFrame()
 
 
+def _normalize_board_history(df: pd.DataFrame, board_name: str) -> pd.DataFrame:
+    """规范化东财板块日线返回。"""
+    if df is None or df.empty:
+        return pd.DataFrame()
+    result = df.copy()
+    rename = {"日期": "date", "开盘": "open", "收盘": "close", "最高": "high", "最低": "low",
+              "涨跌幅": "pct_chg", "成交额": "amount", "成交量": "volume"}
+    result = result.rename(columns={k: v for k, v in rename.items() if k in result.columns})
+    for col in ("date", "close", "pct_chg"):
+        if col not in result.columns:
+            return pd.DataFrame()
+    result["date"] = pd.to_datetime(result["date"])
+    result["close"] = pd.to_numeric(result["close"], errors="coerce")
+    result["pct_chg"] = pd.to_numeric(result["pct_chg"], errors="coerce")
+    result["board_name"] = board_name
+    return result.dropna(subset=["date", "close"]).sort_values("date").reset_index(drop=True)
+
+
+def get_industry_daily_history(
+    board_name: str,
+    start_date: str,
+    end_date: str,
+    period: str = "日k",
+) -> pd.DataFrame:
+    """行业板块日线多源获取：东方财富优先，失败/为空降级同花顺指数。
+
+    返回：date / close / pct_chg / board_name。
+    """
+    try:
+        df = akshare_cached.run(
+            "stock_board_industry_hist_em",
+            {"symbol": board_name, "period": period, "start_date": start_date, "end_date": end_date, "adjust": ""},
+            verbose=False,
+        )
+        normalized = _normalize_board_history(df, board_name)
+        if not normalized.empty:
+            return normalized
+        logger.warning("东财行业板块日线为空，尝试同花顺: {}", board_name)
+    except Exception as exc:
+        logger.warning("东财行业板块日线失败 {}: {}", board_name, exc)
+    return _get_ths_industry_history(board_name, start_date, end_date)
+
+
+def get_concept_daily_history(
+    board_name: str,
+    start_date: str,
+    end_date: str,
+    period: str = "日k",
+) -> pd.DataFrame:
+    """概念板块日线多源：东方财富 -> 失败降级同花顺指数。"""
+    try:
+        df = akshare_cached.run(
+            "stock_board_concept_hist_em",
+            {"symbol": board_name, "period": period, "start_date": start_date, "end_date": end_date, "adjust": ""},
+            verbose=False,
+        )
+        normalized = _normalize_board_history(df, board_name)
+        if not normalized.empty:
+            return normalized
+        logger.warning("东财概念板块日线为空，尝试同花顺: {}", board_name)
+    except Exception as exc:
+        logger.warning("东财概念板块日线失败: {}: {}", board_name, exc)
+    return _get_ths_concept_history(board_name, start_date, end_date)
+
+
+def _normalize_ths_history(df: pd.DataFrame, board_name: str) -> pd.DataFrame:
+    if df is None or df.empty:
+        return pd.DataFrame()
+    result = df.copy()
+    rename = {
+        "日期": "date",
+        "开盘价": "open",
+        "收盘价": "close",
+        "最高价": "high",
+        "最低价": "low",
+        "涨跌幅": "pct_chg",
+        "成交量": "volume",
+        "成交额": "amount",
+    }
+    result = result.rename(columns={k: v for k, v in rename.items() if k in result.columns})
+    for col in ("date", "close", "pct_chg"):
+        if col not in result.columns:
+            return pd.DataFrame()
+    result["date"] = pd.to_datetime(result["date"])
+    result["close"] = pd.to_numeric(result["close"], errors="coerce")
+    result["pct_chg"] = pd.to_numeric(result["pct_chg"], errors="coerce")
+    result["board_name"] = board_name
+    return result.dropna(subset=["date", "close"]).sort_values("date").reset_index(drop=True)
+
+
+def _get_ths_industry_history(board_name: str, start_date: str, end_date: str) -> pd.DataFrame:
+    """同花顺行业板块指数日线备用源。"""
+    try:
+        df = ak.stock_board_industry_index_ths(symbol=board_name, start_date=start_date, end_date=end_date)
+        return _normalize_ths_history(df, board_name)
+    except Exception as exc:
+        logger.warning("同花顺行业指数拉取失败 {}: {}", board_name, exc)
+        return pd.DataFrame()
+
+
+def _get_ths_concept_history(board_name: str, start_date: str, end_date: str) -> pd.DataFrame:
+    try:
+        df = ak.stock_board_concept_index_ths(symbol=board_name, start_date=start_date, end_date=end_date)
+        return _normalize_ths_history(df, board_name)
+    except Exception as exc:
+        logger.warning("同花顺概念指数拉取失败 {}: {}", board_name, exc)
+        return pd.DataFrame()
+
+
+def get_industry_daily_history_map(
+    board_names: list[str],
+    start_date: str,
+    end_date: str,
+    period: str = "日k",
+) -> dict:
+    """批量拉取板块日线，返回 {industry_name.upper(): DataFrame}。"""
+    out = {}
+    for name in board_names:
+        if not name:
+            continue
+        hist = get_industry_daily_history(name, start_date, end_date, period)
+        if not hist.empty:
+            out[name.strip().upper()] = hist
+    return out
+
+
 def get_concept_board_data(
     trade_date: Optional[str] = None,
     *,

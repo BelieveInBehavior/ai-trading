@@ -122,6 +122,26 @@ class TestTechnicalIndicatorsAkshare(unittest.TestCase):
         self.assertIn("daily_entry_score", factor)
         self.assertEqual(factor["weinstein_stage"], "stage_2_uptrend")
         self.assertTrue(factor["data_quality_valid"])
+        # MA 绝对值/新增多头结构字段
+        self.assertIsNotNone(factor["ma5"])
+        self.assertIsNotNone(factor["ma10"])
+        self.assertIsNotNone(factor["ma20"])
+        self.assertIn("ma5_gt_ma20", factor)
+        self.assertIn("ma10_gt_ma20", factor)
+        self.assertIn("ma5_gt_ma60", factor)
+        self.assertIn("ma20_ge_ma60", factor)
+        self.assertGreater(factor["ma5"], factor["ma10"])
+        self.assertIn("close_above_ma10", factor)
+        self.assertIn("close_above_ma20", factor)
+        self.assertIn("ma10_slope_pct", factor)
+        self.assertIn("ma20_slope_pct", factor)
+        # 金融口径 OLS 残差/alpha/beta/r2 已输出
+        self.assertIsNotNone(factor.get("beta_20d_vs_index"))
+        self.assertIsNotNone(factor.get("beta_60d_vs_index"))
+        self.assertIsNotNone(factor.get("alpha_20d_vs_index"))
+        self.assertIsNotNone(factor.get("residual_rs_vs_index_20d"))
+        self.assertIsNotNone(factor.get("residual_rs_vs_index_60d"))
+        self.assertIsNotNone(factor.get("r2_20d_vs_index"))
 
     def test_future_history_is_rejected_before_factor_calculation(self):
         dates = pd.date_range("2026-08-01", periods=25, freq="D")
