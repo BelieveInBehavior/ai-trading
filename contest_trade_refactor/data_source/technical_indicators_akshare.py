@@ -21,15 +21,21 @@ CACHE_VERSION = "technical_indicators_akshare_v5_volratio_fix"
 
 
 def _compute_rsi(closes: pd.Series, period: int = 14) -> float:
-    """计算RSI指标"""
+    """计算 RSI 指标（金融口径：Wilder 平滑 / SMMA）。
+
+    中国金融/行情终端与 akshare 大多采用 Wilder 平滑：
+        avg_gain = (prev_avg_gain*(period-1) + current_gain) / period
+        avg_loss = (prev_avg_loss*(period-1) + current_loss) / period
+    等价于 pandas 的 ewm(alpha=1/period, adjust=False)。
+    """
     try:
         if len(closes) < period + 1:
             return float('nan')
         delta = closes.diff()
         gain = delta.where(delta > 0, 0.0)
         loss = (-delta).where(delta < 0, 0.0)
-        avg_gain = gain.rolling(window=period, min_periods=period).mean().iloc[-1]
-        avg_loss = loss.rolling(window=period, min_periods=period).mean().iloc[-1]
+        avg_gain = gain.ewm(alpha=1.0 / period, adjust=False, min_periods=period).mean().iloc[-1]
+        avg_loss = loss.ewm(alpha=1.0 / period, adjust=False, min_periods=period).mean().iloc[-1]
         if avg_loss == 0:
             return 100.0
         rs = avg_gain / avg_loss
@@ -59,7 +65,7 @@ def _compute_bollinger(closes: pd.Series, period: int = 20) -> tuple[float, floa
         if len(closes) < period:
             return (float('nan'), float('nan'), float('nan'))
         mid = closes.rolling(window=period).mean().iloc[-1]
-        std = closes.rolling(window=period).std().iloc[-1]
+        std = closes.rolling(window=period).std(ddof=0).iloc[-1]
         upper = mid + 2 * std
         lower = mid - 2 * std
         return (float(upper), float(mid), float(lower))
@@ -77,7 +83,7 @@ def _compute_atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int 
         tr2 = (high - prev_close).abs()
         tr3 = (low - prev_close).abs()
         tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-        atr = tr.rolling(window=period, min_periods=period).mean().iloc[-1]
+        atr = tr.ewm(alpha=1.0 / period, adjust=False, min_periods=period).mean().iloc[-1]
         return float(atr)
     except Exception:
         return float('nan')
@@ -394,11 +400,17 @@ def _compute_relative_strength_factor(
 
     rs20 = relative_returns.get(20)
     rs60 = relative_returns.get(60)
+    # 将相对收益标准化到 [0,100] 的“相对强度分”。
+    # 金融上真正的相对强度通常需要横截面百分位；单只股票无法做横截面排名，
+    # 这里用一个有界的单股代理：以近期相对日收益的波动做分母（类 IR），再 logistic 映射到 0-100。
+    rel_daily = (
+        aligned["close_stock"].pct_change() - aligned["close_benchmark"].pct_change()
+    ).dropna()
+    rel_vol = float(rel_daily.tail(60).std(ddof=1) * 100.0) if len(rel_daily) >= 10 else 0.0
     score = 50.0
-    if rs20 is not None:
-        score += rs20 * 2.0
-    if rs60 is not None:
-        score += rs60
+    if rel_vol > 0:
+        weighted_excess = ((rs20 or 0.0) * 0.5 + (rs60 or 0.0) * 0.5) / max(1.0, rel_vol)
+        score = 50.0 * (1.0 + float(np.tanh(weighted_excess / 4.0)))
 
     # ---- 金融口径：时间序列 OLS 残差 / alpha / beta / R2 ----
     # 基于日收益率（小数）对基准做回归，避免用“简单相减”冒充残差。
@@ -533,8 +545,9 @@ def compute_stock_technical_factor_from_history(
     atr = _compute_atr(highs, lows, closes, 14)
     atr_pct = atr / current_close * 100.0 if current_close > 0 and not np.isnan(atr) else float("nan")
     daily_returns = closes.pct_change().dropna()
+    # 金融口径用样本标准差（ddof=1），与 pandas.std() 默认一致。
     daily_volatility_20d_pct = (
-        float(daily_returns.tail(20).std(ddof=0) * 100.0)
+        float(daily_returns.tail(20).std(ddof=1) * 100.0)
         if len(daily_returns) >= 10
         else float("nan")
     )
@@ -554,7 +567,8 @@ def compute_stock_technical_factor_from_history(
     amount_ratio = today_amount / prev_5d_avg_amount if prev_5d_avg_amount and prev_5d_avg_amount > 0 else float("nan")
     volume_ma5_ma20_ratio = vol_5 / vol_20 if vol_20 and vol_20 > 0 else float("nan")
 
-    # daily VWAP proxy: typical price * volume weighted over recent 5/20 sessions
+    # daily VWAP: 优先用精确公式 Σ(typical * amount) / Σ(amount)。
+    # 若成交额缺失，退化为 typical * volume 加权；两者都缺失时返回 nan，不再用 close.mean() 冒充。
     def _session_vwap(rows: int):
         if len(closes) < 5:
             return float("nan")
@@ -562,11 +576,20 @@ def compute_stock_technical_factor_from_history(
         h = highs.tail(rows)
         l = lows.tail(rows)
         v = volumes.tail(rows)
+        a = amounts_series.tail(rows)
         tp = (h + l + c) / 3.0
-        mask = (v > 0) & tp.notna() & (tp > 0)
-        if mask.sum() < 5:
-            return float("nan")
-        return float((tp[mask] * v[mask]).sum() / v[mask].sum())
+        price_ok = tp.notna() & (tp > 0)
+        # 优先成交额金额加权；A股 volume 常为“手”，不是股数，只有成交额缺失时才退化为 volume 加权。
+        if a.notna().sum() >= 5:
+            amt = a.astype(float)
+            mask = price_ok & (amt > 0)
+            if mask.sum() >= 5:
+                return float((tp[mask] * amt[mask]).sum() / amt[mask].sum())
+        if v.notna().sum() >= 5:
+            mask = price_ok & (v > 0)
+            if mask.sum() >= 5:
+                return float((tp[mask] * v[mask]).sum() / v[mask].sum())
+        return float("nan")
 
     vwap_5 = _session_vwap(5)
     vwap_20 = _session_vwap(20)
@@ -640,7 +663,7 @@ def compute_stock_technical_factor_from_history(
     pullback_near_vwap = bool(
         not np.isnan(vwap_proxy) and not np.isnan(today_low)
         and today_low <= vwap_proxy and current_close >= vwap_proxy
-        and _dist_pct(today_low, vwap_proxy) <= pullback_allow
+        and _dist_pct(today_low, vwap_proxy) <= pullback_allowance
     )
     # 放量上涨/缩量回踩：volume_ratio 为正时，用量比衡量上涨放量和回调缩量。
     pullback_shrink = bool(

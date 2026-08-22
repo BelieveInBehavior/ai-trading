@@ -172,30 +172,49 @@ class CatalystState:
 
 @dataclass
 class ExecutionState:
-    """T+1 执行确认：Gap / Auction / Index / Sector / VWAP / Flow。"""
+    """Layer 6：T+1 两阶段执行确认（Gap / Auction / Index / Sector / VWAP / Flow）。
+
+    Phase 1 = Auction Signal（9:25 竞价先验，预判）
+    Phase 2 = Real-time Confirmation（9:30 后价格/VWAP/量/盘口/指数/板块实时确认）
+    """
     opening_gap_pct: Optional[float] = None
+    phase: str = "PENDING"            # PENDING / AUCTION_SIGNAL / PHASE1_READY / PHASE2_EXECUTE / ABANDON / CANCEL
     auction_score: float = 0.0
     index_state: str = ""
     sector_state: str = ""
     vwap_state: bool = False
     order_flow_score: float = 0.0
     intraday_structure_score: float = 0.0
+    active_buy_pct: Optional[float] = None
+    bid_ask_imbalance: Optional[float] = None
+    bid_recovery_score: Optional[float] = None
+    low_break_failure: Optional[float] = None
+    gap_penalty: float = 0.0
     confirmed: bool = False
     abandon_reason: str = ""
     reasons: List[str] = field(default_factory=list)
+    detail: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "opening_gap_pct": self.opening_gap_pct,
+            "phase": self.phase,
             "auction_score": round(self.auction_score, 2),
             "index_state": self.index_state,
             "sector_state": self.sector_state,
             "vwap_state": self.vwap_state,
             "order_flow_score": round(self.order_flow_score, 2),
             "intraday_structure_score": round(self.intraday_structure_score, 2),
+            "active_buy_pct": self.active_buy_pct,
+            "bid_ask_imbalance": self.bid_ask_imbalance,
+            "bid_ask_imbalance_pct": None if self.bid_ask_imbalance is None else round((self.bid_ask_imbalance - 1.0) * 100.0, 2),
+            "bid_recovery_score": self.bid_recovery_score,
+            "low_break_failure": self.low_break_failure,
+            "gap_penalty": self.gap_penalty,
             "confirmed": self.confirmed,
             "abandon_reason": self.abandon_reason,
             "reasons": list(self.reasons),
+            "detail": self.detail,
         }
 
 
@@ -228,13 +247,14 @@ class RiskState:
 
 @dataclass
 class PositionState:
-    """持仓状态机：HOLD / ADD / DECAY / REDUCE / EXIT。"""
+    """Layer 7：持仓状态机 HOLD / ADD / DECAY / REDUCE / EXIT。"""
     state: str = "HOLD"
     action: str = "hold"          # hold/add/decay/reduce/exit
     score: float = 0.0
     reasons: List[str] = field(default_factory=list)
     add_allowed: bool = False     # 只允许盈利趋势再确认加仓，不做亏损补仓
     trend_decay_score: float = 0.0
+    entry_reentry_ok: bool = False   # 盈利状态下回踩企稳/重新突破允许加仓
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -243,6 +263,7 @@ class PositionState:
             "score": round(self.score, 2),
             "reasons": list(self.reasons),
             "add_allowed": self.add_allowed,
+            "entry_reentry_ok": self.entry_reentry_ok,
             "trend_decay_score": round(self.trend_decay_score, 2),
         }
 
@@ -379,6 +400,9 @@ class Holding:
     stop_loss_price: Optional[float] = None
     atr_trailing_stop: Optional[float] = None   # ATR trailing stop（价格绝对值）
     prev_close: Optional[float] = None          # 前一日收盘，用于“次日站回”
+    ma20: Optional[float] = None                # 结构止损轨道：Close<MA20 判断
+    realtime_quote: Dict[str, Any] = field(default_factory=dict)
+    order_flow_score: float = 50.0
 
 
 @dataclass

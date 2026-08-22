@@ -6,10 +6,13 @@ import os
 import pandas as pd
 
 from utils.sector_enrichment import (
+    _compute_sector_residual,
     enrich_factor_with_sector,
     build_sector_snapshot_from_factor_store,
     build_code_sector_snapshot,
     enrich_factor_with_sector_by_name,
+    compute_ex_self_sector_metrics,
+    enrich_factor_with_ex_self,
 )
 
 
@@ -103,6 +106,67 @@ class TestSectorEnrichment(unittest.TestCase):
         self.assertIn("600276.SH", out)
         self.assertNotIn("000001.SZ", out)
         self.assertEqual(out["600276.SH"]["sector_1d_return"], 3.99)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class SectorResidualScaleTest(unittest.TestCase):
+    def test_sector_ols_uses_percent_to_decimal_and_returns_percent_based_residual(self):
+        # pct_chg 以“百分数”存储。让板块收益率恒定 1%，个股 = 2*板块 + 0.1%（都在 percent 口径）。
+        # 金融回归应先转成小数，beta 应 ≈2.0，alpha（年周）应 ≈0.1%，残差应 ≈0。
+        dates = pd.date_range("2026-01-01", periods=30, freq="B")
+        sector = [{"date": str(d.date()), "pct_chg": 1.0} for d in dates]
+        stock = [{"date": str(d.date()), "pct_chg": 2.0 + 0.1} for d in dates]
+        out = _compute_sector_residual(stock, sector, window=20)
+        self.assertAlmostEqual(out["beta"], 2.0, places=4)
+        self.assertGreater(out["residual"], -0.0001)
+        self.assertLess(out["residual"], 0.0001)
+        self.assertAlmostEqual(out["alpha"], 0.1, places=4)
+
+
+class SectorExSelfMetricsTest(unittest.TestCase):
+    def test_ex_self_returns_and_breadth(self):
+        snap = {
+            "600519.SH": {
+                "sector_1d_return": 3.0,
+                "sector_5d_return": 5.0,
+                "stock_vs_sector_strength": None,
+                "上涨家数": 8,
+                "下跌家数": 2,
+                "sector_daily_returns": [],
+            }
+        }
+        stock_daily = [
+            {"date": "2026-08-12", "pct_chg": 1.0},
+            {"date": "2026-08-13", "pct_chg": 2.0},
+            {"date": "2026-08-14", "pct_chg": -0.5},
+            {"date": "2026-08-15", "pct_chg": 1.5},
+            {"date": "2026-08-18", "pct_chg": 3.0},
+        ]
+        out = compute_ex_self_sector_metrics(snap, "600519.SH", "白酒", stock_daily_returns=stock_daily)
+        self.assertEqual(out["sector_return_ex_self_1d"], 0.0)  # 3.0 - 3.0
+        self.assertAlmostEqual(out["sector_return_ex_self_5d"], 5.0 - 7.1637, places=3)  # stock 5d compound
+        self.assertAlmostEqual(out["sector_breadth_ex_self"], (8 - 1) / 9.0, places=4)
+        self.assertEqual(out.get("sector_breadth_total"), 8 / 10.0)
+
+    def test_factor_enrich_adds_ex_self_fields(self):
+        factor = {
+            "symbol_code": "600519.SH",
+            "symbol_name": "贵州茅台",
+            "sector_name": "白酒",
+            "change_pct": 2.0,
+            "ret_5d_pct": 6.0,
+            "stock_daily_returns": [{"date": "2026-08-18", "pct_chg": 2.0}],
+        }
+        snap = {
+            "600519.SH": {"sector_1d_return": 1.0, "sector_5d_return": 3.0,
+                           "上涨家数": 5, "下跌家数": 2}
+        }
+        out = enrich_factor_with_ex_self(factor, snap)
+        self.assertEqual(out["sector_return_ex_self_1d"], -1.0)
+        self.assertEqual(out["sector_breadth_ex_self"], round((5 - 1) / (7 - 1), 4) if (7 - 1) > 0 else 0)
 
 
 if __name__ == "__main__":

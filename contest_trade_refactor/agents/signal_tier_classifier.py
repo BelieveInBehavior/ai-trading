@@ -211,8 +211,10 @@ class SignalTierClassifier:
             reasons.extend(str(x) for x in (gate.get("failed_reasons") or risk_flags or lifecycle.get("hard_failed") or [])[:3])
             return SignalTier("reject", 0.0, 0.0, reasons)
 
+        # 金融口径风险预算：仓位与波动率成反比（risk_budget / volatility）。
         position = 30.0 + max(0.0, min(25.0, (weak_to_strong - 80.0) * 1.0 + (entry_quality - 70.0) * 0.5))
-        regime_multiplier = {"bull": 1.10, "neutral": 1.0, "bear": 0.75}.get(str(market_regime).lower(), 1.0)
+        position = position * (1.0 / max(1.0, volatility / 4.0))
+        regime_multiplier = {"bull": 1.10, "neutral": 1.0, "bear": 0.65}.get(str(market_regime).lower(), 1.0)
         position *= regime_multiplier
 
         confidence = (

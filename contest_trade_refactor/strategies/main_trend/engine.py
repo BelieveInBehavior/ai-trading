@@ -29,6 +29,8 @@ from utils.akshare_utils import akshare_cached
 from utils.cn_price_provider import get_index_daily, get_stock_zh_a_hist
 from utils.date_utils import get_latest_completed_trading_date, get_trading_date_range
 from utils.sector_enrichment import build_sector_snapshot, build_sector_snapshot_from_factor_store, enrich_factor_with_sector
+from utils.factor_dedup import family_dedup_report as _family_dedup_report, pick_representatives as _pick_factor_rep
+from utils.tencent_realtime import fetch_realtime_quote as _fetch_realtime_quote, build_quote_payload as _build_quote_payload
 
 from strategies.main_trend.schemas import (
     BuySignal,
@@ -52,10 +54,11 @@ try:
 except Exception:
     _BASE_DIR = Path("strategies/main_trend")
 
-
 # ---------------------------------------------------------------------------
 # 基础工具
 # ---------------------------------------------------------------------------
+
+
 def _num(value: Any, default: Optional[float] = None) -> Optional[float]:
     try:
         if value is None:
@@ -106,37 +109,50 @@ def _fmt_pct(value: Optional[float], digits: int = 2) -> str:
     return "N/A" if value is None else f"{value:.{digits}f}%"
 
 
+def _percentile_rank_100(value: Optional[float], values: Optional[List[float]]) -> Optional[float]:
+    """金融口径横截面百分位排名（0~100）。
+
+    value 处于 all values 中的百分位：小于该值的样本 + 0.5*等于该值的样本数，再归一化。
+    仅单股 / 样本不足时返回 None，避免把缺乏截面信息的因子强行变成百分位。
+    """
+    if value is None or not values:
+        return None
+    below = sum(1 for x in values if x < value)
+    equal = sum(1 for x in values if x == value)
+    if len(values) <= 0:
+        return None
+    return round((below + 0.5 * equal) / len(values) * 100.0, 2)
+
+
 def _enrich_residual_rs(factor: Dict[str, Any]) -> Dict[str, Any]:
     """在 factor 上补全残差 RS 原始因子（金融口径）。
 
-    - vs Index：优先使用 true OLS residual（technical factor 里已基于日收益回归 alpha+beta*bench+eps 算好）。
-      若没有（如外部注入 factor），退回简单超额收益，并标记为 excess 而不是 residual。
-    - vs Sector：当前没有板块日线序列，无法做时间序列回归；只输出超额收益，并显式命名为
-      excess_rs_vs_sector_* 以避免名不副实。
+    - vs Index：technical factor 里已基于日收益 OLS 算出 alpha+beta*bench+eps 的 residual。
+      若没有（外部注入/降级），只写 excess_rs_vs_index_*，不再把“简单超额收益”冒充 residual。
+    - vs Sector：sector enrichment 有板块日线时会算出 OLS residual；只有板块日线不可用时才
+      输出 excess_rs_vs_sector_*，命名明确区分。
+    - 兼容字段 residual_rs_vs_index / residual_rs_vs_sector 仅在“真残差”存在时赋值；
+      否则对应位置给 None，避免名不副实。
     """
     if not factor:
         return factor
 
-    # ---- vs Index：真正 OLS 残差优先 ----
+    # ---- vs Index：只在已有 true OLS residual 时写入，否则只记录简单超额 ----
     resid_index_20 = _num(factor.get("residual_rs_vs_index_20d"))
     if resid_index_20 is None:
         stock20 = _num(factor.get("stock_return_20d_pct"))
         bench20 = _num(factor.get("benchmark_return_20d_pct"))
         if stock20 is not None and bench20 is not None:
             factor["excess_rs_vs_index_20d"] = round(stock20 - bench20, 4)
-            factor["residual_rs_vs_index_20d"] = round(stock20 - bench20, 4)  # 兼容降级
     resid_index_60 = _num(factor.get("residual_rs_vs_index_60d"))
     if resid_index_60 is None:
         stock60 = _num(factor.get("stock_return_60d_pct"))
         bench60 = _num(factor.get("benchmark_return_60d_pct"))
         if stock60 is not None and bench60 is not None:
             factor["excess_rs_vs_index_60d"] = round(stock60 - bench60, 4)
-            factor["residual_rs_vs_index_60d"] = round(stock60 - bench60, 4)  # 兼容降级
 
-    # ---- vs Sector：优先使用 sector enrichment 里算出 OLS 残差；缺失时输出超额并命名清楚 ----
-    if _num(factor.get("residual_rs_vs_sector_20d")) is not None:
-        pass
-    elif _num(factor.get("residual_rs_vs_sector_60d")) is not None:
+    # ---- vs Sector：优先使用 sector enrichment 已算出的 OLS 真残差；缺失时输出超额并命名清楚 ----
+    if _num(factor.get("residual_rs_vs_sector_20d")) is None and _num(factor.get("residual_rs_vs_sector_60d")) is not None:
         factor["residual_rs_vs_sector_20d"] = factor.get("residual_rs_vs_sector_60d")
     for lookback in (1, 3, 5, 10):
         stock_col = "change_pct" if lookback == 1 else f"ret_{lookback}d_pct"
@@ -146,13 +162,24 @@ def _enrich_residual_rs(factor: Dict[str, Any]) -> Dict[str, Any]:
         if stock_v is not None and sector_v is not None:
             factor[f"excess_rs_vs_sector_{lookback}d"] = round(stock_v - sector_v, 4)
 
-    # 兼容字段（尽量用真正残差，缺则用超额）
-    factor["residual_rs_vs_index"] = factor.get("residual_rs_vs_index_20d")
-    factor["residual_rs_vs_sector"] = (
-        factor.get("residual_rs_vs_sector_20d")
-        or factor.get("residual_rs_vs_sector_60d")
-        or factor.get("excess_rs_vs_sector_5d")
-    )
+    # 兼容字段：只有“真残差”才写入 residual_rs_vs_*；否则用 excess_rs_vs_* 明确表达超额。
+    residual_index_merged = _num(factor.get("residual_rs_vs_index_20d")) or _num(factor.get("residual_rs_vs_index_60d"))
+    if residual_index_merged is not None:
+        factor["residual_rs_vs_index"] = residual_index_merged
+    else:
+        factor.pop("residual_rs_vs_index", None)
+        excess_index = _num(factor.get("excess_rs_vs_index_20d")) or _num(factor.get("excess_rs_vs_index_60d"))
+        if excess_index is not None:
+            factor["excess_rs_vs_index"] = excess_index
+
+    residual_sector_merged = _num(factor.get("residual_rs_vs_sector_20d")) or _num(factor.get("residual_rs_vs_sector_60d"))
+    if residual_sector_merged is not None:
+        factor["residual_rs_vs_sector"] = residual_sector_merged
+    else:
+        factor.pop("residual_rs_vs_sector", None)
+    excess_sector = _num(factor.get("excess_rs_vs_sector_5d")) or _num(factor.get("excess_rs_vs_sector_3d")) or _num(factor.get("excess_rs_vs_sector_1d"))
+    if excess_sector is not None:
+        factor["excess_rs_vs_sector"] = excess_sector
     return factor
 
 
@@ -168,11 +195,12 @@ def _is_limit_pct(symbol_code: str, change_pct: Optional[float]) -> bool:
 def _is_limit_up_change(symbol_code: str, change_pct: Optional[float]) -> bool:
     return _is_limit_pct(symbol_code, change_pct)
 
-
 # ---------------------------------------------------------------------------
 # 配置
 # ---------------------------------------------------------------------------
 @dataclass
+
+
 class MainTrendConfig:
     id: str = "main_trend"
     universe: Dict[str, Any] = field(default_factory=dict)
@@ -213,10 +241,11 @@ class MainTrendConfig:
             data = yaml.safe_load(f) or {}
         return cls.from_dict(data)
 
-
 # ---------------------------------------------------------------------------
 # 引擎
 # ---------------------------------------------------------------------------
+
+
 class MainTrendEngine:
     def __init__(self, config: "MainTrendConfig" | None = None):
         self.config = config or MainTrendConfig.from_yaml()
@@ -258,6 +287,7 @@ class MainTrendEngine:
 
         sem = asyncio.Semaphore(max(1, int(self.config.quantitative_concurrency) or 4))
         candidates: List[MTFCandidate] = []
+        raw_factors: List[Dict[str, Any]] = []
         errors: List[str] = []
 
         async def _score(row: Dict[str, Any], median_out: List[float]) -> None:
@@ -265,16 +295,10 @@ class MainTrendEngine:
                 try:
                     # 单遍：先计算完整技术因子（同时拿到 median_amount_20d）
                     factor = self._factor_for_row(row, start_date, end_date, trade_date, benchmark)
-                    med = _num(factor.get("median_amount_20d")) if factor else None
-                    if med is not None and med > 0:
-                        median_out.append(med)
+                    median_out.append(_num(factor.get("median_amount_20d")) if factor else None)
                     if not factor:
                         return
-                    cand = self._candidate_from_factor(
-                        row, factor, trade_date, market, sector_snapshot
-                    )
-                    if cand:
-                        candidates.append(cand)
+                    raw_factors.append(factor)
                 except Exception as exc:
                     errors.append(str(exc))
 
@@ -303,17 +327,102 @@ class MainTrendEngine:
             batch = universe[offset: offset + batch_size]
             await asyncio.gather(*[_score(row, all_median_amounts) for row in batch])
 
+        valid_amounts = [x for x in all_median_amounts if x is not None and x > 0]
         # 全市场横截面 P20（单遍扫描收集所有股票的 20D Median Turnover）
-        if len(all_median_amounts) >= 10:
-            all_median_amounts.sort()
-            idx = max(0, int(round(len(all_median_amounts) * 0.20)) - 1)
-            liquidity_p20 = all_median_amounts[idx]
+        if len(valid_amounts) >= 10:
+            valid_amounts.sort()
+            idx = max(0, int(round(len(valid_amounts) * 0.20)) - 1)
+            liquidity_p20 = valid_amounts[idx]
+
+        # ---- 全市场横截面相对强度：金融口径百分位 rank（不再只用单股 IR 近似）。 ----
+        # 遍历全部 raw_factor，以 RS20/RS60/OLS residual 等做截面百分位，再重新评分。
+        rs20_vals: List[float] = []
+        rs60_vals: List[float] = []
+        resid_idx20: List[float] = []
+        resid_sector20: List[float] = []
+        for f in raw_factors:
+            rs20 = _num(f.get("relative_strength_20d_pct"))
+            rs60 = _num(f.get("relative_strength_60d_pct"))
+            resid20 = _num(f.get("residual_rs_vs_index_20d"))
+            resid_sec20 = _num(f.get("residual_rs_vs_sector_20d")) or _num(f.get("residual_rs_vs_sector_60d"))
+            if rs20 is not None:
+                rs20_vals.append(rs20)
+            if rs60 is not None:
+                rs60_vals.append(rs60)
+            if resid20 is not None:
+                resid_idx20.append(resid20)
+            if resid_sec20 is not None:
+                resid_sector20.append(resid_sec20)
+
+        for f in raw_factors:
+            rs20 = _num(f.get("relative_strength_20d_pct"))
+            rs60 = _num(f.get("relative_strength_60d_pct"))
+            resid20 = _num(f.get("residual_rs_vs_index_20d"))
+            resid_sec20 = _num(f.get("residual_rs_vs_sector_20d")) or _num(f.get("residual_rs_vs_sector_60d"))
+            p20 = _percentile_rank_100(rs20, rs20_vals)
+            p60 = _percentile_rank_100(rs60, rs60_vals)
+            p_resid = _percentile_rank_100(resid20, resid_idx20)
+            p_resid_sector = _percentile_rank_100(resid_sec20, resid_sector20)
+            factor_pct = None
+            if p20 is not None or p60 is not None:
+                factor_pct = round((0.5 * (p20 if p20 is not None else 50.0) + 0.5 * (p60 if p60 is not None else 50.0)), 2)
+                f["relative_strength_cross_section_pct"] = factor_pct
+                f["relative_strength_grade"] = (
+                    "A" if factor_pct >= 80
+                    else "B" if factor_pct >= 60
+                    else "C" if factor_pct >= 40
+                    else "D"
+                )
+                base = 50.0
+                if rs20 is not None:
+                    base = max(0.0, min(100.0, float(rs20)))
+                f["relative_strength_score"] = round(max(0.0, min(100.0, 0.7 * factor_pct + 0.3 * base)), 2)
+            if p_resid is not None:
+                f["residual_rs_vs_index_20d_pct"] = p_resid
+            if p_resid_sector is not None:
+                f["residual_rs_vs_sector_20d_pct"] = p_resid_sector
+
+        # ---- Layer 3 因子族内去重：全市场截面相关矩阵 / VIF / 代表性因子 ----
+        factor_family_dedup = {}
+        try:
+            factor_family_dedup = _family_dedup_report(
+                raw_factors,
+                corr_threshold=float(self.config.quality.get("family_corr_threshold", 0.85) or 0.85),
+                corr_method=str(self.config.quality.get("family_corr_method", "spearman") or "spearman"),
+            )
+            for f in raw_factors:
+                f["_factor_family_dedup"] = factor_family_dedup
+        except Exception as exc:
+            errors.append(f"factor_family_dedup:{exc}")
+
+        # 构造候选：用已经过截面 RS / 因子族去重诊断的 factor
+        row_by_code: Dict[str, Dict[str, Any]] = {}
+        for row in universe:
+            code = str(row.get("symbol_code") or "").strip().upper()
+            row_by_code[code] = row
+            if "." in code:
+                row_by_code[code.split(".")[0]] = row
+        for factor in raw_factors:
+            code = str(factor.get("symbol_code") or "").strip().upper()
+            row = row_by_code.get(code) or row_by_code.get(code.split(".")[0])
+            if row is None:
+                continue
+            try:
+                cand = self._candidate_from_factor(row, factor, trade_date, market, sector_snapshot)
+                if cand:
+                    candidates.append(cand)
+            except Exception as exc:
+                errors.append(str(exc))
 
         for c in candidates:
             self.apply_hard_filter(c, market, liquidity_p20)
 
         eligible = [c for c in candidates if c.eligible]
-        context = f"主升浪扫描：universe={total}, candidates={len(candidates)}, eligible={len(eligible)}; errors={len(errors)}"
+        dedup_note = ""
+        if factor_family_dedup:
+            reps = factor_family_dedup.get("representatives") or {}
+            dedup_note = "; factor_family_dedup=" + str(reps)
+        context = f"主升浪扫描：universe={total}, candidates={len(candidates)}, eligible={len(eligible)}; errors={len(errors)}{dedup_note}"
         return MTFDiscovery(
             trade_date=trade_date,
             all_candidates=candidates,
@@ -514,7 +623,8 @@ class MainTrendEngine:
             closes = pd.to_numeric(index_data["close"], errors="coerce").dropna()
             rets = closes.pct_change().dropna().tail(20)
             if len(rets) >= 10:
-                market_vol = float(rets.std(ddof=0) * 100.0)
+                # 金融口径：样本标准差（ddof=1）。
+                market_vol = float(rets.std(ddof=1) * 100.0)
         if market_vol is not None:
             detail["market_volatility_20d_pct"] = round(market_vol, 3)
             # 波动不是天然风险：放量上升趋势中允许高波动，但持续高波且方向不明减分
@@ -823,6 +933,13 @@ class MainTrendEngine:
         min_s1_rs = float(cfg.get("min_s1_rs", 55) or 55)
         min_s2_rs = float(cfg.get("min_s2_rs", 58) or 58)
         min_s2_vol = float(cfg.get("min_s2_volume", 0.9) or 0.9)
+        # S2 板块共振：默认只降级不硬拒；数据缺失默认放行避免误杀。
+        s2_sector_downgrade = bool(cfg.get("s2_sector_downgrade", True))
+        s2_sector_missing_lenient = bool(cfg.get("s2_sector_missing_lenient", True))
+        s2_sector_min_1d = float(cfg.get("s2_sector_min_1d", 0.0) or 0.0)
+        s2_sector_rank_top = float(cfg.get("s2_sector_rank_top", 0.4) or 0.4)
+        if s2_sector_rank_top <= 0:
+            s2_sector_rank_top = 0.4
         s3_max_vol = float(cfg.get("s3_max_volume_for_consolidation", 1.0) or 1.0)
 
         # S1：平台突破 + 量扩张 + 均线转强 + RS增强（筹码只辅助，不硬条件）
@@ -845,6 +962,12 @@ class MainTrendEngine:
             ma_ok = bool(ma20_dev is not None and ma20_dev > 0)
         else:
             ma_ok = bool(ma20_dev is not None and ma20_dev > 0 and ma20_ge_ma60 is True)
+        is_s3_base = bool(
+            (ma20_dev is not None and ma20_dev >= 0)
+            and (volume_ratio or 0) <= s3_max_vol
+            and (breakout20 or breakout60)
+        )
+        is_s3 = is_s3_base
         is_s2_general = bool(
             new_high
             and (rs or 50) >= min_s2_rs
@@ -852,6 +975,36 @@ class MainTrendEngine:
             and ma_ok
             and ma5_gt
         )
+        # ---- S2 板块共振：不强则降级为 S1/S3，不硬拒 ----
+        s2_sector_ok = True
+        if s2_sector_downgrade and is_s2_general:
+            sector_1d = _num(factor.get("sector_1d_return"))
+            sector_rank = _num(factor.get("sector_rank"))
+            sector_5d = _num(factor.get("sector_5d_return"))
+            if sector_1d is None:
+                s2_sector_ok = s2_sector_missing_lenient
+            else:
+                rank_ok = True
+                if sector_rank is not None:
+                    rank_ok = bool(sector_rank <= max(1, round(s2_sector_rank_top * 100)))
+                # 板块当日不弱，或 5 日板块仍为正面 视为共振
+                s2_sector_ok = bool(
+                    (sector_1d >= s2_sector_min_1d or sector_5d is None or sector_5d >= 0)
+                    and rank_ok
+                )
+            if not s2_sector_ok:
+                # S3 中继条件或 S1 启动条件已满足则降级保留候选；否则退 S0/PASS
+                reasons.append("S2板块未共振，降级保留")
+                if is_s3_base:
+                    is_s2_general = False
+                    is_s3 = True
+                    reasons.append("降级为S3中继")
+                elif is_s1:
+                    is_s2_general = False
+                    reasons.append("降级为S1启动")
+                else:
+                    is_s2_general = False
+                    reasons.append("退S0/PASS")
 
         # S3：MA20 上行 + 缩量后重新突破；不因“未创新高”直接判死
         is_s3 = bool(
@@ -1051,10 +1204,28 @@ class MainTrendEngine:
             f"量价{family['volume_price']:.1f}/波动{family['volatility_state']:.1f}/结构{family['structure']:.1f}",
             f"TrendQuality={grade}",
         ]
+        # 因子族诊断：把 Layer 3 相关矩阵/VIF“代表性因子”挂到 family，但只作为诊断，不改变已去重的计权。
+        dedup = factor.get("_factor_family_dedup") or {}
+        if dedup:
+            reps = dedup.get("representatives") or {}
+            high_pairs = dedup.get("correlation", {}).get("high_corr_pairs") or []
+            family["factor_family_dedup"] = {
+                "status": dedup.get("status"),
+                "representatives": reps,
+                "high_corr_pairs": high_pairs[:10],
+            }
+            vifs = dedup.get("vif") or {}
+            high_vif = [k for k, v in vifs.items() if v is not None and v >= 5.0]
+            if high_vif:
+                reasons.append(f"高VIF({len(high_vif)}):{','.join(high_vif[:5])}")
         if market.regime == "C":
             mult *= 0.5
             reasons.append("Regime=C, 质量乘数再降半")
-        return TrendQuality(grade=grade, score=round(score, 2), family=family, reasons=reasons, multiplier=mult, residual_rs_vs_index=residual_index, residual_rs_vs_sector=residual_sector)
+        return TrendQuality(
+            grade=grade, score=round(score, 2), family=family, reasons=reasons,
+            multiplier=mult, residual_rs_vs_index=residual_index,
+            residual_rs_vs_sector=residual_sector,
+        )
 
     # ================= 4. 板块（Ex-Self ≈ 板块自身 + 个股跑赢板块） =================
     def assess_sector_state(
@@ -1078,10 +1249,15 @@ class MainTrendEngine:
         ex_self_ok = True
         if stock_ret is not None and sector_1d is not None:
             # 若板块大涨 3% 而个股贡献 > 板块 (个股涨幅远超板块涨幅) => 视为 Ex-Self 被腐蚀
+            ex_self_return_pct = _num(factor.get("sector_return_ex_self_1d"))
             if sector_1d >= 3.0 and stock_ret > sector_1d + 5:
                 score_ex = 40.0
                 ex_self = False
                 ex_self_detail = {"note": "个股涨幅远超板块，Ex-Self可能被腐蚀", "stock_ret": stock_ret, "sector_1d": sector_1d}
+            elif ex_self_return_pct is not None and ex_self_return_pct >= 0:
+                score_ex = 60.0
+                ex_self = True
+                ex_self_detail = {"ret": ex_self_return_pct, "ex_self": True, "note": "板块剔除本股仍为正"}
             else:
                 score_ex = 55.0
                 ex_self = True
@@ -1090,7 +1266,7 @@ class MainTrendEngine:
             score_ex = 50.0
             ex_self = True
             ex_self_detail = {"no_data": True}
-        score = 50.0
+        score = 50.0 + (score_ex - 50.0) * 0.3
         if sector_1d >= 2:
             score += 15
         elif sector_1d >= 0:
@@ -1111,10 +1287,17 @@ class MainTrendEngine:
             reasons.append(f"板块排名{sector_rank}")
         if not ex_self:
             reasons.append("Ex-Self不足")
+        # 金融口径 Ex-Self：优先真实剔除本股指标（sector_return_ex_self_* / sector_breadth_ex_self）
+        ex_self_return = _num(factor.get("sector_return_ex_self_1d"))
+        ex_self_breadth = _num(factor.get("sector_breadth_ex_self"))
+        if ex_self_return is not None:
+            reasons.append(f"板块Ex-Self收益{ex_self_return:.2f}%")
+        if ex_self_breadth is not None:
+            reasons.append(f"板块Ex-Self广度{ex_self_breadth*100:.0f}%")
         return SectorState(
             sector_name=sector_name,
             sector_strength_pct=round(sector_1d, 3),
-            breadth_pct=_num(factor.get("sector_breadth_score")),
+            breadth_pct=_num(factor.get("sector_breadth_score")) or ex_self_breadth,
             rank=sector_rank,
             ex_self=ex_self,
             ex_self_detail=ex_self_detail,
@@ -1133,26 +1316,80 @@ class MainTrendEngine:
         event_type = str(catalyst.get("event_type") or "")
         level = str(catalyst.get("event_level") or "")
         reaction = str(catalyst.get("price_reaction") or "")
+        # 结构化事件字段（用户 spec）：event_level/earnings_impact/credibility/source_quality/company_specific
+        event_level = str(catalyst.get("event_level") or level)
+        earnings_impact = _num(catalyst.get("earnings_impact"))
+        credibility = _num(catalyst.get("credibility"))
+        source_quality = str(catalyst.get("source_quality") or "unknown")
+        expected_return = _num(catalyst.get("expected_return_pct"))
+        actual_return = _num(catalyst.get("actual_return_pct")) or _num(factor.get("change_pct"))
+        gap_pct = _num(catalyst.get("gap_pct"))
+        intraday_return = _num(catalyst.get("intraday_return_pct"))
         has_event = bool(event_type or level)
         score = 0.0
         reasons = []
         if has_event:
-            score += 25
-            reasons.append(f"事件:{event_type or level}")
-            if reaction == "positive":
-                score += 30
-                reasons.append("价格正面反应")
-            elif reaction == "negative":
-                score -= 25
-                reasons.append("价格负面反应")
+            # Base: 事件本身（不是“收阴=失效”，而看事件质量 × 实际价格反应）
+            score += 20
+            reasons.append(f"事件:{event_type or event_level}")
+            level_score = {"S": 30, "A": 25, "B": 18, "C": 10}.get(str(event_level).upper(), 15) if event_level else 15
+            score += level_score
+            # 事件特异性与可信度
             if company_specific:
-                score += 20
-                reasons.append("公司特异性")
-            score += min(25.0, freshness * 25.0)
+                score += 15
+                reasons.append("公司特异")
+            if credibility is not None:
+                score += min(15.0, 15.0 * credibility)
+                reasons.append(f"可信度{credibility:.2f}")
+            elif source_quality in ("official", "交易所", "公告"):
+                score += 10
+                reasons.append(f"来源{source_quality}")
+            if earnings_impact is not None:
+                score += min(10.0, 10.0 * earnings_impact)
+                reasons.append(f"业绩影响{earnings_impact:.2f}")
+            # Catalyst × Price Reaction：不危险 Close<Open 直接归零。
+            # 正面的实际收益/预期收益比、gap+日内结构共同决定 price reaction 强度。
+            reaction_score = 0.0
+            if reaction == "positive":
+                reaction_score += 15
+            elif reaction == "negative":
+                reaction_score -= 20
+            if actual_return is not None and expected_return is not None:
+                reaction_ratio = actual_return / expected_return if expected_return != 0 else 0.0
+                reaction_score += max(-15.0, min(15.0, reaction_ratio * 5.0))
+                reasons.append(f"实际/预期收益={reaction_ratio:.2f}")
+            elif actual_return is not None:
+                if actual_return > 3:
+                    reaction_score += 12
+                elif actual_return > 0:
+                    reaction_score += 6
+                elif actual_return < -5:
+                    reaction_score -= 18
+                elif actual_return < 0:
+                    reaction_score -= 8
+                reasons.append(f"实际收益{actual_return:.2f}%")
+            if gap_pct is not None:
+                reaction_score += 3.0 if gap_pct > 2 else (-3.0 if gap_pct < -2 else 1.0)
+            if intraday_return is not None:
+                reaction_score += 3.0 if intraday_return > 1 else (-3.0 if intraday_return < -1 else 1.0)
+            score += _clamp(reaction_score, -25.0, 25.0)
+            score += min(20.0, freshness * 20.0)
             reasons.append(f"新鲜度{freshness * 100:.0f}%")
+            if reaction_score < 0:
+                reasons.append("价格反应偏弱")
         # 若无催化，默认中性 50 分，不要求必须有催化（催化是增强不是准入）。
         score = 50.0 if not has_event else _clamp(score)
-        return CatalystState(has_event=has_event, event_type=event_type, event_level=level, freshness=freshness, company_specific=company_specific, price_reaction=reaction, score=round(score, 2), reasons=reasons)
+        detail = {
+            "event_level": event_level,
+            "credibility": credibility,
+            "source_quality": source_quality,
+            "earnings_impact": earnings_impact,
+            "gap_pct": gap_pct,
+            "intraday_return_pct": intraday_return,
+            "expected_return_pct": expected_return,
+            "actual_return_pct": actual_return,
+        }
+        return CatalystState(has_event=has_event, event_type=event_type, event_level=event_level, freshness=freshness, company_specific=company_specific, price_reaction=reaction, score=round(score, 2), reasons=reasons, detail={k: v for k, v in detail.items() if v is not None})
 
     def _candidate_entry_score(self, cand: MTFCandidate) -> float:
         score = 50.0
@@ -1167,13 +1404,26 @@ class MainTrendEngine:
         return round(_clamp(score), 2)
 
     # ================= 6. T+1 执行 & 风险预算 =================
-    def build_buy_signals(self, eligible: List[MTFCandidate], trade_date: str) -> List[BuySignal]:
+    def fetch_execution_realtime(self, symbol_code: str, prefer: str = "auto") -> Dict[str, Any]:
+        """拉取 T+1 实时行情：腾讯财经优先，失败则使用手动输入（config/manual_realtime.json / env）。"""
+        q = _fetch_realtime_quote(symbol_code, prefer=prefer)
+        payload = _build_quote_payload(q)
+        if q.source in ("tencent_error", "manual_missing") and q.detail.get("error"):
+            payload["realtime_error"] = q.detail.get("error")
+        return payload
+
+    def build_buy_signals(self, eligible: List[MTFCandidate], trade_date: str, realtime: Optional[Dict[str, Any]] = None) -> List[BuySignal]:
         cfg = self.config.execution or {}
         out = []
         for cand in eligible:
             factor = cand.technical_factor or {}
             # T 日只产生候选；T+1 执行打分属于以后才可知的确认信息，这里只做运行态打分。
-            exec_state = self.evaluate_execution_from_factor(cand, factor)
+            cand_realtime = None
+            if realtime is not None:
+                cand_realtime = realtime
+            elif (cfg or {}).get("use_tencent_realtime"):
+                cand_realtime = self.fetch_execution_realtime(cand.symbol_code)
+            exec_state = self.evaluate_execution_from_factor(cand, factor, realtime=cand_realtime)
             risk = self.compute_risk_state(cand, factor, exec_state)
             ok = bool(cand.eligible and exec_state.confirmed and risk.pass_or_wait)
             reasons = list(cand.reasons)
@@ -1211,49 +1461,72 @@ class MainTrendEngine:
             ))
         return out
 
-    def evaluate_execution_from_factor(self, cand: MTFCandidate, factor: Dict[str, Any]) -> "ExecutionState":
+    def evaluate_execution_from_factor(self, cand: MTFCandidate, factor: Dict[str, Any], realtime: Optional[Dict[str, Any]] = None) -> "ExecutionState":
+        """Layer 6 执行引擎。
+
+        回测/日线没有 T+1 实时时，用日线 factor 作**先验** Proxy；有 realtime 报价时按两阶段执行确认。
+        Phase 1 = Auction Signal（9:25 竞价先验）
+        Phase 2 = Real-time Confirmation（价格/VWAP/盘口/指数/板块实时确认）
+        """
         from strategies.main_trend.schemas import ExecutionState
-        # 在执行引擎里保留抽象对象以兼容未来 T+1 实时数据。
-        # 回测阶段没有盘中T+1，我们使用日线 factor 里的 vwap/open/close 近似。
-        close = _num(factor.get("close"))
-        vwap = _num(factor.get("vwap_20")) or _num(factor.get("vwap"))
-        open_ = _num(factor.get("open"))
-        high = _num(factor.get("high"))
-        low = _num(factor.get("low"))
-        gap_pct = (open_ / close - 1.0) * 100.0 if open_ and close and open_ != close else None
-        # 简化：close >= vwap 视为 VWAP 承担； order_flow用量比/日内结构代理
-        vwap_hold = close is not None and vwap is not None and close >= vwap
+        realtime = realtime or {}
+        close = _num(realtime.get("price")) or _num(factor.get("close"))
+        vwap = _num(realtime.get("vwap")) or _num(factor.get("vwap_20")) or _num(factor.get("vwap"))
+        open_ = _num(realtime.get("open")) or _num(factor.get("open"))
+        high = _num(realtime.get("high")) or _num(factor.get("high"))
+        low = _num(realtime.get("low")) or _num(factor.get("low"))
+        prev_close = _num(realtime.get("prev_close")) or _num(factor.get("prev_close"))
+        gap_base = prev_close or close or open_
+        gap_pct = (open_ / gap_base - 1.0) * 100.0 if open_ and gap_base and gap_base > 0 else None
+        if gap_pct is None and open_ and close and open_ != close:
+            gap_pct = (open_ / close - 1.0) * 100.0
+        # VWAP 承担：实盘和日线统一金融口径 —— price/VWAP 百分位保持稳健
+        vwap_hold = close is not None and vwap is not None and vwap > 0 and close >= vwap
+        # 盘口/竞价先验
+        auction = _num(realtime.get("auction_score")) or 0.0
+        if auction == 0.0 and factor.get("auction_score") is not None:
+            auction = _num(factor.get("auction_score")) or 0.0
+        # 主动买入占比 / 委比
+        active_buy_pct = _num(realtime.get("active_buy_pct"))
+        bid_ask_raw = _num(realtime.get("bid_ask_imbalance"))
+        bid_volume = _num(realtime.get("bid_volume"))
+        ask_volume = _num(realtime.get("ask_volume"))
+        if bid_ask_raw is None and bid_volume is not None and ask_volume is not None and ask_volume > 0:
+            bid_ask_raw = (bid_volume or 0.0) / ask_volume
         order_flow = 50.0
         if _bool(factor.get("rising_volume")):
             order_flow += 20
         if _num(factor.get("pullback_near_vwap")):
             order_flow += 15
-        vol = _num(factor.get("volume_ratio"))
+        vol = _num(realtime.get("volume_ratio")) or _num(factor.get("volume_ratio"))
         if vol is not None and 1.0 <= vol <= 3.0:
             order_flow += 10
+        if active_buy_pct is not None:
+            order_flow += (active_buy_pct - 50.0) * 0.25
+        if bid_ask_raw is not None:
+            imbalance_pct = (bid_ask_raw - 1.0) * 100.0
+            order_flow += max(-15.0, min(15.0, imbalance_pct * 0.4))
+        # 日内结构：HH/HL、回踩未破、低点失败（Low Break Failure）
         structure = 50.0
         if _bool(factor.get("hh_hl_strict")):
             structure += 20
         if close is not None and low is not None and low < close:
             structure += 10
-        # Gap 动态：A级+强趋势+催化 高开允许；C级无催化高开 -> WAIT。
-        gap_penalty = 0.0
-        gap_reason = ""
-        if gap_pct is not None:
-            if gap_pct >= 5.0:
-                if cand.market_regime == "A" and cand.trend_state == "S2" and cand.catalyst_info.has_event:
-                    gap_penalty = 0.0
-                    gap_reason = "A级/S2/催化剂高开允许"
-                else:
-                    gap_penalty = -15
-                    gap_reason = "高开进入成本过高，WAIT"
-            elif gap_pct <= -3.0:
-                gap_penalty = -10
-                gap_reason = "低开体现弱势"
-            else:
-                gap_reason = "Gap可控"
+        bid_recovery = _num(realtime.get("bid_recovery_score")) or _num(realtime.get("pullback_recovery"))
+        if bid_recovery is not None:
+            structure += float(min(15.0, max(-10.0, bid_recovery)))
+        low_break_failure = _num(realtime.get("low_break_failure"))
+        if low_break_failure is not None:
+            structure += float(min(15.0, max(-15.0, low_break_failure)))
+        # Opening Gap 动态进入成本因子
+        gap_penalty, gap_reason = self._gap_penalty(cand, gap_pct)
         score = 40.0 + (15.0 if vwap_hold else 0.0) + (order_flow - 50) * 0.3 + (structure - 50) * 0.3 + gap_penalty
-        confirmed = bool(score >= 60 and (gap_reason != "低开体现弱势" if gap_reason else True))
+        min_confirm = float((self.config.execution or {}).get("min_confirm_score", 60) or 60)
+        confirmed = bool(score >= min_confirm and gap_reason != "低开体现弱势")
+        phase = "PHASE2_EXECUTE" if confirmed else "ABANDON"
+        if not confirmed and gap_reason == "高开进入成本过高，WAIT":
+            phase = "CANCEL"
+        # Real-time context passed through detail
         reasons = []
         if vwap_hold:
             reasons.append("价格>=VWAP")
@@ -1263,28 +1536,69 @@ class MainTrendEngine:
         reasons.append(f"IntradayStructure={structure:.1f}")
         if gap_reason:
             reasons.append(gap_reason)
+        if realtime.get("source"):
+            reasons.append(f"realtime_source={realtime.get('source')}")
         return ExecutionState(
             opening_gap_pct=gap_pct,
-            auction_score=0.0,
+            phase=phase,
+            auction_score=round(auction, 2),
             index_state=cand.market_regime,
             sector_state=cand.sector_info.grade if cand.sector_info else "",
             vwap_state=vwap_hold,
             order_flow_score=round(order_flow, 2),
             intraday_structure_score=round(structure, 2),
+            active_buy_pct=None if active_buy_pct is None else round(active_buy_pct, 2),
+            bid_ask_imbalance=None if bid_ask_raw is None else round(bid_ask_raw, 4),
+            bid_recovery_score=None if bid_recovery is None else round(float(bid_recovery), 2),
+            low_break_failure=None if low_break_failure is None else round(float(low_break_failure), 2),
+            gap_penalty=round(gap_penalty, 2),
             confirmed=confirmed,
             abandon_reason="" if confirmed else (gap_reason or "执行未确认"),
             reasons=reasons,
+            detail={k: v for k, v in realtime.items() if v is not None},
         )
 
+    def _gap_penalty(self, cand: MTFCandidate, gap_pct: Optional[float]) -> tuple:
+        if gap_pct is None:
+            return 0.0, "Gap未知"
+        if gap_pct >= 5.0:
+            # A级 + S2 + 有催化：高开说明是趋势加速，不惩罚；其他强趋势高开限制成本
+            if cand.market_regime == "A" and cand.trend_state == "S2" and cand.catalyst_info and cand.catalyst_info.has_event:
+                return 0.0, "A级/S2/催化剂高开允许"
+            if cand.market_regime in ("A", "B") and cand.trend_state in ("S1", "S2", "S3"):
+                return -8.0, "高开但趋势/市场尚可，成本偏高"
+            return -15.0, "高开进入成本过高，WAIT"
+        if gap_pct >= 2.0:
+            return -4.0, "高开在可接受成本区间"
+        if gap_pct <= -3.0:
+            return -10.0, "低开体现弱势"
+        return 0.0, "Gap可控"
+
+
     def compute_risk_state(self, cand: MTFCandidate, factor: Dict[str, Any], exec_state: "ExecutionState") -> RiskState:
+        """Layer 6 风险预算定仓位。
+
+        Position = AccountRiskBudget / StopDistance * QualityMultiplier
+        依次受：单笔风险预算、市场环境风险乘数、趋势质量乘数、执行质量乘数、
+        最大单股仓位、流动性上限、板块/组合相关性（预留字段）约束。
+        """
         cfg = self.config.risk or {}
         risk_budget = float(cfg.get("risk_budget_pct", 1.0) or 1.0)
+        alloc_limit = float(cfg.get("alloc_limit_pct", 100.0) or 100.0)
+        lq_limit = float(cfg.get("liquidity_cap_pct", 30.0) or 30.0)
+        # 基础风险预算 * 市场 Regime 乘数（C 级减半，D 级禁止）
         account_risk = risk_budget * float(cand.market_regime_state.risk_multiplier if cand.market_regime_state else 1.0)
-        quality_mult = float(cand.quality_info.multiplier if cand.quality_info else 1.0)
+        # 质量乘数：Trend Quality * (执行质量 0/0.85/1.0)
+        quality_mult = float(cand.quality_info.multiplier if cand.quality_info else 0.5)
+        exec_q = 1.0 if exec_state is None else (0.85 if not exec_state.confirmed else 1.0)
+        quality_mult *= exec_q
         stop_pct = float(cfg.get("stop_atr_mult", 2.5) or 2.5)
         atr_pct = _num(factor.get("atr_pct"))
+        atr = _num(factor.get("atr"))
         if atr_pct:
             stop_distance_pct = atr_pct * stop_pct
+        elif atr and cand.technical_factor.get("close"):
+            stop_distance_pct = atr / float(cand.technical_factor.get("close")) * 100.0 * stop_pct
         else:
             stop_distance_pct = 6.0
         max_pos = float(cfg.get("max_position_pct", 50) or 50)
@@ -1292,40 +1606,72 @@ class MainTrendEngine:
             suggested = account_risk / stop_distance_pct * 100.0 * quality_mult
         else:
             suggested = 0.0
-        suggested = min(suggested, max_pos)
-        pass_ok = bool(suggested > 0.1 and cand.market_regime != "D")
+        # 硬约束：最大单股、流动性上限、组合/Regime 上限
+        suggested = min(suggested, max_pos, lq_limit, alloc_limit)
+        # 风险预算不允许“为了凑仓位去买 B/C”
+        pass_ok = bool(suggested > 0.1 and cand.market_regime != "D" and quality_mult > 0)
         reason = f"account_risk={account_risk:.2f}% / stop_distance={stop_distance_pct:.2f}% * Q{quality_mult:.2f} -> pos={suggested:.1f}%"
+        detail = {
+            "market_regime": cand.market_regime,
+            "trend_state": cand.trend_state,
+            "trend_quality": cand.trend_quality,
+            "execution_quality_multiplier": round(exec_q, 3),
+            "alloc_limit_pct": alloc_limit,
+            "liquidity_cap_pct": lq_limit,
+        }
         return RiskState(
-            account_risk_pct=account_risk,
+            account_risk_pct=round(account_risk, 4),
             stop_distance_pct=round(stop_distance_pct, 2),
-            stop_distance_abs=_num(factor.get("atr")) * stop_pct if _num(factor.get("atr")) else None,
-            quality_multiplier=round(quality_mult, 2),
+            stop_distance_abs=round(atr * stop_pct, 3) if atr else None,
+            quality_multiplier=round(quality_mult, 3),
             suggested_position_pct=round(suggested, 2),
             max_position_pct=max_pos,
             pass_or_wait=pass_ok,
             reason=reason,
-            detail={"market_regime": cand.market_regime, "trend_state": cand.trend_state},
+            detail=detail,
         )
 
     # ================= 7. 持仓状态机 =================
     def evaluate_exits(self, holdings: List[Holding]) -> List[ExitDecision]:
+        """Layer 7 持仓状态机：HOLD -> ADD / HOLD / DECAY / REDUCE / EXIT。
+
+        原则：ADD 只允许“盈利 + 回踩健康 + 重新突破 + 板块强/RS 强”的 Pyramiding，不允许亏损补仓。
+        退出双轨：结构止损（Close<MA20 且次日无法站回）与 ATR trailing stop，任一触发即 EXIT。
+        S4 是风险预警（REDUCE 条件之一），只有 S5 / 硬止损 / 严重衰减才 EXIT。
+        """
         cfg = self.config.holding or {}
         stop_pct = float(cfg.get("stop_loss_pct", -6.0) or -6.0)
-        trailing_mult = float(cfg.get("atr_trailing_mult", 3.0) or 3.0)
         max_days = int(cfg.get("horizon_days", 10) or 10)
+        reduce_th = float(cfg.get("reduce_decay_threshold", 45) or 45)
+        severe_th = float(cfg.get("severe_decay_threshold", 70) or 70)
+        recapture_allowance = float(cfg.get("recapture_allowance_pct", 1.0) or 1.0) / 100.0
         out = []
         for h in holdings:
             current = _num(h.current_price) or h.entry_price
             highest = _num(h.highest_price) or max(current, h.entry_price)
             ret_pct = (current / h.entry_price - 1.0) * 100.0 if h.entry_price else 0.0
-            reasons = []
             decay = self._trend_decay_score(current, highest, h, cfg)
+            reasons = []
+            # ADD 条件（Pyramiding）：盈利 + 离高点不深 + 盘口/趋势健康 + （重新突破/板块强/RS 强之一）
+            add_allowed = bool(
+                ret_pct > 0
+                and decay < 30
+                and (highest - current) / highest * 100.0 <= 3.0
+            )
+            reentry_ok = bool(
+                add_allowed
+                and (
+                    (h.realtime_quote or {}).get("vwap_state") is not False
+                    or (h.realtime_quote or {}).get("pullback_recovery") is not None
+                )
+            )
             pos = PositionState(
                 state="HOLD",
                 action="hold",
                 score=100 - decay,
                 reasons=reasons,
-                add_allowed=bool(ret_pct > 0 and decay < 30),
+                add_allowed=add_allowed,
+                entry_reentry_ok=reentry_ok,
                 trend_decay_score=decay,
             )
             action = "hold"
@@ -1337,33 +1683,36 @@ class MainTrendEngine:
             if ret_pct <= stop_pct:
                 action = "sell"
                 reason_list.append("跌破止损")
-            # ATR trailing stop（若持有数据里已有 precomputed stop 则直接触发）
+            # 轨道 B：ATR trailing stop
             elif h.atr_trailing_stop is not None and h.atr_trailing_stop > 0 and current < h.atr_trailing_stop:
                 atr_trail_triggered = True
                 action = "exit"
                 reason_list.append("ATR Trailing Stop触发")
             # 趋势严重衰减
-            elif decay >= float(cfg.get("severe_decay_threshold", 70) or 70):
+            elif decay >= severe_th:
                 action = "exit"
                 reason_list.append("趋势严重衰减")
             elif h.holding_days >= max_days:
                 action = "exit"
                 reason_list.append("超期退出")
-            # S5 recapture：Close<MA20 后“次日无法重新站回”由调用方把 prev_close/prefecture 信息传入。
-            # 这里用 prev_close 与 current 近似判断：“前一日跌破后，当前仍未站回”即退出。
+            # MA20 双轨：Close<MA20 且次日无法站回（轨道 A 结构止损）
+            elif h.ma20 and current < h.ma20 * (1 - recapture_allowance):
+                action = "exit"
+                reason_list.append("跌破MA20且未站回")
+            # S5 recapture 近似（旧语义保留兼容）
             elif (
                 h.prev_close is not None
                 and h.current_price is not None
-                and h.prev_close < (h.stop_loss_price or h.entry_price)  # 简化为上一日已在关键线下
-                and current <= h.prev_close * (1 + float(cfg.get("recapture_allowance_pct", 0.01) or 0.01))
+                and h.prev_close < (h.stop_loss_price or h.entry_price)
+                and current <= h.prev_close * (1 + recapture_allowance)
             ):
                 recapture_triggered = True
                 action = "exit"
                 reason_list.append("跌破关键线且次日无法站回")
-            elif decay >= float(cfg.get("reduce_decay_threshold", 45) or 45):
+            elif decay >= reduce_th:
                 action = "reduce"
                 reason_list.append("趋势衰减减仓")
-            elif ret_pct > 0 and decay < 30:
+            elif add_allowed and decay < 30:
                 action = "add_hint"
                 reason_list.append("盈利趋势再确认可加仓")
 
@@ -1377,7 +1726,7 @@ class MainTrendEngine:
                 pos.state = "EXIT"
                 pos.action = "exit" if action == "exit" else "sell"
                 pos.reasons = reason_list[:]
-            elif decay >= 45:
+            elif decay >= reduce_th:
                 pos.state = "DECAY"
                 pos.action = "decay"
                 pos.reasons = reason_list[:]
@@ -1407,9 +1756,9 @@ class MainTrendEngine:
         return out
 
     def _trend_decay_score(self, current_price: float, highest_price: float, holding: Holding, cfg: Dict[str, Any]) -> float:
-        """原则⑧：ATR高不天然风险；这里用“离高点深度 + 持仓时长 + ATR trailing 接近度”作 decay。
+        """Trend Decay Score = 离开高点深度 + ATR trailing 接近 + 持仓时长 + 实时盘口弱化 + 市场恶化。
 
-        不用 ATR 绝对值直接惩罚；ATR trailing 只在给定 stop 被击穿时触发退出。
+        ATR 高不天然风险，只在“不创新高/回撤扩大/破位”时增高；不预测顶部。
         """
         score = 0.0
         if highest_price and highest_price > 0:
@@ -1422,11 +1771,18 @@ class MainTrendEngine:
                 score += 5
         if holding.atr_trailing_stop and holding.atr_trailing_stop > 0 and holding.entry_price > 0:
             stop_dist = (holding.atr_trailing_stop - current_price) / holding.entry_price * 100.0
-            # 越接近 trailing stop，衰减分越高，但仅在击穿时触发 exit。
             if stop_dist > 0:
                 score += min(35.0, max(0.0, stop_dist * 2.0))
         if holding.holding_days >= int(cfg.get("horizon_days", 5) or 5):
             score += 30
+        # 实时盘口/弱势加衰减（可选）
+        rt = holding.realtime_quote or {}
+        of = _num(rt.get("order_flow_score"))
+        if of is not None and of < 40:
+            score += 15
+        regime = str((rt or {}).get("market_regime") or "").upper()
+        if regime == "D":
+            score += 20
         return round(_clamp(score), 2)
 
     # ================= 工具 =================

@@ -10,7 +10,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from config.strategies import get_strategy, get_strategies
-from strategies.main_trend.engine import MainTrendConfig, MainTrendEngine, _enrich_residual_rs
+from utils.factor_dedup import family_dedup_report
+from strategies.main_trend.engine import MainTrendConfig, MainTrendEngine, _enrich_residual_rs, _percentile_rank_100
 from strategies.main_trend.schemas import Holding, MarketRegimeState, MTFCandidate, TrendQuality
 
 def _base_cand(**overrides):
@@ -125,12 +126,16 @@ class MainTrendPackageTest(unittest.TestCase):
             "sector_10d_return": 12.0,
         }
         out = _enrich_residual_rs(factor)
-        self.assertEqual(out["residual_rs_vs_index_20d"], 7.0)
-        self.assertEqual(out["residual_rs_vs_index_60d"], 12.0)
+        # 无 true OLS 残差时不再把简单超额收益命名为 residual（金融口径避免物名不符）。
+        self.assertNotIn("residual_rs_vs_index_20d", out)
+        self.assertNotIn("residual_rs_vs_index_60d", out)
+        self.assertEqual(out["excess_rs_vs_index_20d"], 7.0)
+        self.assertEqual(out["excess_rs_vs_index_60d"], 12.0)
         self.assertEqual(out["excess_rs_vs_sector_1d"], 2.0)
         self.assertEqual(out["excess_rs_vs_sector_5d"], 5.0)
-        self.assertEqual(out["residual_rs_vs_index"], 7.0)
-        self.assertEqual(out["residual_rs_vs_sector"], 5.0)
+        self.assertEqual(out["excess_rs_vs_index"], 7.0)
+        self.assertEqual(out["excess_rs_vs_sector"], 5.0)
+        self.assertNotIn("residual_rs_vs_sector", out)
 
 
 if __name__ == "__main__":
@@ -274,12 +279,155 @@ class MainTrendLayer2EnhancedTest(unittest.TestCase):
             "sector_10d_return": 12.0,
         }
         out = _enrich_residual_rs(factor)
-        self.assertEqual(out["residual_rs_vs_index_20d"], 7.0)
-        self.assertEqual(out["residual_rs_vs_index_60d"], 12.0)
+        # 无 true OLS 残差时不再把简单超额收益命名为 residual（金融口径避免物名不符）。
+        self.assertNotIn("residual_rs_vs_index_20d", out)
+        self.assertNotIn("residual_rs_vs_index_60d", out)
+        self.assertEqual(out["excess_rs_vs_index_20d"], 7.0)
+        self.assertEqual(out["excess_rs_vs_index_60d"], 12.0)
         self.assertEqual(out["excess_rs_vs_sector_1d"], 2.0)
         self.assertEqual(out["excess_rs_vs_sector_5d"], 5.0)
-        self.assertEqual(out["residual_rs_vs_index"], 7.0)
-        self.assertEqual(out["residual_rs_vs_sector"], 5.0)
+        self.assertEqual(out["excess_rs_vs_index"], 7.0)
+        self.assertEqual(out["excess_rs_vs_sector"], 5.0)
+        self.assertNotIn("residual_rs_vs_sector", out)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class CrossSectionalRSHelperTest(unittest.TestCase):
+    def test_percentile_rank_100(self):
+        values = [0.0, 10.0, 20.0, 30.0, 40.0]
+        self.assertEqual(_percentile_rank_100(20.0, values), 50.0)
+        self.assertEqual(_percentile_rank_100(10.0, values), 30.0)
+        self.assertEqual(_percentile_rank_100(0.0, values), 10.0)
+        self.assertIsNone(_percentile_rank_100(None, values))
+        self.assertIsNone(_percentile_rank_100(5.0, []))
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class S2SectorDowngradeTest(unittest.TestCase):
+    def _engine(self):
+        return MainTrendEngine(MainTrendConfig.from_yaml())
+
+    def _s2_factor(self, **over):
+        f = {
+            "symbol_code": "600001.SH", "symbol_name": "测试",
+            "close": 10.0, "ma20_deviation_pct": 5.0, "ma20_ge_ma60": True,
+            "ma60": 9.0, "ma5_slope_pct": 1.0, "ma5_gt_ma20": True,
+            "close_above_ma5": True, "breakout_20d": True, "breakout_60d": False,
+            "volume_ratio": 1.2, "ret_5d_pct": 6.0, "ret_20d_pct": 25.0,
+            "rsi": 65.0, "atr_pct": 4.0, "close_vs_20d_high_pct": 0.0,
+            "weekly_trend_score": 75.0, "relative_strength_score": 60.0,
+            "relative_strength_20d_pct": 8.0, "relative_strength_60d_pct": 12.0,
+            "vwap_20": 9.5, "vwap": 9.5,
+            "sector_1d_return": -1.5, "sector_rank": 80, "sector_5d_return": -2.0,
+        }
+        f.update(over)
+        return f
+
+    def test_s2_sector_weak_degrades_not_hard_reject_when_s3_met(self):
+        eng = self._engine()
+        f = self._s2_factor(volume_ratio=1.0, close_vs_20d_high_pct=0.0,
+                            relative_strength_20d_pct=13.0, relative_strength_60d_pct=12.0)
+        # 板块弱触发降级（sector_5d 负、sector_rank 80），volume=1.0 同时满足 S2 量门槛(>=0.9)与 S3 缩量上限(<=1.0)
+        # -> 应降为 S3 而非 S2；rs20>=rs60 避免误触发 S4
+        ts = eng.assess_trend_state(f)
+        self.assertEqual(ts.state, "S3")
+        self.assertTrue(ts.tradeable)
+        self.assertTrue(any("降级" in r for r in ts.reasons))
+
+    def test_s2_sector_ok_keeps_s2(self):
+        eng = self._engine()
+        f = self._s2_factor(sector_1d_return=2.0, sector_rank=5, sector_5d_return=3.0)
+        ts = eng.assess_trend_state(f)
+        self.assertEqual(ts.state, "S2")
+        self.assertTrue(ts.tradeable)
+
+    def test_s2_sector_missing_lenient(self):
+        eng = self._engine()
+        f = self._s2_factor(sector_1d_return=None, sector_rank=None, sector_5d_return=None)
+        ts = eng.assess_trend_state(f)
+        self.assertEqual(ts.state, "S2")
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+class FactorFamilyDedupTest(unittest.TestCase):
+    def test_report_rejects_redundant_momentum(self):
+        factors = []
+        for i in range(60):
+            base = i * 0.2
+            factors.append({
+                "ret_5d_pct": base + (i % 7) * 0.3,
+                "ret_10d_pct": base + (i % 7) * 0.31 + 0.01 * (i % 11),
+                "ret_20d_pct": base + (i % 7) * 0.55 + 0.02 * (i % 13),
+                "relative_strength_20d_pct": base + (i % 7) * 0.1,
+                "residual_rs_vs_index_20d": base + 1.0 + 0.01 * (i % 7),
+                "ma20_deviation_pct": base + 2.0 + 0.01 * (i % 5),
+                "volume_ratio": 1.0 + (i % 5) * 0.2,
+            })
+        report = family_dedup_report(factors, corr_threshold=0.85)
+        self.assertEqual(report["status"], "ok")
+        self.assertTrue(report["correlation"]["high_corr_pairs"])
+        # 动量族不应 5d/10d/20d 全部被选为代表。
+        mem_reps = report["representatives"].get("momentum") or []
+        self.assertLessEqual(len(mem_reps), 2)
+        vif = report["vif"]
+        self.assertTrue(any(v is not None and v > 5 for v in vif.values()))
+
+    def test_vif_table_on_low_sample_is_none(self):
+        from utils.factor_dedup import vif_table
+        factors = [{"ret_5d_pct": 1.0, "ret_10d_pct": 2.0}]
+        self.assertEqual(vif_table(factors), {"ret_5d_pct": None, "ret_10d_pct": None})
+
+
+class CatalystReactionTest(unittest.TestCase):
+    def _engine(self):
+        return MainTrendEngine(MainTrendConfig.from_yaml())
+
+    def test_no_catalyst_defaults_neutral(self):
+        c = self._engine().assess_catalyst({})
+        self.assertFalse(c.has_event)
+        self.assertEqual(c.score, 50.0)
+
+    def test_strong_event_with_price_reaction_not_nullified_by_close_open(self):
+        # 即使 Close<Open 但实际/预期收益为正，不应被“收阴=失效”直接归零
+        factor = {
+            "catalyst": {
+                "event_type": "major_order",
+                "event_level": "S",
+                "freshness": 0.9,
+                "company_specific": True,
+                "earnings_impact": 0.8,
+                "credibility": 0.95,
+                "price_reaction": "positive",
+                "source_quality": "official",
+                "expected_return_pct": 5.0,
+                "actual_return_pct": 8.0,
+            },
+            "open": 10.0,
+            "close": 9.8,  # close < open
+            "change_pct": 8.0,
+        }
+        c = self._engine().assess_catalyst(factor)
+        self.assertTrue(c.has_event)
+        self.assertGreater(c.score, 75)
+        self.assertIn("实际/预期收益=1.60", c.reasons)
+
+    def test_weak_reaction_scores_lower_than_strong(self):
+        eng = self._engine()
+        strong = {"catalyst": {"event_type": "major_order", "event_level": "S", "freshness": 0.9,
+                               "company_specific": True, "credibility": 0.95, "price_reaction": "positive",
+                               "expected_return_pct": 5.0, "actual_return_pct": 8.0}}
+        weak = {"catalyst": {"event_type": "major_order", "event_level": "B", "freshness": 0.2,
+                              "company_specific": False, "credibility": 0.4, "price_reaction": "negative",
+                              "expected_return_pct": 5.0, "actual_return_pct": -4.0}}
+        self.assertGreater(eng.assess_catalyst(strong).score, eng.assess_catalyst(weak).score)
 
 
 if __name__ == "__main__":

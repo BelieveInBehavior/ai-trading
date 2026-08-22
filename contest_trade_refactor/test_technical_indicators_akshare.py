@@ -5,6 +5,8 @@ import pandas as pd
 import requests
 
 from data_source.technical_indicators_akshare import (
+    _compute_atr,
+    _compute_rsi,
     TechnicalIndicatorsAkshare,
     compute_stock_technical_factor,
     compute_stock_technical_factor_from_history,
@@ -163,7 +165,8 @@ class TestTechnicalIndicatorsAkshare(unittest.TestCase):
         )
         self.assertIsNone(factor)
 
-    def test_kline_retries_eastmoney_ten_times_before_tencent(self):
+    def test_kline_uses_tencent_fast_path_before_eastmoney_retry(self):
+        # 当前实现先尝试腾讯直连（快路径），成功则不触发东财重试。
         client = CachedAksharePro(max_retries=10)
         calls = []
         fallback_df = pd.DataFrame({"ok": [1]})
@@ -184,8 +187,25 @@ class TestTechnicalIndicatorsAkshare(unittest.TestCase):
             )
 
         self.assertIs(result, fallback_df)
-        self.assertEqual(len(calls), 10)
+        self.assertEqual(len(calls), 0)
         fallback.assert_called_once()
+
+
+class TechnicalIndicatorsMathTest(unittest.TestCase):
+    def test_rsi_uses_wilder_smoothing(self):
+        closes = pd.Series([100 + (i % 3) for i in range(30)], dtype=float)
+        val = _compute_rsi(closes, 14)
+        self.assertTrue(0.0 <= val <= 100.0)
+        # flat/constant series should be 100% if no losses
+        closes2 = pd.Series([100.0] * 30)
+        self.assertEqual(_compute_rsi(closes2, 14), 100.0)
+
+    def test_atr_uses_wilder_smoothing(self):
+        closes = pd.Series(range(10, 40), dtype=float)
+        highs = closes + 1.0
+        lows = closes - 1.0
+        val = _compute_atr(highs, lows, closes, 14)
+        self.assertGreater(val, 0.0)
 
 
 if __name__ == "__main__":

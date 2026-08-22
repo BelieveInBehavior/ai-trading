@@ -85,7 +85,7 @@ def compute_day_features(frame, date_str):
         ret["dist_60d_high_pct"] = None
     if len(close) >= 20:
         sma = float(close.iloc[-20:].mean())
-        std = float(close.iloc[-20:].std(ddof=0))
+        std = float(close.iloc[-20:].std(ddof=1))
         if std > 0:
             upper = sma + 2 * std
             lower = sma - 2 * std

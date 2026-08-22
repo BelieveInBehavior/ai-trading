@@ -10,6 +10,8 @@
 """
 from __future__ import annotations
 
+import glob
+import hashlib
 import json
 from pathlib import Path
 from typing import Dict, Optional
@@ -55,6 +57,33 @@ def save_industry_map(mapping: Dict[str, str]) -> None:
         json.dumps(mapping, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+
+
+def _lookback_return_from_daily(
+    daily: pd.DataFrame,
+    trade_date: str,
+    lookback: int,
+) -> Optional[float]:
+    """从板块日线 pct_chg 序列计算 N 日累计涨跌幅（金融口径：复合收益，百分数）。
+
+    daily 需包含 date 与 pct_chg 列；pct_chg 为百分数。
+    只用 <= trade_date 的已完成交易数据，避免未来函数。
+    """
+    if daily is None or daily.empty or not {"date", "pct_chg"}.issubset(daily.columns):
+        return None
+    try:
+        dd = daily[daily["date"] <= pd.to_datetime(str(trade_date).replace("-", ""), format="%Y%m%d")]
+    except Exception:
+        return None
+    dd = dd[["date", "pct_chg"]].copy()
+    dd["pct_chg"] = pd.to_numeric(dd["pct_chg"], errors="coerce")
+    dd = dd.dropna(subset=["pct_chg"]).sort_values("date").tail(lookback)
+    if len(dd) < max(2, lookback):
+        return None
+    prod = 1.0
+    for chg in dd["pct_chg"].tolist():
+        prod *= (1.0 + float(chg) / 100.0)
+    return round((prod - 1.0) * 100.0, 6)
 
 
 def build_sector_snapshot(
@@ -134,13 +163,29 @@ def build_sector_snapshot(
                 for r in dd.tail(30).itertuples(index=False)
                 if pd.notna(r.pct_chg)
             ]
-        # stock_vs_sector_strength 由调用方填：stock_ret_3d - sector_3d，这里先给 s1 占位，避免 None
+        # 板块 N 日收益：优先复合日线，其次使用快照已有字段，避免仅 1d 导致 stock_vs 缺失。
+        sector_3d = None
+        if "板块3日涨跌幅" in row:
+            sector_3d = round(float(row["板块3日涨跌幅"]), 3)
+        if sector_3d is None and daily is not None and not daily.empty:
+            sector_3d = _lookback_return_from_daily(daily, trade_date, 3)
+        sector_5d = None
+        if daily is not None and not daily.empty:
+            sector_5d = _lookback_return_from_daily(daily, trade_date, 5)
+        sector_10d = None
+        if daily is not None and not daily.empty:
+            sector_10d = _lookback_return_from_daily(daily, trade_date, 10)
+        # stock_vs_sector_strength 由调用方填：stock_ret - sector_return，这里先给 s1 占位，避免 None
         sector_map[ts_code.upper()] = {
             "sector_1d_return": round(s1, 3),
-            "sector_3d_return": None if "板块3日涨跌幅" not in row else round(float(row["板块3日涨跌幅"]), 3),
+            "sector_3d_return": sector_3d,
+            "sector_5d_return": sector_5d,
+            "sector_10d_return": sector_10d,
             "sector_rank": rank,
             "stock_vs_sector_strength": None,
             "sector_daily_returns": sector_daily_returns,
+            "上涨家数": _float_or_none(row.get("上涨家数")) if "上涨家数" in row.index else None,
+            "下跌家数": _float_or_none(row.get("下跌家数")) if "下跌家数" in row.index else None,
         }
     if sector_map:
         logger.info("板块富化完成，映射 {} 只股票: {}", len(sector_map), list(sector_map.keys())[:5])
@@ -186,8 +231,10 @@ def enrich_factor_with_sector(factor: dict, sector_snapshot: Dict[str, Dict[str,
             factor["alpha_60d_vs_sector"] = ols60["alpha"]
             factor["r2_60d_vs_sector"] = ols60["r2"]
 
-    # 计算 个股 vs 板块 超额强度（原快照里 stock_vs_sector_strength 只是 None 占位）。
+    # 计算 个股/板块 超额强度（原快照里 stock_vs_sector_strength 只是 None 占位）。
     stock_vs_sector_factor(factor)
+    # Layer 4：金融口径 Ex-Self（板块剔除本股）
+    enrich_factor_with_ex_self(factor, sector_snapshot)
     return factor
 
 
@@ -220,8 +267,10 @@ def _compute_sector_residual(
     m = m.tail(window)
     if len(m) < max(10, int(window * 0.5)):
         return {"alpha": None, "beta": None, "residual": None, "r2": None, "n": len(m)}
-    x = m["pct_chg_sector"].to_numpy(dtype=float)
-    y = m["pct_chg_stock"].to_numpy(dtype=float)
+    # pct_chg 是“百分数”（如 -0.5 表示 -0.50%），做金融回归前先转成小数。
+    # 否则 residual = y - (alpha+beta*x) 的残差会被放大 100 倍，alpha/beta 口径也会错。
+    x = m["pct_chg_sector"].to_numpy(dtype=float) / 100.0
+    y = m["pct_chg_stock"].to_numpy(dtype=float) / 100.0
     import numpy as np
     if np.std(x) == 0 or np.std(y) == 0:
         return {"alpha": None, "beta": None, "residual": None, "r2": None, "n": len(m)}
@@ -236,12 +285,160 @@ def _compute_sector_residual(
     ss_res = np.sum(resid ** 2)
     r2 = 1.0 - ss_res / ss_tot if ss_tot != 0 else np.nan
     return {
-        "alpha": round(float(alpha), 6) if np.isfinite(alpha) else None,
+        "alpha": round(float(alpha) * 100.0, 6) if np.isfinite(alpha) else None,
         "beta": round(float(beta), 6) if np.isfinite(beta) else None,
-        "residual": round(float(resid[-1] * 100.0), 4) if np.isfinite(resid[-1]) else None,
+        "residual": round(float(resid[-1]) * 100.0, 4) if np.isfinite(resid[-1]) else None,
         "r2": round(float(r2), 6) if np.isfinite(r2) else None,
         "n": int(len(m)),
     }
+
+
+def _board_cons_cache_fd(industry_name: str, fallback_kwargs: Optional[dict] = None) -> list:
+    """读取已有本地股票板块成分缓存（akshare stock_board_industry_cons_em）。
+
+    与 akshare_cached 相同的 hash 规则：md5(str(func_kwargs).encode()).
+    返回缓存 DataFrame 列表；不存在或读取失败返回空列表。
+    """
+    frames: list = []
+    if not industry_name:
+        return frames
+    kwargs = dict(fallback_kwargs or {})
+    kwargs["symbol"] = industry_name
+    h = hashlib.md5(str(kwargs).encode()).hexdigest()
+    dirp = Path(__file__).parent / "akshare_cache" / "stock_board_industry_cons_em"
+    hits = sorted(glob.glob(str(dirp / f"{h}*.pkl"))) if dirp else []
+    for f in hits[:5]:
+        try:
+            df = pd.read_pickle(f)
+            if df is not None and not df.empty:
+                frames.append(df)
+        except Exception:
+            continue
+    return frames
+
+
+def _float_or_none(value) -> Optional[float]:
+    try:
+        f = float(value)
+        return f if f == f else None
+    except (TypeError, ValueError):
+        return None
+
+
+def compute_ex_self_sector_metrics(
+    sector_snapshot: Dict[str, Dict[str, float]],
+    stock_code: str,
+    industry_name: str,
+    stock_daily_returns: Optional[list] = None,
+    trade_date: Optional[str] = None,
+) -> Dict[str, Optional[float]]:
+    """金融口径的板块 Ex-Self 指标。
+
+    彻底剔除“个股推高板块”的污染：
+      - sector_return_ex_self_1d: 板块1D - 个股1D（近似剔除本股对板块贡献）
+      - sector_return_ex_self_5d: 板块5D - 个股5D（板块日线可用时用复合收益）
+      - sector_breadth_ex_self: (板块内上涨家数-本股是否上涨) / (板块总家数-1)
+      - sector_ex_self_status: ok / approximate / missing
+    """
+    out: Dict[str, Optional[float]] = {
+        "sector_return_ex_self_1d": None,
+        "sector_return_ex_self_5d": None,
+        "sector_breadth_ex_self": None,
+        "sector_breadth_total": None,
+        "sector_ex_self_status": "missing",
+    }
+    code = str(stock_code or "").strip().upper()
+    if not code or not industry_name:
+        return out
+    info = sector_snapshot.get(code) or sector_snapshot.get(code.split(".")[0])
+    if info is None:
+        info = sector_snapshot.get(str(industry_name).strip().upper())
+    if info is None:
+        return out
+
+    sector_1d = _float_or_none(info.get("sector_1d_return"))
+    stock_1d = None
+    if stock_daily_returns and isinstance(stock_daily_returns, list) and stock_daily_returns:
+        stock_1d = _float_or_none(stock_daily_returns[-1].get("pct_chg") if isinstance(stock_daily_returns[-1], dict) else None)
+    if sector_1d is not None and stock_1d is not None:
+        out["sector_return_ex_self_1d"] = round(sector_1d - stock_1d, 3)
+        out["sector_ex_self_status"] = "ok_1d"
+
+    # 5D ex-self: 板块复合收益 - 个股 5D（个股 5D 从 stock_daily_returns 复利，或调用方在 factor.ret_5d_pct 传入）
+    sector_5d = _float_or_none(info.get("sector_5d_return"))
+    stock_5d = None
+    if stock_daily_returns and isinstance(stock_daily_returns, list):
+        pct_seq = []
+        for item in stock_daily_returns:
+            try:
+                chg = float(item.get("pct_chg")) if isinstance(item, dict) else float(item)
+            except Exception:
+                continue
+            if chg == chg:
+                pct_seq.append(chg)
+        recent = pct_seq[-5:]
+        if len(recent) >= 5:
+            prod = 1.0
+            for chg in recent:
+                prod *= (1.0 + chg / 100.0)
+            stock_5d = (prod - 1.0) * 100.0
+    if sector_5d is not None and stock_5d is not None:
+        out["sector_return_ex_self_5d"] = round(sector_5d - stock_5d, 3)
+        out["sector_ex_self_status"] = out.get("sector_ex_self_status") or "ok_5d"
+
+    # Breadth Ex-Self
+    up_count = _float_or_none(info.get("上涨家数"))
+    down_count = _float_or_none(info.get("下跌家数"))
+    board_count = None
+    if up_count is not None and down_count is not None:
+        up_count = int(up_count); down_count = int(down_count)
+        board_count = up_count + down_count
+    else:
+        frames = _board_cons_cache_fd(industry_name)
+        if frames:
+            last = frames[-1]
+            code_col = next((c for c in ("代码", "股票代码", "ts_code") if c in last.columns), None)
+            if code_col is not None:
+                up = 0
+                for _, row in last.iterrows():
+                    chg = _float_or_none(row.get("涨跌幅"))
+                    if chg is not None and chg > 0:
+                        up += 1
+                board_count = len(last)
+                up_count = up
+    if board_count and board_count > 1:
+        stock_up = 0
+        if stock_daily_returns and isinstance(stock_daily_returns, list) and stock_daily_returns:
+            try:
+                stock_up = 1 if _float_or_none(stock_daily_returns[-1].get("pct_chg")) or 0 > 0 else 0
+            except Exception:
+                stock_up = 0
+        up_ex = int(up_count or 0) - stock_up
+        if up_ex < 0:
+            up_ex = 0
+        out["sector_breadth_ex_self"] = round(up_ex / (board_count - 1), 4)
+        out["sector_breadth_total"] = round((up_count or 0) / board_count, 4)
+        out["sector_ex_self_status"] = out.get("sector_ex_self_status") or "ok_breadth"
+    return out
+
+
+def enrich_factor_with_ex_self(factor: dict, sector_snapshot: Dict[str, Dict[str, float]]) -> dict:
+    """在 factor 上补 Ex-Self 板块强度，并把旧近似字段留在原地（避免破坏既有调用）。"""
+    if not factor:
+        return factor
+    code = str(factor.get("symbol_code") or "").strip().upper()
+    industry = str(factor.get("industry_name") or factor.get("sector_name") or "").strip()
+    metrics = compute_ex_self_sector_metrics(
+        sector_snapshot,
+        code,
+        industry,
+        stock_daily_returns=factor.get("stock_daily_returns"),
+        trade_date=factor.get("report_date"),
+    )
+    only_not_none = {k: v for k, v in metrics.items() if v is not None}
+    if only_not_none:
+        factor.update(only_not_none)
+    return factor
 
 
 def stock_vs_sector_factor(factor: dict) -> dict:
@@ -250,9 +447,17 @@ def stock_vs_sector_factor(factor: dict) -> dict:
     板块快照的 stock_vs_sector_strength 字段是 None 占位，因为构建快照时拿不到个股收益。
     个股的 ret_{lookback}d_pct / change_pct 和板块的 sector_{lookback}d_return 都在 factor 上可用时，
     这里直接相减得到“超额/跑赢板块”的强度。
+    若 sector_{n}d_return 缺失但 sector_daily_returns 存在，先由日线复合收益补齐，避免 stock_vs 常为 None。
     """
     if not factor:
         return factor
+    sector_daily = factor.get("sector_daily_returns")
+    for lookback in (1, 3, 5, 10):
+        sector_col = f"sector_{lookback}d_return"
+        if factor.get(sector_col) is None and isinstance(sector_daily, list) and sector_daily:
+            cum = _cum_return_from_sector_daily(sector_daily, lookback)
+            if cum is not None:
+                factor[sector_col] = round(cum, 3)
     for lookback in (1, 3, 5, 10):
         stock_col = "change_pct" if lookback == 1 else f"ret_{lookback}d_pct"
         sector_col = f"sector_{lookback}d_return"
@@ -267,14 +472,34 @@ def stock_vs_sector_factor(factor: dict) -> dict:
             continue
         factor[f"stock_vs_sector_{lookback}d"] = round(stock_val - sector_val, 3)
 
-    # 默认 stock_vs_sector_strength 用 5 日版本，和原语义一致。
-    f5 = factor.get("stock_vs_sector_5d")
-    if f5 is not None:
-        factor["stock_vs_sector_strength"] = f5
-    elif factor.get("stock_vs_sector_1d") is not None:
-        factor["stock_vs_sector_strength"] = factor["stock_vs_sector_1d"]
+    # 默认 stock_vs_sector_strength 用 5 日版本，和原语义一致；缺失时依次退到 3d / 1d。
+    for lookback in (5, 3, 10, 1):
+        key = f"stock_vs_sector_{lookback}d"
+        if factor.get(key) is not None:
+            factor["stock_vs_sector_strength"] = factor[key]
+            break
     return factor
 
+
+def _cum_return_from_sector_daily(sector_daily: list, lookback: int) -> Optional[float]:
+    """按 sector_daily_returns 最近 N 日 pct_chg 复合累计收益（百分数）。"""
+    if not sector_daily or lookback <= 0:
+        return None
+    rows = []
+    for item in sector_daily:
+        try:
+            chg = float(item.get("pct_chg"))
+        except (TypeError, ValueError, AttributeError):
+            continue
+        if chg == chg:
+            rows.append(chg)
+    recent = rows[-lookback:]
+    if len(recent) < max(2, lookback):
+        return None
+    prod = 1.0
+    for chg in recent:
+        prod *= (1.0 + chg / 100.0)
+    return round((prod - 1.0) * 100.0, 6)
 
 
 def build_sector_snapshot_from_factor_store(
@@ -413,8 +638,8 @@ def enrich_factor_with_sector_by_name(
     # 计算 个股 vs 板块 超额强度（原快照里 stock_vs_sector_strength 只是 None 占位）。
     # 板块快照只有板块数据，个股收益在 factor 里，所以在这里补算。
     stock_vs_sector_factor(factor)
+    enrich_factor_with_ex_self(factor, snapshot_by_industry)
     return factor
-
 
 
 def build_code_sector_snapshot(
@@ -441,7 +666,6 @@ def build_code_sector_snapshot(
         if "." in normalized:
             code_snap[normalized.split(".")[0]] = info
     return code_snap
-
 
 if __name__ == "__main__":
     mapping = load_industry_map()

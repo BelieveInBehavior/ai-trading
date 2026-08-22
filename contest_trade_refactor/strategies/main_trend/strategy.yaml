@@ -40,6 +40,11 @@ trend:
   min_s2_volume: 0.9
   require_s2_ma20_gt_ma60: true  # MA5>MA20>MA60 需要时由 hard filter / quality 保证
   allow_high_atr_new_high: true
+  # S2 板块共振：不强则降级为 S1/S3/S0，不硬拒，避免板块数据缺失误杀
+  s2_sector_downgrade: true
+  s2_sector_missing_lenient: true
+  s2_sector_min_1d: 0.0          # 板块当日不弱；若 5D仍正，1D可以放宽
+  s2_sector_rank_top: 0.4        # 板块 rank 前 40%
   # --- S3: 中继 ---
   s3_max_volume_for_consolidation: 1.0
   # --- S4: 末端（多维趋势质量下降，不预测顶） ---
@@ -65,28 +70,49 @@ quality:
   multiplier_A: 1.0
   multiplier_B: 0.75
   multiplier_C: 0.5
+  # Layer 3 因子族内去重（Correlation Matrix / VIF / Rank IC 报表）
+  family_corr_method: spearman
+  family_corr_threshold: 0.85
+  family_vif_threshold: 5.0
+  family_enabled: true
 
 sector:
   min_sector_score: 45
   switch_sector_data_missing: true
   require_ex_self: true
+  # Layer 4：赔付 Ex-Self 板块强度（剔除本股）
+  ex_self_return_enabled: true
+  ex_self_breadth_enabled: true
 
 catalyst:
   enabled: true
   min_freshness: 0.0
   require_company_specific: false
   require_positive_reaction: false
+  # Catalyst × Price Reaction：预期收益/实际收益、gap、日内结构、可信度动态计分；
+  # 不做“收阴=失效”这类粗糙规则。
+  price_reaction_expected_mult: 5.0
+  price_reaction_cap: 25.0
+  credibility_cap: 15.0
+  earnings_impact_cap: 10.0
+  freshness_cap: 20.0
 
 execution:
   min_confirm_score: 60
   allow_gap_strong_trend: true
   require_vwap_hold: true
   require_order_flow: true
+  use_tencent_realtime: true
+  prefer_realtime: auto          # tencent / manual / auto（腾讯失败自动走 manual_realtime.json）
+  manual_file: config/manual_realtime.json
+  two_phase: true                # 9:25 Auction Signal -> 9:30+ 实时确认
 
 risk:
   risk_budget_pct: 1.0
   stop_atr_mult: 2.5
   max_position_pct: 50.0
+  alloc_limit_pct: 100.0
+  liquidity_cap_pct: 30.0
 
 holding:
   horizon_days: 10

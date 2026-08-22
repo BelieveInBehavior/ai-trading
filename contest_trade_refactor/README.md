@@ -508,6 +508,7 @@ FAIL: 建议只观察，不构成 buy
 
 - 位置：`strategies/main_trend/`。
 - **完全独立**：有自己的规则引擎 `engine.py`，不依赖旧 `main_loop` / Research Agent 链路。
+- Layer 6/7：T+1 两阶段执行（腾讯实时→手动输入兜底）+ RiskBudget 仓位 + HOLD/ADD/DECAY/REDUCE/EXIT 状态机。
 - 对齐最终架构：DataQuality / MarketRegime / TrendState / TrendQuality / SectorState / CatalystState / T+1 Execution / RiskBudget / PositionStateMachine。
 - 状态机不是总分：T日候选资格 → T+1执行确认 → 持仓期 MA20+ATR 双轨退出。
 - 独立运行：

@@ -110,8 +110,8 @@ def _calc_rsi(close: pd.Series, period: int = 14) -> float:
     delta = close.diff()
     gain = delta.where(delta > 0, 0.0)
     loss = (-delta).where(delta < 0, 0.0)
-    avg_gain = gain.rolling(period).mean().iloc[-1]
-    avg_loss = loss.rolling(period).mean().iloc[-1]
+    avg_gain = gain.ewm(alpha=1.0 / period, adjust=False, min_periods=period).mean().iloc[-1]
+    avg_loss = loss.ewm(alpha=1.0 / period, adjust=False, min_periods=period).mean().iloc[-1]
     if avg_loss == 0:
         return 100.0
     return float(100.0 - 100.0 / (1.0 + avg_gain / avg_loss))
@@ -122,26 +122,33 @@ def _calc_atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 1
         return float("nan")
     prev_close = close.shift(1)
     tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1).max(axis=1)
-    return float(tr.rolling(period).mean().iloc[-1])
+    return float(tr.ewm(alpha=1.0 / period, adjust=False, min_periods=period).mean().iloc[-1])
 
 
 def _calc_vwap(frame: pd.DataFrame, window: int = 20) -> Optional[float]:
-    """Typical-price volume-weighted average price over recent N sessions.
+    """VWAP（金融口径）：Σ(typical * amount) / Σ(amount)。
 
-    We intentionally do NOT use amount/volume because A-share volume is often in
-    lots and the amount/volume ratio is not reliably a share price across providers.
+    精确 VWAP 应使用成交额/成交量。因为 A 股成交量单位常为手，而成交额是金额，
+    直接用 amount/volume 可能因单位口径不同产生错误，因此我们在“成交额存在且有效”
+    时才用金额加权；否则退化为 typical*volume 加权；两者都没有时返回 None，
+    不用 close.mean() 冒充 VWAP。
     """
     recent = frame.tail(window)
     if len(recent) < 5:
         return None
+    tp = (recent["high"].astype(float) + recent["low"].astype(float) + recent["close"].astype(float)) / 3.0
+    price_ok = tp.notna() & (tp > 0)
+    if "amount" in recent.columns and recent["amount"].notna().sum() >= 5:
+        amt = recent["amount"].astype(float)
+        mask = price_ok & (amt > 0)
+        if mask.sum() >= 5:
+            return float((tp[mask] * amt[mask]).sum() / amt[mask].sum())
     if "volume" in recent.columns and recent["volume"].notna().sum() >= 5:
         vol = recent["volume"].astype(float)
-        tp = (recent["high"] + recent["low"] + recent["close"]) / 3.0
-        mask = (vol > 0) & (tp > 0)
+        mask = price_ok & (vol > 0)
         if mask.sum() >= 5:
-            price_vwap = float((tp[mask] * vol[mask]).sum() / vol[mask].sum())
-            return price_vwap
-    return float(recent["close"].mean())
+            return float((tp[mask] * vol[mask]).sum() / vol[mask].sum())
+    return None
 
 
 def _swing_points(hist: pd.DataFrame, lookback: int = 40, left: int = 2, right: int = 2) -> Dict[str, List[float]]:

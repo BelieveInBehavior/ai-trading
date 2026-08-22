@@ -7,7 +7,7 @@ from agents.signal_tier_classifier import SignalTierClassifier
 
 
 class TestSignalTierClassifier(unittest.TestCase):
-    def _signal(self, score=75, edge=1.0, quality=80, downside=4, passed=True):
+    def _signal(self, score=85, edge=1.0, quality=80, downside=4, passed=True):
         return {
             "symbol_code": "600001.SH",
             "buy_score": score,
