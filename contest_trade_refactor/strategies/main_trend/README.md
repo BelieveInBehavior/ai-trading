@@ -19,10 +19,19 @@ Engine 是确定性引擎，决定是否买、买多少、何时止损/退出。
 
 ## 运行
 ```bash
-.venv/bin/python scripts/main_trend_backtest.py --date 2026-08-18 --symbols-limit 200
+# T日：只出候选 WAIT，不产生 BUY
+.venv/bin/python scripts/main_trend_backtest.py --date 2026-08-21 --phase tday
+# 从已有 result.json 重建 T 日表（不必重扫）
+.venv/bin/python scripts/main_trend_tday_report.py --result agents_workspace_main_trend/20260821/result.json
+# T+1：手工 6 字段 Execution
+.venv/bin/python scripts/main_trend_t1_execute.py --tday agents_workspace_main_trend/20260821/tday_pool.json --manual config/manual_execution.example.json
 .venv/bin/python scripts/main_trend_backtest.py --start 2026-06-01 --end 2026-08-18
 .venv/bin/python scripts/strategy_backtest.py --strategy main_trend --run-replay
 ```
+
+T日负责发现机会（Hard Filter / Trend / Sector / Catalyst → Candidate Pool）。
+T+1 Execution 负责确认机会；Risk / Portfolio / Position 负责买多少；Exit 负责何时不再相信。
+T日价格是 Reference Price，不是买入价。默认废除固定 ±6%，改 Initial Stop + Trailing Stop + MA20。
 
 ## Layer 1 Market Regime（A/B/C/D 七维输入）
 

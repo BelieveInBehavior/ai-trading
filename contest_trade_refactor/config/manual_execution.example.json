@@ -1,0 +1,26 @@
+{
+  "trade_date": "20260824",
+  "index_change_pct": 1.1,
+  "names": {
+    "600988": {
+      "symbol_name": "赤峰黄金",
+      "open": 50.0,
+      "price_0935": 50.6,
+      "prev_close": 49.43,
+      "auction_amount": 120000000,
+      "sector_change_pct": 2.8,
+      "bid_support": "强",
+      "vwap": 50.2
+    },
+    "600547": {
+      "symbol_name": "山东黄金",
+      "open": 38.8,
+      "price_0935": 37.9,
+      "prev_close": 37.05,
+      "auction_amount": 20000000,
+      "sector_change_pct": 2.8,
+      "bid_support": "弱",
+      "vwap": 38.5
+    }
+  }
+}

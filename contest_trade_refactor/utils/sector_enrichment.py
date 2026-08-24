@@ -86,6 +86,220 @@ def _lookback_return_from_daily(
     return round((prod - 1.0) * 100.0, 6)
 
 
+def _normalize_board_key(name: str) -> str:
+    return str(name or "").strip().upper()
+
+
+# 申万/Tushare 行业名 -> 东财 factor_store 二级板块名（按优先级尝试）
+INDUSTRY_BOARD_ALIASES: Dict[str, list[str]] = {
+    "医药生物": ["化学制药", "生物制品", "医疗器械", "医疗服务", "中药", "医药商业"],
+    "有色金属": [],  # 太宽：优先简称关键词(黄金->贵金属)，否则工业金属
+    "交通运输": ["港口航运", "机场航运", "公路铁路运输", "物流"],
+    "煤炭": ["煤炭开采加工"],
+    "煤炭开采": ["煤炭开采加工"],
+    "焦煤": ["煤炭开采加工"],
+    "石油石化": ["石油加工贸易", "油气开采及服务"],
+    "其他石化": ["石油加工贸易", "化学制品"],
+    "炼化及贸易": ["石油加工贸易", "贸易"],
+    "基础化工": ["化学制品", "化学原料", "化学纤维", "农化制品", "塑料制品"],
+    "塑料": ["塑料制品"],
+    "电力设备": ["电网设备", "光伏设备", "电池", "电机", "风电设备", "其他电源设备"],
+    "机械设备": ["通用设备", "专用设备", "自动化设备", "工程机械", "轨交设备"],
+    "电子": ["半导体", "消费电子", "光学光电子", "元件", "其他电子"],
+    "汽车": ["汽车零部件", "汽车整车", "汽车服务及其他"],
+    "计算机": ["计算机设备", "软件开发", "IT服务"],
+    "通信": ["通信设备", "通信服务"],
+    "国防军工": ["军工装备", "军工电子"],
+    "环保": ["环保设备", "环境治理"],
+    "社会服务": ["其他社会服务", "教育", "旅游及酒店"],
+    "轻工制造": ["包装印刷", "家居用品", "造纸"],
+    "食品饮料": ["食品加工制造", "饮料制造", "白酒", "农产品加工"],
+    "公用事业": ["电力", "燃气"],
+    "建筑材料": ["建筑材料", "非金属材料"],
+    "建筑装饰": ["建筑装饰"],
+    "房地产": ["房地产"],
+    "商贸零售": ["零售"],
+    "纺织服饰": ["服装家纺", "纺织制造"],
+    "传媒": ["文化传媒", "影视院线", "游戏"],
+    "银行": ["银行"],
+    "非银金融": ["证券", "保险", "多元金融"],
+    "美容护理": ["美容护理"],
+    "家用电器": ["白色家电", "黑色家电", "小家电", "厨卫电器"],
+    "个护小家电": ["小家电"],
+    "钢铁": ["钢铁"],
+    "综合": ["综合"],
+    "农林牧渔": ["养殖业", "种植业与林业", "农产品加工"],
+    "机械设备": ["通用设备", "专用设备", "自动化设备"],
+    # 三级/细分
+    "医疗设备": ["医疗器械"],
+    "体外诊断": ["医疗器械"],
+    "诊断服务": ["医疗服务"],
+    "电商服务": ["互联网电商"],
+    "铅锌": ["小金属", "工业金属"],
+    "输变电设备": ["电网设备"],
+    "制冷空调设备": ["白色家电"],
+    "其他自动化设备": ["自动化设备"],
+    "其他电源设备": ["其他电源设备"],
+    "端到端供应链服务": ["物流"],
+    "农商行": ["银行"],
+    "股份制银行": ["银行"],
+    "肉鸡养殖": ["养殖业"],
+    "棉纺": ["纺织制造"],
+    "医院": ["医疗服务"],
+    "娱乐用品": ["家居用品"],
+    "钟表珠宝": ["零售"],
+    "其他生物制品": ["生物制品", "医药生物"],
+    "其他化学制药": ["化学制药", "医药生物"],
+    "其他医疗器械": ["医疗器械", "医药生物"],
+    "其他医疗服务": ["医疗服务", "医药生物"],
+    "其他电子": ["其他电子"],
+    "其他社会服务": ["其他社会服务"],
+    "其他电源设备Ⅲ": ["其他电源设备"],
+    "数字芯片设计": ["半导体"],
+    "模拟芯片设计": ["半导体"],
+    "航空装备": ["军工装备"],
+    "电池化学品": ["电池"],
+    "汽车电子电气系统": ["汽车零部件"],
+    "车身附件及饰件": ["汽车零部件"],
+    "非运动服装": ["服装家纺"],
+    "横向通用软件": ["软件开发"],
+    "住宅开发": ["房地产"],
+}
+
+
+def _load_symbol_name_map() -> Dict[str, str]:
+    """ts_code / 6-digit code -> 股票简称。"""
+    mapping: Dict[str, str] = {}
+    basic = CACHE_DIR / "stock_basic_cache.json"
+    if not basic.exists():
+        return mapping
+    try:
+        rows = json.loads(basic.read_text(encoding="utf-8"))
+    except Exception:
+        return mapping
+    if not isinstance(rows, list):
+        return mapping
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        code = str(row.get("ts_code") or "").strip().upper()
+        name = str(row.get("name") or "").strip()
+        if not code or not name:
+            continue
+        mapping[code] = name
+        if "." in code:
+            mapping[code.split(".")[0]] = name
+    return mapping
+
+
+def _board_suffix_variants(industry: str, available: Dict[str, str]) -> list[str]:
+    """常见行业名 -> 东财板块名后缀变体。"""
+    name = str(industry or "").strip()
+    if not name:
+        return []
+    variants = []
+    for suffix in ("制品", "加工", "设备", "服务", "制造", "加工贸易", "开采加工"):
+        cand = name if name.endswith(suffix) else f"{name}{suffix}"
+        cu = _normalize_board_key(cand)
+        if cu in available:
+            variants.append(cu)
+    return variants
+
+
+def _symbol_keyword_board(symbol_name: str, available: Dict[str, str]) -> str | None:
+    """根据股票简称关键词推断东财板块。"""
+    name = str(symbol_name or "").strip()
+    if not name:
+        return None
+    rules = [
+        (("黄金", "金矿", "招金", "山金", "西部", "赤峰", "恒邦", "中金", "山东黄"), "贵金属"),
+        (("航运", "海控", "轮船", "海特", "中谷", "锦江", "盛航", "兴通", "招商轮"), "港口航运"),
+        (("煤", "焦煤", "煤矿", "神华", "平煤", "华阳", "淮北", "恒源", "山西焦"), "煤炭开采加工"),
+        (("光伏", "太阳能", "金刚"), "光伏设备"),
+        (("银行", "农商", "建行", "工行", "农行", "中行", "邮储", "中信", "成都", "齐鲁", "渝农", "沪农"), "银行"),
+        (("石油", "海油", "石化", "桐昆", "恒力"), "石油加工贸易"),
+        (("物流", "畅联", "供应链"), "物流"),
+        (("眼科", "光正"), "医疗服务"),
+        (("鸡", "民和"), "养殖业"),
+        (("化工", "赤天化", "金牛"), "化学制品"),
+        (("药", "制药", "生物", "康希诺", "沃森", "北陆", "双鹭", "神奇", "永安", "金达威", "键凯", "智云", "蓝盾", "华大", "赛科", "金域", "贝瑞", "采纳", "中关村"), None),
+    ]
+    for keywords, board in rules:
+        if any(kw in name for kw in keywords):
+            if board is None:
+                return None
+            bu = _normalize_board_key(board)
+            if bu in available:
+                return bu
+    return None
+
+
+def resolve_sector_board_name(
+    industry: str,
+    snapshot_by_industry: Dict[str, Dict],
+    *,
+    symbol_name: str | None = None,
+) -> str | None:
+    """将 Tushare/申万 行业名映射到 factor_store 可用的东财二级板块名。"""
+    if not industry or not snapshot_by_industry:
+        return None
+
+    available = {_normalize_board_key(k): k for k in snapshot_by_industry.keys()}
+    name = _normalize_board_key(industry)
+    if name in available:
+        return name
+
+    candidates: list[str] = []
+
+    # 三级「其他X」→ 二级「X」
+    if name.startswith("其他") and len(name) > 2:
+        candidates.append(name[2:].strip())
+
+    # 去掉罗马数字/字母级别后缀
+    for suffix in ("Ⅲ", "Ⅱ", "III", "II"):
+        if name.endswith(suffix):
+            candidates.append(name[: -len(suffix)].strip())
+
+    # 显式别名表
+    for key in (name, str(industry).strip()):
+        candidates.extend(INDUSTRY_BOARD_ALIASES.get(key, []))
+        candidates.extend(INDUSTRY_BOARD_ALIASES.get(_normalize_board_key(key), []))
+
+    candidates.extend(_board_suffix_variants(str(industry).strip(), available))
+
+    # 后缀匹配：行业名以板块名结尾
+    for key in sorted(available.keys(), key=len, reverse=True):
+        if len(key) >= 2 and (name.endswith(key) or key.endswith(name)):
+            candidates.append(key)
+
+    # 包含匹配：板块名与行业名互相包含
+    for key in sorted(available.keys(), key=len, reverse=True):
+        if len(key) >= 2 and (key in name or name in key):
+            candidates.append(key)
+
+    seen: set[str] = set()
+    for cand in candidates:
+        cu = _normalize_board_key(cand)
+        if not cu or cu in seen:
+            continue
+        seen.add(cu)
+        if cu in available:
+            return cu
+
+    # 宽泛申万一级（如「有色金属」）再用简称关键词兜底
+    if name == "有色金属":
+        hinted = _symbol_keyword_board(symbol_name or "", available)
+        if hinted:
+            return hinted
+        if "工业金属" in available:
+            return "工业金属"
+
+    hinted = _symbol_keyword_board(symbol_name or "", available)
+    if hinted:
+        return hinted
+    return None
+
+
 def build_sector_snapshot(
     trade_date: Optional[str] = None,
     *,
@@ -114,7 +328,7 @@ def build_sector_snapshot(
     if board_df is None or board_df.empty:
         return sector_map
 
-    industry_map = industry_map if industry_map is not None else _load_industry_map()
+    industry_map = industry_map if industry_map is not None else load_industry_map()
     board_df = board_df.copy()
 
     name_col = "板块名称" if "板块名称" in board_df.columns else "名称"
@@ -144,10 +358,19 @@ def build_sector_snapshot(
         except Exception as exc:
             logger.warning("板块日线拉取失败，退化到区间收益: {}", exc)
 
+    board_name_index = {
+        str(n).strip().upper(): str(n).strip()
+        for n in board_df[name_col].astype(str)
+        if str(n).strip()
+    }
+    board_snap_stub = {k: {} for k in board_name_index.keys()}
+
     for ts_code, industry in code_to_industry.items():
         if not industry:
             continue
-        row = board_df[board_df[name_col].astype(str).str.strip() == str(industry).strip()]
+        resolved = resolve_sector_board_name(industry, board_snap_stub) or str(industry).strip().upper()
+        board_label = board_name_index.get(resolved, str(industry).strip())
+        row = board_df[board_df[name_col].astype(str).str.strip() == board_label]
         if row.empty:
             # 概念/板块名称可能有 alias，不强制
             continue
@@ -627,10 +850,17 @@ def enrich_factor_with_sector_by_name(
 ) -> dict:
     if not factor or not snapshot_by_industry or not stock_industry:
         return factor
-    info = snapshot_by_industry.get(stock_industry.strip().upper())
+    board_name = resolve_sector_board_name(
+        stock_industry, snapshot_by_industry, symbol_name=factor.get("symbol_name"),
+    )
+    if not board_name:
+        return factor
+    info = snapshot_by_industry.get(board_name)
     if not info:
         return factor
     factor = dict(factor)
+    factor["sector_name"] = board_name
+    factor["industry_name"] = str(stock_industry).strip()
     for k, v in info.items():
         if v is not None:
             factor[k] = v
@@ -655,10 +885,21 @@ def build_code_sector_snapshot(
             factor_dir=factor_dir, trade_date=trade_date,
         )
     code_snap = {}
+    name_map = _load_symbol_name_map()
     for ts_code, industry in industry_map.items():
-        info = snapshot_by_industry.get(str(industry).strip().upper())
-        if not info:
+        normalized = str(ts_code).strip().upper()
+        symbol_name = name_map.get(normalized) or name_map.get(normalized.split(".")[0] if "." in normalized else normalized)
+        board_name = resolve_sector_board_name(
+            industry, snapshot_by_industry, symbol_name=symbol_name,
+        )
+        if not board_name:
             continue
+        raw_info = snapshot_by_industry.get(board_name)
+        if not raw_info:
+            continue
+        info = dict(raw_info)
+        info["sector_name"] = board_name
+        info["industry_name"] = str(industry).strip()
         normalized = str(ts_code).strip().upper()
         code_snap[normalized] = info
         # Also index by the bare 6-digit code so technical factors with

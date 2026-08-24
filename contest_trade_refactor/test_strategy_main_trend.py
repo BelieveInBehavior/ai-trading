@@ -105,8 +105,9 @@ class MainTrendPackageTest(unittest.TestCase):
 
     def test_exit_stop_loss_and_add(self):
         eng = MainTrendEngine(MainTrendConfig.from_yaml())
-        h = Holding("600001.SH", "测试", "20260818", 10.0, current_price=9.1, highest_price=10.5, holding_days=3)
-        self.assertEqual(eng.evaluate_exits([h])[0].action, "sell")
+        # 默认废除固定 ±6%；用 MA20 生命线触发 EXIT
+        h = Holding("600001.SH", "测试", "20260818", 10.0, current_price=9.1, highest_price=10.5, holding_days=3, ma20=9.8)
+        self.assertEqual(eng.evaluate_exits([h])[0].action, "exit")
         h2 = Holding("600001.SH", "测试", "20260818", 10.0, current_price=11.0, highest_price=11.2, holding_days=2)
         self.assertEqual(eng.evaluate_exits([h2])[0].state, "ADD")
 

@@ -1,0 +1,566 @@
+{
+  "trade_date": "20260824",
+  "index_change_pct": -0.7,
+  "names": {
+    "601069": {
+      "symbol_name": "西部黄金",
+      "open": 32.19,
+      "price_0935": 31.89,
+      "prev_close": 32.07,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 31.7555
+    },
+    "000975": {
+      "symbol_name": "山金国际",
+      "open": 28.85,
+      "price_0935": 28.6,
+      "prev_close": 28.58,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 28.3676
+    },
+    "600489": {
+      "symbol_name": "中金黄金",
+      "open": 27.59,
+      "price_0935": 27.26,
+      "prev_close": 27.18,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 27.1071
+    },
+    "002237": {
+      "symbol_name": "恒邦股份",
+      "open": 15.75,
+      "price_0935": 15.18,
+      "prev_close": 15.45,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 15.3112
+    },
+    "000506": {
+      "symbol_name": "招金黄金",
+      "open": 21.03,
+      "price_0935": 21.61,
+      "prev_close": 20.77,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 21.0295
+    },
+    "600988": {
+      "symbol_name": "赤峰黄金",
+      "open": 49.6,
+      "price_0935": 50.13,
+      "prev_close": 49.43,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 48.7272
+    },
+    "600547": {
+      "symbol_name": "XD山东黄",
+      "open": 37.8,
+      "price_0935": 37.0,
+      "prev_close": 37.05,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 36.6486
+    },
+    "000301": {
+      "symbol_name": "东方盛虹",
+      "open": 13.67,
+      "price_0935": 13.55,
+      "prev_close": 13.66,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 13.615
+    },
+    "300139": {
+      "symbol_name": "晓程科技",
+      "open": 53.68,
+      "price_0935": 57.3,
+      "prev_close": 53.68,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 54.9152
+    },
+    "000703": {
+      "symbol_name": "恒逸石化",
+      "open": 20.59,
+      "price_0935": 19.76,
+      "prev_close": 20.8,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 20.2189
+    },
+    "605158": {
+      "symbol_name": "华达新材",
+      "open": 7.49,
+      "price_0935": 7.63,
+      "prev_close": 7.53,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 7.6097
+    },
+    "601233": {
+      "symbol_name": "桐昆股份",
+      "open": 24.87,
+      "price_0935": 25.05,
+      "prev_close": 24.71,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 25.2704
+    },
+    "603132": {
+      "symbol_name": "XD金徽股",
+      "open": 19.57,
+      "price_0935": 18.86,
+      "prev_close": 18.94,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 19.1452
+    },
+    "600971": {
+      "symbol_name": "恒源煤电",
+      "open": 8.76,
+      "price_0935": 8.65,
+      "prev_close": 8.7,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 8.675
+    },
+    "601872": {
+      "symbol_name": "招商轮船",
+      "open": 19.76,
+      "price_0935": 19.4,
+      "prev_close": 19.78,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 19.6049
+    },
+    "603565": {
+      "symbol_name": "中谷物流",
+      "open": 12.47,
+      "price_0935": 13.31,
+      "prev_close": 12.29,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 13.1401
+    },
+    "300862": {
+      "symbol_name": "蓝盾光电",
+      "open": 55.34,
+      "price_0935": 54.74,
+      "prev_close": 56.5,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 55.4892
+    },
+    "603580": {
+      "symbol_name": "艾艾精工",
+      "open": 80.21,
+      "price_0935": 72.7,
+      "prev_close": 80.78,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 75.52
+    },
+    "300097": {
+      "symbol_name": "智云股份",
+      "open": 10.58,
+      "price_0935": 9.55,
+      "prev_close": 10.6,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 9.8714
+    },
+    "600985": {
+      "symbol_name": "淮北矿业",
+      "open": 18.29,
+      "price_0935": 18.22,
+      "prev_close": 18.03,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 18.087
+    },
+    "000983": {
+      "symbol_name": "山西焦煤",
+      "open": 7.48,
+      "price_0935": 7.46,
+      "prev_close": 7.32,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 7.4613
+    },
+    "301516": {
+      "symbol_name": "中远通",
+      "open": 24.11,
+      "price_0935": 24.0,
+      "prev_close": 24.22,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 23.9716
+    },
+    "600346": {
+      "symbol_name": "恒力石化",
+      "open": 18.8,
+      "price_0935": 18.91,
+      "prev_close": 18.87,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 18.9645
+    },
+    "002493": {
+      "symbol_name": "荣盛石化",
+      "open": 13.71,
+      "price_0935": 13.61,
+      "prev_close": 13.76,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 13.662
+    },
+    "600583": {
+      "symbol_name": "海油工程",
+      "open": 6.0,
+      "price_0935": 6.06,
+      "prev_close": 6.12,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 6.034
+    },
+    "688037": {
+      "symbol_name": "芯源微",
+      "open": 369.0,
+      "price_0935": 369.09,
+      "prev_close": 366.5,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 370.443
+    },
+    "001205": {
+      "symbol_name": "盛航股份",
+      "open": 14.44,
+      "price_0935": 14.53,
+      "prev_close": 14.47,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 14.5129
+    },
+    "601088": {
+      "symbol_name": "中国神华",
+      "open": 46.38,
+      "price_0935": 46.92,
+      "prev_close": 46.41,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 46.6258
+    },
+    "300345": {
+      "symbol_name": "华民股份",
+      "open": 9.79,
+      "price_0935": 9.69,
+      "prev_close": 9.37,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 9.7741
+    },
+    "600348": {
+      "symbol_name": "华阳股份",
+      "open": 9.04,
+      "price_0935": 9.04,
+      "prev_close": 8.96,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 9.0331
+    },
+    "601666": {
+      "symbol_name": "平煤股份",
+      "open": 9.85,
+      "price_0935": 9.71,
+      "prev_close": 9.61,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 9.803
+    },
+    "002626": {
+      "symbol_name": "金达威",
+      "open": 16.84,
+      "price_0935": 16.66,
+      "prev_close": 16.63,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 16.813
+    },
+    "601083": {
+      "symbol_name": "锦江航运",
+      "open": 11.98,
+      "price_0935": 12.45,
+      "prev_close": 11.92,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 12.2433
+    },
+    "601665": {
+      "symbol_name": "齐鲁银行",
+      "open": 6.51,
+      "price_0935": 6.54,
+      "prev_close": 6.52,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 6.5205
+    },
+    "603209": {
+      "symbol_name": "兴通股份",
+      "open": 14.42,
+      "price_0935": 14.51,
+      "prev_close": 14.42,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 14.4678
+    },
+    "601886": {
+      "symbol_name": "江河集团",
+      "open": 13.14,
+      "price_0935": 13.51,
+      "prev_close": 13.09,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 13.4147
+    },
+    "688793": {
+      "symbol_name": "倍轻松",
+      "open": 21.29,
+      "price_0935": 20.1,
+      "prev_close": 21.51,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 20.6438
+    },
+    "002539": {
+      "symbol_name": "云图控股",
+      "open": 12.79,
+      "price_0935": 12.92,
+      "prev_close": 12.85,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 12.9554
+    },
+    "601077": {
+      "symbol_name": "渝农商行",
+      "open": 6.78,
+      "price_0935": 6.93,
+      "prev_close": 6.81,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 6.9052
+    },
+    "601919": {
+      "symbol_name": "中远海控",
+      "open": 17.07,
+      "price_0935": 17.28,
+      "prev_close": 17.01,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 17.2206
+    },
+    "601838": {
+      "symbol_name": "成都银行",
+      "open": 18.61,
+      "price_0935": 18.78,
+      "prev_close": 18.65,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 18.7206
+    },
+    "600379": {
+      "symbol_name": "宝光股份",
+      "open": 15.62,
+      "price_0935": 14.44,
+      "prev_close": 15.52,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 14.9427
+    },
+    "300192": {
+      "symbol_name": "科德教育",
+      "open": 16.43,
+      "price_0935": 17.31,
+      "prev_close": 15.96,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 17.2801
+    },
+    "301335": {
+      "symbol_name": "天元宠物",
+      "open": 24.58,
+      "price_0935": 24.45,
+      "prev_close": 24.55,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 24.6088
+    },
+    "688137": {
+      "symbol_name": "近岸蛋白",
+      "open": 77.75,
+      "price_0935": 76.8,
+      "prev_close": 80.99,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 76.9785
+    },
+    "301122": {
+      "symbol_name": "采纳股份",
+      "open": 39.75,
+      "price_0935": 38.31,
+      "prev_close": 39.5,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 39.2054
+    },
+    "002038": {
+      "symbol_name": "双鹭药业",
+      "open": 6.93,
+      "price_0935": 6.49,
+      "prev_close": 7.08,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 6.7732
+    },
+    "002524": {
+      "symbol_name": "光正眼科",
+      "open": 4.03,
+      "price_0935": 3.92,
+      "prev_close": 4.03,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 4.0212
+    },
+    "600613": {
+      "symbol_name": "神奇制药",
+      "open": 9.32,
+      "price_0935": 9.9,
+      "prev_close": 9.0,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 9.5787
+    },
+    "688356": {
+      "symbol_name": "键凯科技",
+      "open": 116.32,
+      "price_0935": 126.11,
+      "prev_close": 107.34,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 124.0388
+    },
+    "688114": {
+      "symbol_name": "华大智造",
+      "open": 74.97,
+      "price_0935": 71.95,
+      "prev_close": 74.79,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 73.635
+    },
+    "002234": {
+      "symbol_name": "民和股份",
+      "open": 7.91,
+      "price_0935": 7.85,
+      "prev_close": 7.94,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 7.9293
+    },
+    "300016": {
+      "symbol_name": "北陆药业",
+      "open": 10.3,
+      "price_0935": 9.73,
+      "prev_close": 10.44,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 10.3011
+    },
+    "300142": {
+      "symbol_name": "沃森生物",
+      "open": 16.17,
+      "price_0935": 15.41,
+      "prev_close": 16.1,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 15.9483
+    },
+    "000931": {
+      "symbol_name": "中 关 村",
+      "open": 5.6,
+      "price_0935": 5.6,
+      "prev_close": 5.09,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "弱",
+      "vwap": 5.6
+    },
+    "688185": {
+      "symbol_name": "康希诺",
+      "open": 77.0,
+      "price_0935": 78.7,
+      "prev_close": 77.32,
+      "auction_amount": null,
+      "sector_change_pct": null,
+      "bid_support": "强",
+      "vwap": 77.9288
+    }
+  }
+}

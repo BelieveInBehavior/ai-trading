@@ -23,8 +23,11 @@
   37: 成交额(万)
   38: 换手率
   39: 市盈率
-  45: 量比
-  46: 均价（当日 VWAP）
+  45: （扩展字段，非量比/均价，勿直接当 VWAP）
+  46: （扩展字段，非 VWAP）
+  49: 量比
+  51: 均价（当日 VWAP）
+  35: 可选 ``price/volume/amount_yuan`` 复合字段，可反推 VWAP
 """
 from __future__ import annotations
 
@@ -64,6 +67,59 @@ def _as_float(v: Any, default: Optional[float] = None) -> Optional[float]:
         return default
 
 
+def _is_plausible_vwap(vwap: Optional[float], price: Optional[float]) -> bool:
+    if vwap is None or vwap <= 0:
+        return False
+    if price is None or price <= 0:
+        return vwap > 0
+    return 0.5 * price <= vwap <= 2.0 * price
+
+
+def _resolve_tencent_vwap(
+    parts: list[str],
+    *,
+    price: Optional[float],
+    amount_wan: Optional[float],
+    volume: Optional[float],
+) -> Optional[float]:
+    """从腾讯 qt 字段中解析当日均价/VWAP。
+
+    实测 field[46] 并非 VWAP；可靠来源依次为：
+    1) field[35] ``price/volume/amount_yuan``
+    2) field[51] 均价
+    3) amount_wan / volume（手或股两种口径）
+    4) field[46] 仅在其与现价同量级时采用（兼容旧测试数据）
+    """
+    candidates: list[float] = []
+
+    if len(parts) > 35 and parts[35] and "/" in parts[35]:
+        seg = [s.strip() for s in str(parts[35]).split("/") if s.strip()]
+        if len(seg) >= 3:
+            amt = _as_float(seg[2])
+            vol = _as_float(seg[1])
+            if amt and vol and vol > 0:
+                candidates.extend([amt / vol, amt / (vol * 100.0)])
+
+    if len(parts) > 51:
+        v51 = _as_float(parts[51])
+        if v51 is not None:
+            candidates.append(v51)
+
+    if amount_wan and volume and volume > 0:
+        candidates.append(amount_wan * 1e4 / (volume * 100.0))
+        candidates.append(amount_wan * 1e4 / volume)
+
+    if len(parts) > 46:
+        v46 = _as_float(parts[46])
+        if v46 is not None:
+            candidates.append(v46)
+
+    for vwap in candidates:
+        if _is_plausible_vwap(vwap, price):
+            return round(float(vwap), 4)
+    return None
+
+
 def parse_tencent_quote(text: str) -> Dict[str, Any]:
     if not text:
         return {}
@@ -92,9 +148,14 @@ def parse_tencent_quote(text: str) -> Dict[str, Any]:
         "low": _as_float(parts[34]) if len(parts) > 34 else None,
         "amount_wan": _as_float(parts[37], 0.0) if len(parts) > 37 else 0.0,
         "turnover_pct": _as_float(parts[38]) if len(parts) > 38 else None,
-        "volume_ratio": _as_float(parts[45]) if len(parts) > 45 else None,
-        "vwap": _as_float(parts[46]) if len(parts) > 46 else None,
+        "volume_ratio": _as_float(parts[49]) if len(parts) > 49 else (_as_float(parts[45]) if len(parts) > 45 else None),
     }
+    out["vwap"] = _resolve_tencent_vwap(
+        parts,
+        price=out.get("price"),
+        amount_wan=out.get("amount_wan"),
+        volume=out.get("volume"),
+    )
     # 深挖买卖五档
     bids, asks = [], []
     for i in range(5):
@@ -270,7 +331,11 @@ def fetch_tencent_quote(symbol: Any, timeout: float = 3.0) -> RealtimeQuote:
         amount_wan = raw.get("amount_wan") or 0.0
         vwap = raw.get("vwap")
         if vwap is None and amount_wan and volume:
-            vwap = amount_wan * 1e4 / max(1.0, volume * 100.0)  # volume 手->股
+            for mult in (100.0, 1.0):
+                guess = amount_wan * 1e4 / max(1.0, volume * mult)
+                if _is_plausible_vwap(guess, price):
+                    vwap = guess
+                    break
         return RealtimeQuote(
             symbol_code=code,
             symbol_name=raw.get("symbol_name") or "",

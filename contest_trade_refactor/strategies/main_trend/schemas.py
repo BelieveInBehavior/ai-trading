@@ -291,6 +291,14 @@ class MTFCandidate:
     catalyst_info: Optional[CatalystState] = None
 
     def to_dict(self) -> Dict[str, Any]:
+        factor = self.technical_factor or {}
+        price_context = {
+            "close": factor.get("close"),
+            "atr": factor.get("atr"),
+            "atr_pct": factor.get("atr_pct"),
+            "ma20": factor.get("ma20"),
+            "ma20_deviation_pct": factor.get("ma20_deviation_pct"),
+        }
         return {
             "symbol_code": self.symbol_code,
             "symbol_name": self.symbol_name,
@@ -302,8 +310,10 @@ class MTFCandidate:
             "catalyst_score": round(self.catalyst_score, 2),
             "risk_multiplier": self.risk_multiplier,
             "entry_score": round(self.entry_score, 2),
+            "pre_score": round(self.entry_score, 2),
             "eligible": self.eligible,
             "reasons": list(self.reasons),
+            "price_context": price_context,
             "market_regime_state": self.market_regime_state.to_dict() if self.market_regime_state else None,
             "trend_state_info": self.trend_state_info.to_dict() if self.trend_state_info else None,
             "trend_quality_info": self.quality_info.to_dict() if self.quality_info else None,
@@ -356,8 +366,15 @@ class BuySignal:
     trend_quality: str = ""
     market_regime: str = ""
     suggested_position_pct: Optional[float] = None
-    stop_loss_pct: float = -6.0
-    take_profit_pct: float = 6.0
+    stop_loss_pct: float = 0.0
+    take_profit_pct: float = 0.0
+    reference_price: Optional[float] = None
+    initial_stop: Optional[float] = None
+    trailing_stop: Optional[float] = None
+    current_stop: Optional[float] = None
+    theme: str = ""
+    pre_score: Optional[float] = None
+    t1_state: str = "WAIT"
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -381,6 +398,13 @@ class BuySignal:
             "suggested_position_pct": self.suggested_position_pct,
             "stop_loss_pct": self.stop_loss_pct,
             "take_profit_pct": self.take_profit_pct,
+            "reference_price": self.reference_price,
+            "initial_stop": self.initial_stop,
+            "trailing_stop": self.trailing_stop,
+            "current_stop": self.current_stop,
+            "theme": self.theme,
+            "pre_score": self.pre_score,
+            "t1_state": self.t1_state,
         }
 
 

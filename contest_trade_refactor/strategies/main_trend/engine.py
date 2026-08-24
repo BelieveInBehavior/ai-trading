@@ -28,10 +28,19 @@ from data_source.technical_indicators_akshare import compute_stock_technical_fac
 from utils.akshare_utils import akshare_cached
 from utils.cn_price_provider import get_index_daily, get_stock_zh_a_hist
 from utils.date_utils import get_latest_completed_trading_date, get_trading_date_range
-from utils.sector_enrichment import build_sector_snapshot, build_sector_snapshot_from_factor_store, enrich_factor_with_sector
+from utils.sector_enrichment import (
+    build_sector_snapshot,
+    build_sector_snapshot_from_factor_store,
+    build_code_sector_snapshot,
+    load_industry_map,
+    enrich_factor_with_sector,
+)
 from utils.factor_dedup import family_dedup_report as _family_dedup_report, pick_representatives as _pick_factor_rep
 from utils.tencent_realtime import fetch_realtime_quote as _fetch_realtime_quote, build_quote_payload as _build_quote_payload
 
+from strategies.main_trend.event_logger import log_tday_pool
+from strategies.main_trend.scoring import compute_pre_score
+from strategies.main_trend.tday import build_tday_row, finalize_tday_pool, price_context_from_factor, scoring_weights
 from strategies.main_trend.schemas import (
     BuySignal,
     CatalystState,
@@ -210,6 +219,8 @@ class MainTrendConfig:
     sector: Dict[str, Any] = field(default_factory=dict)
     catalyst: Dict[str, Any] = field(default_factory=dict)
     execution: Dict[str, Any] = field(default_factory=dict)
+    scoring: Dict[str, Any] = field(default_factory=dict)
+    portfolio: Dict[str, Any] = field(default_factory=dict)
     risk: Dict[str, Any] = field(default_factory=dict)
     holding: Dict[str, Any] = field(default_factory=dict)
     backtest: Dict[str, Any] = field(default_factory=dict)
@@ -227,6 +238,8 @@ class MainTrendConfig:
             sector=dict(cfg.get("sector") or {}),
             catalyst=dict(cfg.get("catalyst") or {}),
             execution=dict(cfg.get("execution") or {}),
+            scoring=dict(cfg.get("scoring") or {}),
+            portfolio=dict(cfg.get("portfolio") or {}),
             risk=dict(cfg.get("risk") or {}),
             holding=dict(cfg.get("holding") or {}),
             backtest=dict(cfg.get("backtest") or {}),
@@ -258,23 +271,29 @@ class MainTrendEngine:
         holdings: Optional[List[Holding]] = None,
         output_dir: Optional[str] = None,
         max_symbols: int = 0,
+        phase: str = "tday",
     ) -> Dict[str, Any]:
         trade_date = get_latest_completed_trading_date(trigger_time)
         discovery = await self.discover(trigger_time, max_symbols=max_symbols)
         # 合并历史候选/观察池：这里可简化，保留当日候选即可。
         eligible = discovery.eligible
-        buy_signals = self.build_buy_signals(eligible, trade_date)
+        tday = self.build_tday_pool(eligible, trade_date)
+        # T日默认不跑 T+1 实时确认，避免把收盘价当成买入价
+        buy_signals = self.build_buy_signals(eligible, trade_date, phase=phase or "tday", tday_rows=tday.get("pool") or [])
         exits = self.evaluate_exits(holdings or [])
         result = {
             "trade_date": trade_date,
             "trigger_time": trigger_time,
+            "phase": phase or "tday",
             "discovery": discovery.to_dict() if hasattr(discovery, "to_dict") else {},
+            "tday_pool": tday,
             "buy_signals": [s.to_dict() for s in buy_signals],
             "candidate_pool_t1": [s.to_dict() for s in buy_signals],
             "exit_decisions": [e.to_dict() for e in exits],
         }
         if output_dir:
             self._write_result(result, output_dir)
+            log_tday_pool(output_dir, trade_date, tday.get("pool") or [], tday.get("themes") or [])
         return result
 
     async def discover(self, trigger_time: str, max_symbols: int = 0) -> MTFDiscovery:
@@ -326,6 +345,8 @@ class MainTrendEngine:
         for offset in range(0, total, batch_size):
             batch = universe[offset: offset + batch_size]
             await asyncio.gather(*[_score(row, all_median_amounts) for row in batch])
+            done = min(offset + len(batch), total)
+            print(f"[main_trend] scan {trade_date} {done}/{total} factors={len(raw_factors)}", flush=True)
 
         valid_amounts = [x for x in all_median_amounts if x is not None and x > 0]
         # 全市场横截面 P20（单遍扫描收集所有股票的 20D Median Turnover）
@@ -475,16 +496,18 @@ class MainTrendEngine:
             return pd.DataFrame()
 
     def _build_sector_snapshot(self, trade_date: str) -> Dict[str, Dict[str, float]]:
-        snapshot = {}
         try:
-            snapshot.update(build_sector_snapshot_from_factor_store(trade_date=trade_date))
+            industry_map = load_industry_map()
+            by_name = build_sector_snapshot_from_factor_store(trade_date=trade_date)
+            snapshot = build_code_sector_snapshot(industry_map, by_name, trade_date=trade_date)
+            if snapshot:
+                return snapshot
         except Exception:
             pass
         try:
-            snapshot.update(build_sector_snapshot())
+            return build_sector_snapshot(trade_date=trade_date, industry_map=load_industry_map())
         except Exception:
-            pass
-        return snapshot
+            return {}
 
     def evaluate_market_regime(
         self,
@@ -1392,16 +1415,47 @@ class MainTrendEngine:
         return CatalystState(has_event=has_event, event_type=event_type, event_level=event_level, freshness=freshness, company_specific=company_specific, price_reaction=reaction, score=round(score, 2), reasons=reasons, detail={k: v for k, v in detail.items() if v is not None})
 
     def _candidate_entry_score(self, cand: MTFCandidate) -> float:
-        score = 50.0
-        if cand.quality_info:
-            score += (cand.quality_info.score - 50) * 0.8
-        if cand.sector_info:
-            score += (cand.sector_info.score - 50) * 0.5
-        if cand.catalyst_info:
-            score += (cand.catalyst_info.score - 50) * 0.5
-        if cand.trend_state == "S2":
-            score += 5
-        return round(_clamp(score), 2)
+        """T日 PreScore，不再把 S2+A 全部顶到 100。"""
+        scores = compute_pre_score(
+            trend_state=cand.trend_state,
+            quality_score=cand.quality_info.score if cand.quality_info else None,
+            sector_score=cand.sector_info.score if cand.sector_info else None,
+            sector_grade=cand.sector_info.grade if cand.sector_info else "",
+            catalyst_score=cand.catalyst_info.score if cand.catalyst_info else cand.catalyst_score,
+            has_event=bool(cand.catalyst_info.has_event) if cand.catalyst_info else False,
+            weights=scoring_weights(self.config.scoring),
+        )
+        return float(scores["pre_score"])
+
+    def build_tday_pool(self, eligible: List[MTFCandidate], trade_date: str) -> Dict[str, Any]:
+        """T日候选池：Trend/Sector/Catalyst + Reference Price + 动态止损 + 主题敞口。全部 WAIT。"""
+        rows = []
+        for cand in eligible:
+            if not cand.eligible:
+                continue
+            factor = cand.technical_factor or {}
+            risk = self.compute_risk_state(cand, factor, None)
+            rows.append(
+                build_tday_row(
+                    symbol_code=cand.symbol_code,
+                    symbol_name=cand.symbol_name,
+                    trade_date=trade_date,
+                    trend_state=cand.trend_state,
+                    quality_score=cand.quality_info.score if cand.quality_info else None,
+                    sector_score=cand.sector_info.score if cand.sector_info else None,
+                    sector_grade=cand.sector_info.grade if cand.sector_info else "",
+                    sector_name=cand.sector_name or (cand.sector_info.sector_name if cand.sector_info else ""),
+                    catalyst_score=cand.catalyst_info.score if cand.catalyst_info else cand.catalyst_score,
+                    has_event=bool(cand.catalyst_info.has_event) if cand.catalyst_info else False,
+                    factor=factor,
+                    raw_position_pct=float(risk.suggested_position_pct or 0.0),
+                    scoring_cfg=self.config.scoring,
+                    holding_cfg=self.config.holding,
+                )
+            )
+        out = finalize_tday_pool(rows, portfolio_cfg=self.config.portfolio)
+        out["trade_date"] = trade_date
+        return out
 
     # ================= 6. T+1 执行 & 风险预算 =================
     def fetch_execution_realtime(self, symbol_code: str, prefer: str = "auto") -> Dict[str, Any]:
@@ -1412,52 +1466,87 @@ class MainTrendEngine:
             payload["realtime_error"] = q.detail.get("error")
         return payload
 
-    def build_buy_signals(self, eligible: List[MTFCandidate], trade_date: str, realtime: Optional[Dict[str, Any]] = None) -> List[BuySignal]:
+    def build_buy_signals(
+        self,
+        eligible: List[MTFCandidate],
+        trade_date: str,
+        realtime: Optional[Dict[str, Any]] = None,
+        phase: str = "tday",
+        tday_rows: Optional[List[Dict[str, Any]]] = None,
+    ) -> List[BuySignal]:
         cfg = self.config.execution or {}
+        tday_no_buy = bool(cfg.get("tday_no_buy", True))
+        tday_map = {str(r.get("symbol_code")): r for r in (tday_rows or [])}
         out = []
         for cand in eligible:
             factor = cand.technical_factor or {}
-            # T 日只产生候选；T+1 执行打分属于以后才可知的确认信息，这里只做运行态打分。
+            tday_row = tday_map.get(cand.symbol_code) or {}
+            run_t1 = phase == "t1" or (phase != "tday" and bool(cfg.get("use_tencent_realtime")))
             cand_realtime = None
-            if realtime is not None:
-                cand_realtime = realtime
-            elif (cfg or {}).get("use_tencent_realtime"):
-                cand_realtime = self.fetch_execution_realtime(cand.symbol_code)
-            exec_state = self.evaluate_execution_from_factor(cand, factor, realtime=cand_realtime)
-            risk = self.compute_risk_state(cand, factor, exec_state)
-            ok = bool(cand.eligible and exec_state.confirmed and risk.pass_or_wait)
+            exec_state = None
+            if run_t1:
+                if realtime is not None:
+                    cand_realtime = realtime
+                elif cfg.get("use_tencent_realtime"):
+                    cand_realtime = self.fetch_execution_realtime(cand.symbol_code)
+                exec_state = self.evaluate_execution_from_factor(cand, factor, realtime=cand_realtime)
+                risk = self.compute_risk_state(cand, factor, exec_state)
+                ok = bool(cand.eligible and exec_state.confirmed and risk.pass_or_wait)
+            else:
+                risk = self.compute_risk_state(cand, factor, None)
+                ok = False
             reasons = list(cand.reasons)
-            reasons.extend(exec_state.reasons)
-            reasons.append(f"风险仓位: {risk.suggested_position_pct or 0:.1f}%")
+            if exec_state:
+                reasons.extend(exec_state.reasons)
+            if tday_no_buy and phase != "t1":
+                reasons.append("T日仅候选，T+1 Execution 后才允许 BUY")
+            reasons.append(f"风险仓位(单股原始): {risk.suggested_position_pct or 0:.1f}%")
+            pos = tday_row.get("suggested_position_pct")
+            if pos is None:
+                pos = risk.suggested_position_pct
             gates = {
                 "market_regime": GateResult(name="market_regime", passed=cand.market_regime in ("A", "B", "C"), score=cand.market_regime_state.score if cand.market_regime_state else 0, reason=f"regime={cand.market_regime}", detail={}),
                 "trend_state": GateResult(name="trend_state", passed=cand.trend_state in ("S1", "S2", "S3"), score=cand.trend_state_info.score if cand.trend_state_info else 0, reason=cand.trend_state, detail={}),
                 "trend_quality": GateResult(name="trend_quality", passed=cand.quality_info.grade in ("A", "B"), score=cand.quality_info.score if cand.quality_info else 0, reason=f"quality={cand.trend_quality}", detail={}),
                 "sector": GateResult(name="sector", passed=cand.sector_info.passed if cand.sector_info else True, score=cand.sector_info.score if cand.sector_info else 50, reason=cand.sector_info.grade if cand.sector_info else "default", detail={}),
-                "execution": GateResult(name="execution", passed=exec_state.confirmed, score=exec_state.order_flow_score, reason="T+1 execution", detail=exec_state.to_dict()),
+                "execution": GateResult(
+                    name="execution",
+                    passed=bool(exec_state.confirmed) if exec_state else False,
+                    score=exec_state.order_flow_score if exec_state else 0,
+                    reason="T+1 execution" if exec_state else "T日无 Execution",
+                    detail=exec_state.to_dict() if exec_state else {"phase": "PENDING"},
+                ),
                 "risk": GateResult(name="risk", passed=risk.pass_or_wait, score=0, reason=risk.reason, detail=risk.to_dict()),
             }
+            ctx = price_context_from_factor(factor)
             out.append(BuySignal(
                 symbol_code=cand.symbol_code,
                 symbol_name=cand.symbol_name,
                 trade_date=trade_date,
-                lifecycle_state="T+1买入候选" if ok else ("WAIT" if cand.eligible else "PASS"),
+                lifecycle_state="WAIT" if (tday_no_buy and phase != "t1") else ("T+1买入候选" if ok else ("WAIT" if cand.eligible else "PASS")),
                 pool_type="主升浪",
                 divergence_mode="mtf",
-                divergence_score=round(cand.entry_score, 2),
-                entry_quality_score=round(cand.entry_score, 2),
+                divergence_score=round(float(tday_row.get("pre_score") or cand.entry_score), 2),
+                entry_quality_score=round(float(tday_row.get("pre_score") or cand.entry_score), 2),
                 weak_to_strong_score=round(cand.quality_info.score if cand.quality_info else 0, 2),
-                t1_buy_score=round(cand.entry_score, 2),
-                buy_ready=ok,
+                t1_buy_score=round(float(tday_row.get("pre_score") or cand.entry_score), 2),
+                buy_ready=False if (tday_no_buy and phase != "t1") else ok,
                 reasons=reasons,
                 candidate="MainTrend",
                 gates=gates,
                 trend_state=cand.trend_state,
                 trend_quality=cand.trend_quality,
                 market_regime=cand.market_regime,
-                suggested_position_pct=risk.suggested_position_pct,
-                stop_loss_pct=float((self.config.holding or {}).get("stop_loss_pct", -6.0)),
-                take_profit_pct=float((self.config.holding or {}).get("take_profit_pct", 6.0)),
+                suggested_position_pct=pos,
+                stop_loss_pct=0.0,
+                take_profit_pct=0.0,
+                reference_price=tday_row.get("reference_price") if tday_row.get("reference_price") is not None else ctx.get("close"),
+                initial_stop=tday_row.get("initial_stop"),
+                trailing_stop=tday_row.get("trailing_stop"),
+                current_stop=tday_row.get("current_stop"),
+                theme=str(tday_row.get("theme") or ""),
+                pre_score=tday_row.get("pre_score"),
+                t1_state="WAIT" if (tday_no_buy and phase != "t1") else ("BUY" if ok else "WAIT"),
             ))
         return out
 
@@ -1640,6 +1729,7 @@ class MainTrendEngine:
         S4 是风险预警（REDUCE 条件之一），只有 S5 / 硬止损 / 严重衰减才 EXIT。
         """
         cfg = self.config.holding or {}
+        use_fixed_stop = bool(cfg.get("use_fixed_stop", False))
         stop_pct = float(cfg.get("stop_loss_pct", -6.0) or -6.0)
         max_days = int(cfg.get("horizon_days", 10) or 10)
         reduce_th = float(cfg.get("reduce_decay_threshold", 45) or 45)
@@ -1679,10 +1769,10 @@ class MainTrendEngine:
             atr_trail_triggered = False
             recapture_triggered = False
 
-            # 硬性优先：固定止损
-            if ret_pct <= stop_pct:
+            # 硬性优先：仅当显式打开固定止损（默认关闭，改走 MA20 / ATR trailing）
+            if use_fixed_stop and ret_pct <= stop_pct:
                 action = "sell"
-                reason_list.append("跌破止损")
+                reason_list.append("跌破固定止损")
             # 轨道 B：ATR trailing stop
             elif h.atr_trailing_stop is not None and h.atr_trailing_stop > 0 and current < h.atr_trailing_stop:
                 atr_trail_triggered = True
@@ -1742,7 +1832,7 @@ class MainTrendEngine:
                 urgency="high" if pos.action == "exit" or pos.action == "sell" else "normal",
                 exit_score=round(100 - decay, 2),
                 current_return_pct=round(ret_pct, 2),
-                stop_loss_triggered=bool(ret_pct <= stop_pct),
+                stop_loss_triggered=bool(use_fixed_stop and ret_pct <= stop_pct),
                 take_profit_triggered=False,
                 reduce_triggered=bool(pos.action == "reduce"),
                 add_allowed=pos.add_allowed,

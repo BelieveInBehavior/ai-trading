@@ -11,6 +11,7 @@ from utils.sector_enrichment import (
     build_sector_snapshot_from_factor_store,
     build_code_sector_snapshot,
     enrich_factor_with_sector_by_name,
+    resolve_sector_board_name,
     compute_ex_self_sector_metrics,
     enrich_factor_with_ex_self,
 )
@@ -106,6 +107,46 @@ class TestSectorEnrichment(unittest.TestCase):
         self.assertIn("600276.SH", out)
         self.assertNotIn("000001.SZ", out)
         self.assertEqual(out["600276.SH"]["sector_1d_return"], 3.99)
+
+    def test_resolve_eligible_main_trend_boards(self):
+        """20260821 eligible 池应能解析到东财二级板块，而非默认放行。"""
+        by_name = {
+            "生物制品": {"sector_1d_return": -2.73, "sector_rank": 84},
+            "贵金属": {"sector_1d_return": 1.0, "sector_rank": 10},
+            "港口航运": {"sector_1d_return": 0.28, "sector_rank": 20},
+            "煤炭开采加工": {"sector_1d_return": -1.0, "sector_rank": 30},
+            "化学制药": {"sector_1d_return": -3.0, "sector_rank": 40},
+            "医疗器械": {"sector_1d_return": -2.0, "sector_rank": 50},
+            "银行": {"sector_1d_return": -0.6, "sector_rank": 50},
+        }
+        cases = [
+            ("其他生物制品", "近岸蛋白", "生物制品"),
+            ("有色金属", "西部黄金", "贵金属"),
+            ("交通运输", "中远海控", "港口航运"),
+            ("焦煤", "淮北矿业", "煤炭开采加工"),
+            ("医药生物", "康希诺", "化学制药"),
+            ("体外诊断", "赛科希德", "医疗器械"),
+            ("农商行Ⅲ", "沪农商行", "银行"),
+        ]
+        for industry, symbol_name, expected in cases:
+            self.assertEqual(
+                resolve_sector_board_name(industry, by_name, symbol_name=symbol_name),
+                expected,
+                msg=f"{industry}/{symbol_name}",
+            )
+        by_name = {
+            "生物制品": {
+                "sector_1d_return": -2.73,
+                "sector_rank": 84,
+            }
+        }
+        self.assertEqual(resolve_sector_board_name("其他生物制品", by_name), "生物制品")
+        industry_map = {"688137.SH": "其他生物制品"}
+        out = build_code_sector_snapshot(industry_map, by_name)
+        self.assertIn("688137.SH", out)
+        self.assertEqual(out["688137.SH"]["sector_name"], "生物制品")
+        self.assertEqual(out["688137.SH"]["industry_name"], "其他生物制品")
+        self.assertEqual(out["688137.SH"]["sector_1d_return"], -2.73)
 
 
 if __name__ == "__main__":

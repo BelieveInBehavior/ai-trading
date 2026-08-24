@@ -102,22 +102,40 @@ execution:
   allow_gap_strong_trend: true
   require_vwap_hold: true
   require_order_flow: true
-  use_tencent_realtime: true
+  use_tencent_realtime: false    # T日默认关闭；T+1 用 --phase t1 或手工 6 字段
   prefer_realtime: auto          # tencent / manual / auto（腾讯失败自动走 manual_realtime.json）
   manual_file: config/manual_realtime.json
+  manual_execution_file: config/manual_execution.json
   two_phase: true                # 9:25 Auction Signal -> 9:30+ 实时确认
+  tday_no_buy: true              # T日只出 WAIT，不允许 BUY
+
+scoring:
+  # T日 PreScore；T+1 才有 Execution
+  trend_weight: 0.40
+  sector_weight: 0.30
+  catalyst_weight: 0.30
+  pre_weight: 0.70
+  execution_weight: 0.30
+
+portfolio:
+  theme_cap_pct: 12.0            # 单主题总敞口上限
+  max_names_per_theme: 3         # 单主题最多保留几只
+  max_position_pct: 8.0          # 单股建议仓位上限（主题内再裁）
 
 risk:
   risk_budget_pct: 1.0
   stop_atr_mult: 2.5
-  max_position_pct: 50.0
+  max_position_pct: 8.0
   alloc_limit_pct: 100.0
   liquidity_cap_pct: 30.0
 
 holding:
   horizon_days: 10
-  stop_loss_pct: -6.0
+  use_fixed_stop: false          # 废除固定 ±6%；改 Initial/Trailing/MA20
+  stop_loss_pct: -6.0            # 仅当 use_fixed_stop=true 时生效
+  take_profit_pct: 6.0           # 已废弃，不再作为出场
   atr_trailing_mult: 3.0
+  initial_atr_mult: 2.5
   reduce_decay_threshold: 45
   severe_decay_threshold: 70
   add_only_profit: true

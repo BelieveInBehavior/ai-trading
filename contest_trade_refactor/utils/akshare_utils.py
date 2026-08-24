@@ -5,6 +5,7 @@ akshare 的工具函数
 import inspect
 import json
 import hashlib
+import os
 import pickle
 import random
 import time
@@ -170,7 +171,48 @@ class CachedAksharePro:
         number = pd.to_numeric(text, errors="coerce")
         return 0.0 if pd.isna(number) else sign * float(number) * multiplier
 
+    @staticmethod
+    def _use_akshare_eastmoney_hist() -> bool:
+        """Only opt into slow Eastmoney K-line when explicitly requested."""
+        return str(os.environ.get("CN_USE_AKSHARE_HIST", "")).lower() in {"1", "true", "yes", "on"}
+
+    def _fetch_hist_via_tencent(self, func_kwargs: dict, verbose: bool = False, attempts: int = 2):
+        last_error = None
+        for attempt in range(1, max(1, attempts) + 1):
+            try:
+                tx_df = self._stock_zh_a_hist_tx_fallback(func_kwargs, verbose=verbose)
+                if tx_df is not None and not tx_df.empty:
+                    return tx_df
+            except Exception as exc:
+                last_error = exc
+                if verbose:
+                    print(f"akshare stock_zh_a_hist_tx attempt {attempt}/{attempts} failed: {exc}")
+                if attempt < attempts:
+                    time.sleep(min(2.0, 0.4 * attempt))
+        if last_error and verbose:
+            print(f"akshare stock_zh_a_hist_tx exhausted: {last_error}")
+        return pd.DataFrame()
+
     def _call_akshare(self, func_name: str, func_kwargs: dict, verbose: bool = False):
+        if func_name == "stock_zh_a_hist":
+            # Default: Tencent Finance only (fast + stable). Eastmoney is opt-in.
+            tx_df = self._fetch_hist_via_tencent(func_kwargs, verbose=verbose, attempts=2)
+            if tx_df is not None and not tx_df.empty:
+                return tx_df
+            if not self._use_akshare_eastmoney_hist():
+                if verbose:
+                    print("akshare stock_zh_a_hist skipped Eastmoney; Tencent returned empty")
+                return pd.DataFrame()
+
+        if func_name == "stock_zh_a_spot_em":
+            try:
+                tx_df = self._stock_zh_a_spot_tx_fallback(verbose=verbose)
+                if tx_df is not None and not tx_df.empty:
+                    return tx_df
+            except Exception as exc:
+                if verbose:
+                    print(f"akshare stock_zh_a_spot_tx fast path failed: {exc}")
+
         func = getattr(ak, func_name)
         call_kwargs = dict(func_kwargs)
         signature = inspect.signature(func)
@@ -184,15 +226,6 @@ class CachedAksharePro:
             "stock_individual_fund_flow_rank": 2,
         }
         retry_limit = fallback_retry_limits.get(func_name, self.max_retries)
-        if func_name == "stock_zh_a_hist":
-            # Tencent is dramatically faster in this environment; try it first.
-            try:
-                tx_df = self._stock_zh_a_hist_tx_fallback(func_kwargs, verbose=verbose)
-                if tx_df is not None and not tx_df.empty:
-                    return tx_df
-            except Exception as e:
-                if verbose:
-                    print(f"akshare stock_zh_a_hist_tx fast path failed: {e}")
         for attempt in range(1, retry_limit + 1):
             try:
                 return func(**call_kwargs)
@@ -217,22 +250,20 @@ class CachedAksharePro:
                     print(f"akshare {func_name} attempt {attempt}/{retry_limit} failed: {e}; retry in {delay:.2f}s")
                 time.sleep(delay)
         if func_name == "stock_zh_a_hist":
-            try:
-                tx_df = self._stock_zh_a_hist_tx_fallback(func_kwargs, verbose=verbose)
-                if tx_df is not None and not tx_df.empty:
-                    return tx_df
-            except Exception as fallback_error:
-                if verbose:
-                    print(f"akshare stock_zh_a_hist_tx fallback failed: {fallback_error}")
+            tx_df = self._fetch_hist_via_tencent(func_kwargs, verbose=verbose, attempts=2)
+            if tx_df is not None and not tx_df.empty:
+                return tx_df
             if verbose:
                 print(
-                    "akshare stock_zh_a_hist failed; skip Yahoo, "
+                    "akshare stock_zh_a_hist failed (Tencent + optional Eastmoney); "
                     "return empty (use Agent-level web search for narrative data)"
                 )
             return pd.DataFrame()
         if func_name == "stock_zh_a_spot_em":
             try:
-                return self._stock_zh_a_spot_tx_fallback(verbose=verbose)
+                tx_df = self._stock_zh_a_spot_tx_fallback(verbose=verbose)
+                if tx_df is not None and not tx_df.empty:
+                    return tx_df
             except Exception as fallback_error:
                 if verbose:
                     print(f"akshare stock_zh_a_spot_tx fallback failed: {fallback_error}")
