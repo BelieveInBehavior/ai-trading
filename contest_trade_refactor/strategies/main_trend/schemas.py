@@ -425,6 +425,9 @@ class Holding:
     atr_trailing_stop: Optional[float] = None   # ATR trailing stop（价格绝对值）
     prev_close: Optional[float] = None          # 前一日收盘，用于“次日站回”
     ma20: Optional[float] = None                # 结构止损轨道：Close<MA20 判断
+    prev_ma20: Optional[float] = None           # 前一日 MA20，用于“连续N日无法站回”
+    highest_close: Optional[float] = None       # 持有期间最高收盘价，用于 trailing stop
+    event_catalyst: Optional[Dict[str, Any]] = None  # 极端事件/利空快照（Catalyst=EXTREME/NEGATIVE）
     realtime_quote: Dict[str, Any] = field(default_factory=dict)
     order_flow_score: float = 50.0
 
@@ -447,6 +450,13 @@ class ExitDecision:
     decay_score: float = 0.0
     atr_trailing_stop_triggered: bool = False
     recapture_triggered: bool = False
+    exit_level: str = ""          # P0/P1/P2/P3/P4
+    exit_class: str = ""          # SELL_NOW / SELL_CONFIRM / SELL_TRAILING / REDUCE / HOLD
+    reduce_pct: float = 0.0
+    ma20_confirm_days: int = 0
+    highest_close: Optional[float] = None
+    trailing_stop_price: Optional[float] = None
+    decay_signals: List[str] = field(default_factory=list)
     reasons: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -467,5 +477,12 @@ class ExitDecision:
             "decay_score": round(self.decay_score, 2),
             "atr_trailing_stop_triggered": self.atr_trailing_stop_triggered,
             "recapture_triggered": self.recapture_triggered,
+            "exit_level": self.exit_level,
+            "exit_class": self.exit_class,
+            "reduce_pct": self.reduce_pct,
+            "ma20_confirm_days": self.ma20_confirm_days,
+            "highest_close": self.highest_close,
+            "trailing_stop_price": self.trailing_stop_price,
+            "decay_signals": list(self.decay_signals),
             "reasons": list(self.reasons),
         }

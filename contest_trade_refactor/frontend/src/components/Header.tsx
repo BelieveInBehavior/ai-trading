@@ -1,3 +1,6 @@
+"use client";
+import Link from "next/link";
+
 interface HeaderProps {
   connected: boolean;
   agentCounts: { data: number; research: number } | null;
@@ -20,18 +23,34 @@ export default function Header({ connected, agentCounts }: HeaderProps) {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "0.875rem" }}>
-        <span style={{ fontSize: "1.75rem", lineHeight: 1 }}>📈</span>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: "1.1rem", letterSpacing: "-0.01em" }}>
-            AI Trading System
+        <Link href="/" style={{ textDecoration: "none", color: "inherit", display: "flex", alignItems: "center", gap: "0.875rem" }}>
+          <span style={{ fontSize: "1.75rem", lineHeight: 1 }}>📈</span>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: "1.1rem", letterSpacing: "-0.01em" }}>
+              AI Trading System
+            </div>
+            <div style={{ fontSize: "0.72rem", opacity: 0.75, marginTop: 1 }}>
+              Real-time Market Analysis
+            </div>
           </div>
-          <div style={{ fontSize: "0.72rem", opacity: 0.75, marginTop: 1 }}>
-            Real-time Market Analysis
-          </div>
-        </div>
+        </Link>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+        <Link
+          href="/main_trend"
+          style={{
+            color: "#dbeafe",
+            textDecoration: "none",
+            fontSize: "0.8rem",
+            background: "rgba(255,255,255,0.12)",
+            padding: "0.4rem 0.7rem",
+            borderRadius: "0.5rem",
+            fontWeight: 600,
+          }}
+        >
+          主升浪持仓
+        </Link>
         {agentCounts && (
           <div style={{ display: "flex", gap: "1rem", fontSize: "0.78rem", opacity: 0.9 }}>
             <span>Data agents: <strong>{agentCounts.data}</strong></span>

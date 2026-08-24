@@ -145,22 +145,18 @@ def compute_forward_returns(
     def pct(a, b):
         return round((b - a) / a * 100.0, 4) if a else 0.0
 
-    return {
+    out = {
         "entry_date": entry_date,
         "entry_price": round(entry_open, 4),
-        "exit_t1_date": horizon_dates[0],
-        "exit_t3_date": horizon_dates[2],
-        "exit_t5_date": horizon_dates[4],
-        "t1_close": round(closes[horizon_dates[0]], 4) if closes.get(horizon_dates[0]) else None,
-        "t3_close": round(closes[horizon_dates[2]], 4) if len(horizon_dates) > 2 and closes.get(horizon_dates[2]) else None,
-        "t5_close": round(closes[horizon_dates[4]], 4) if len(horizon_dates) > 4 and closes.get(horizon_dates[4]) else None,
-        "t1_return_pct": pct_cls(entry_open, closes[horizon_dates[0]]) if horizon_dates[0] in closes and closes[horizon_dates[0]] else None,
-        "t3_return_pct": pct_cls(entry_open, closes[horizon_dates[2]]) if len(horizon_dates) > 2 and horizon_dates[2] in closes and closes[horizon_dates[2]] else None,
-        "t5_return_pct": pct_cls(entry_open, closes[horizon_dates[4]]) if len(horizon_dates) > 4 and horizon_dates[4] in closes and closes[horizon_dates[4]] else None,
         "max_gain_pct": pct_cls(entry_open, max_high),
         "max_loss_pct": pct_cls(entry_open, min_low),
         "max_drawdown_pct": pct_cls(entry_open, min_low),
     }
+    for idx, d in enumerate(horizon_dates, start=1):
+        if d in closes and closes[d]:
+            out[f"t{idx}_close"] = round(closes[d], 4)
+            out[f"t{idx}_return_pct"] = pct_cls(entry_open, closes[d])
+    return out
 
 
 def pct_cls(a: float, b: float) -> float:
@@ -438,13 +434,20 @@ def classify_pending(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 # Reporting
 # ---------------------------------------------------------------------------
 
+def dynamic_horizon_cols(horizons):
+    cols = []
+    for h in horizons:
+        cols.append(f"t{h}_close")
+        cols.append(f"t{h}_return_pct")
+    return cols
+
 CSV_COLS = [
     "trigger_time", "trigger_date", "source_file", "symbol_code", "symbol_name_raw",
     "signal_group", "buy_decision", "signal_tier", "buy_score", "probability_value",
     "expected_return_t1_pct", "expected_net_edge_pct", "expected_upside_pct",
     "expected_downside_pct", "payoff_ratio", "entry_date", "entry_price",
-    "t1_close", "t3_close", "t5_close",
-    "t1_return_pct", "t3_return_pct", "t5_return_pct",
+    "t1_close", "t2_close", "t3_close", "t4_close", "t5_close", "t6_close", "t7_close", "t8_close", "t9_close", "t10_close",
+    "t1_return_pct", "t2_return_pct", "t3_return_pct", "t4_return_pct", "t5_return_pct", "t6_return_pct", "t7_return_pct", "t8_return_pct", "t9_return_pct", "t10_return_pct",
     "max_gain_pct", "max_loss_pct", "max_drawdown_pct",
     "weekly_trend_score", "relative_strength_score", "daily_entry_score",
     "catalyst_score", "capital_flow_score", "technical_score",
@@ -515,50 +518,52 @@ def write_summary(evaluated: List[Dict[str, Any]], settings: Settings) -> None:
         )
 
     lines.append("")
-    lines.append("## By signal group (T1)")
-    lines.append("| Group | N | WinRate | AvgT1 | AvgT3 | AvgT5 | AvgMaxLoss |")
-    lines.append("|---|---|---|---|---|---|---|")
+    grp_cols = [f"t{h}_return_pct" for h in horizons if f"t{h}_return_pct" in df.columns]
+    lines.append("## By signal group")
+    lines.append("| Group | N | WinRate | " + " | ".join(f"AvgT{h}" for h in horizons) + " | AvgMaxLoss |")
+    lines.append("|---|--|--|" + "---|"*len(horizons) + "---|")
     for grp in ["buy_passed", "watch", "research", "consensus"]:
         sub = df[df["signal_group"] == grp]
         if sub.empty:
             continue
         t1 = sub["t1_return_pct"].dropna()
+        cells = " | ".join(f"{safe_float(sub[c].mean()):.2f}%" for c in grp_cols)
         lines.append(
             f"| {grp} | {len(sub)} | {((t1 > 0).mean() * 100):.1f}% | "
-            f"{t1.mean():.2f}% | {safe_float(sub['t3_return_pct'].mean()):.2f}% | "
-            f"{safe_float(sub['t5_return_pct'].mean()):.2f}% | {safe_float(sub['max_drawdown_pct'].mean()):.2f}% |"
+            f"{cells} | {safe_float(sub['max_drawdown_pct'].mean()):.2f}% |"
         )
 
     lines.append("")
     lines.append("## By tier")
-    lines.append("| Tier | N | WinRate | AvgT1 | AvgT3 | AvgT5 | AvgMaxDD |")
-    lines.append("|---|---|---|---|---|---|---|")
+    lines.append("| Tier | N | WinRate | " + " | ".join(f"AvgT{h}" for h in horizons) + " | AvgMaxDD |")
+    lines.append("|---|---|---|" + "|" * len(horizons) + "---|")
     if "signal_tier" in df.columns:
         for tier, sub in df.groupby("signal_tier"):
             if tier == "" or sub.empty:
                 continue
             t1 = sub["t1_return_pct"].dropna()
+            cells = " | ".join(f"{safe_float(sub[c].mean()):.2f}%" for c in grp_cols)
             lines.append(
                 f"| {tier}| {len(sub)} | {((t1 > 0).mean()*100):.1f}% | "
-                f"{t1.mean():.2f}% | {safe_float(sub['t3_return_pct'].mean()):.2f}% | "
-                f"{safe_float(sub['t5_return_pct'].mean()):.2f}% | {safe_float(sub['max_drawdown_pct'].mean()):.2f}% |"
+                f"{cells} | {safe_float(sub['max_drawdown_pct'].mean()):.2f}% |"
             )
 
     lines.append("")
-    lines.append("## Top / Bottom T5")
-    lines.append("| Trigger | Symbol | Group | T1 | T3 | T5 |")
-    lines.append("|---|---|---|---|---|---|")
-    if "t5_return_pct" in df.columns and len(df):
-        df_t5 = df.copy()
-        df_t5["t5_return_pct"] = pd.to_numeric(df_t5["t5_return_pct"], errors="coerce")
-        df_t5 = df_t5.dropna(subset=["t5_return_pct"])
-        tb = pd.concat([df_t5.nlargest(10, "t5_return_pct"), df_t5.nsmallest(10, "t5_return_pct")])
-        for _, r in tb.iterrows():
-            lines.append(
-                f"| {r.get('trigger_time','')} | {r.get('symbol_code','')} | {r.get('signal_group','')} | "
-                f"{safe_float(r.get('t1_return_pct')):.2f} | {safe_float(r.get('t3_return_pct')):.2f} | "
-                f"{safe_float(r.get('t5_return_pct')):.2f} |"
-            )
+    if horizons:
+        last = horizons[-1]
+        lines.append(f"## Top / Bottom T{last}")
+        cols = [f"t{h}_return_pct" for h in horizons]
+        lines.append("| Trigger | Symbol | Group | " + " | ".join(f"T{h}" for h in horizons) + " |")
+        lines.append("|" + "---|" * (len(cols) + 3) + "")
+        col_last = f"t{last}_return_pct"
+        if col_last in df.columns and len(df):
+            dlast = df.copy()
+            dlast[col_last] = pd.to_numeric(dlast[col_last], errors="coerce")
+            dlast = dlast.dropna(subset=[col_last])
+            tb = pd.concat([dlast.nlargest(10, col_last), dlast.nsmallest(10, col_last)])
+            for _, r in tb.iterrows():
+                cells = " | ".join(f"{safe_float(r.get(c)):.2f}" for c in cols)
+                lines.append(f"| {r.get('trigger_time','')} | {r.get('symbol_code','')} | {r.get('signal_group','')} | {cells} |")
 
     path = output_dir / "signal_closed_loop_summary.md"
     path.write_text("\n".join(lines), encoding="utf-8")

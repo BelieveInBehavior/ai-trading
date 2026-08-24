@@ -1724,24 +1724,69 @@ class MainTrendEngine:
     def evaluate_exits(self, holdings: List[Holding]) -> List[ExitDecision]:
         """Layer 7 持仓状态机：HOLD -> ADD / HOLD / DECAY / REDUCE / EXIT。
 
-        原则：ADD 只允许“盈利 + 回踩健康 + 重新突破 + 板块强/RS 强”的 Pyramiding，不允许亏损补仓。
-        退出双轨：结构止损（Close<MA20 且次日无法站回）与 ATR trailing stop，任一触发即 EXIT。
-        S4 是风险预警（REDUCE 条件之一），只有 S5 / 硬止损 / 严重衰减才 EXIT。
+        原则（V1）：不预测顶部，只在“趋势结构被破坏 / 风险收益比明显恶化 / 极端风险”时退出。
+        与短线 T+3/T+5 分开：允许持有数周甚至更久，不再固定 ±6% 进出。
+
+        Exit Priority（高优先级先判断）：
+          P0 SELL_NOW      extreme_negative_event == true                    -> SELL
+          P1 SELL_CONFIRM  close<MA20 AND prev_close<prev_ma20               -> SELL
+          P2 SELL_TRAILING close < highest_close - max(6%, 2×ATR%)           -> SELL
+          P3 REDUCE        decay_signal_count >= threshold                    -> REDUCE
+          P4 HOLD          以上全部 false
+
+        ADD 只允许“盈利 + 回踩健康 + 重新突破 + 板块强/RS 强”的 Pyramiding，不允许亏损补仓。
         """
         cfg = self.config.holding or {}
+        exit_cfg = cfg.get("exit") or {}
         use_fixed_stop = bool(cfg.get("use_fixed_stop", False))
         stop_pct = float(cfg.get("stop_loss_pct", -6.0) or -6.0)
         max_days = int(cfg.get("horizon_days", 10) or 10)
-        reduce_th = float(cfg.get("reduce_decay_threshold", 45) or 45)
-        severe_th = float(cfg.get("severe_decay_threshold", 70) or 70)
+        reduce_pct_advice = float(exit_cfg.get("reduce_pct", 40) or 40)
+        decay_signal_threshold = int(exit_cfg.get("decay_signal_threshold", 2) or 2)
+        use_ma20_confirm = bool(exit_cfg.get("use_ma20_confirm", True))
+        ma20_confirm_allow_pct = float(exit_cfg.get("ma20_confirm_allow_pct", 1.0) or 1.0) / 100.0
+        use_trailing_stop = bool(exit_cfg.get("use_trailing_stop", True))
+        trailing_min_dd = float(exit_cfg.get("trailing_min_drawdown_pct", 6.0) or 6.0) / 100.0
+        trailing_atr_mult = float(exit_cfg.get("trailing_atr_mult", 2.0) or 2.0)
+        use_extreme_event_sell = bool(exit_cfg.get("use_extreme_event_sell", True))
         recapture_allowance = float(cfg.get("recapture_allowance_pct", 1.0) or 1.0) / 100.0
+
         out = []
         for h in holdings:
             current = _num(h.current_price) or h.entry_price
             highest = _num(h.highest_price) or max(current, h.entry_price)
             ret_pct = (current / h.entry_price - 1.0) * 100.0 if h.entry_price else 0.0
+            atr_pct = self._atr_pct_from_holding(h)
+            atr_val = None
+            rt = h.realtime_quote or {}
+            atr_val = _num(rt.get("atr")) or _num((h.trade_plan or {}).get("atr"))
             decay = self._trend_decay_score(current, highest, h, cfg)
+            decay_signals = self._decay_signal_list(current, highest, h, cfg)
+            decay_hit = sum(1 for _name, hit in decay_signals if hit)
+            ma20_below_today = h.ma20 is not None and current < h.ma20 * (1 - ma20_confirm_allow_pct)
+            ma20_below_prev = h.prev_ma20 is not None and h.prev_close is not None and h.prev_close < h.prev_ma20 * (1 - ma20_confirm_allow_pct)
+            if h.prev_ma20 is None and h.prev_close is not None and h.prev_close < (h.ma20 or h.stop_loss_price or h.entry_price) * (1 - ma20_confirm_allow_pct):
+                ma20_below_prev = True
+            # P1：连续2日 Close<MA20 才确认 SELL（第一日仅 WARNING）
+            ma20_confirmed = bool(use_ma20_confirm and ma20_below_today and ma20_below_prev)
+            # 最新 MA20 跌破日数（近似，供报告）
+            ma20_days = 2 if ma20_confirmed else (1 if ma20_below_today else 0)
+
+            # 动态 trailing stop（P2）：Highest_Close - max(6%, 2×ATR%)
+            trailing_price = None
+            if use_trailing_stop:
+                hc = _num(h.highest_close) or highest
+                if hc and hc > 0:
+                    atr_pct_for_trail = _num(rt.get("atr_pct")) or _num((h.trade_plan or {}).get("atr_pct"))
+                    if atr_pct_for_trail is None and atr_val and hc:
+                        atr_pct_for_trail = atr_val / hc * 100.0
+                    if atr_pct_for_trail is None:
+                        atr_pct_for_trail = atr_pct or 4.0
+                    trail_dist_pct = max(trailing_min_dd, trailing_atr_mult * atr_pct_for_trail / 100.0)
+                    trailing_price = round(hc * (1.0 - trail_dist_pct), 4)
+
             reasons = []
+            action = "hold"
             # ADD 条件（Pyramiding）：盈利 + 离高点不深 + 盘口/趋势健康 + （重新突破/板块强/RS 强之一）
             add_allowed = bool(
                 ret_pct > 0
@@ -1764,32 +1809,76 @@ class MainTrendEngine:
                 entry_reentry_ok=reentry_ok,
                 trend_decay_score=decay,
             )
-            action = "hold"
             reason_list = []
             atr_trail_triggered = False
             recapture_triggered = False
+            ma20_warning = False
+            exit_level = ""
+            exit_class = "HOLD"
+            reduce_pct = 0.0
+            decay_signals_hit = [name for name, hit in decay_signals if hit]
 
-            # 硬性优先：仅当显式打开固定止损（默认关闭，改走 MA20 / ATR trailing）
+            # ---------- P4 以下全部 false 时 HOLD ----------
             if use_fixed_stop and ret_pct <= stop_pct:
                 action = "sell"
+                exit_level = "P0"
+                exit_class = "SELL_NOW"
                 reason_list.append("跌破固定止损")
-            # 轨道 B：ATR trailing stop
+            # P0 极端事件
+            elif use_extreme_event_sell and self._extreme_event_flag(h):
+                action = "sell"
+                exit_level = "P0"
+                exit_class = "SELL_NOW"
+                reason_list.append("极端负面事件/监管/重大风险")
+            # P1 MA20 双日确认
+            elif ma20_confirmed:
+                action = "exit"
+                exit_level = "P1"
+                exit_class = "SELL_CONFIRM"
+                reason_list.append(f"连续{ma20_confirm_days if False else 2}日<MA20未站回")
+            # P2 ATR trailing stop
+            elif use_trailing_stop and trailing_price is not None and current < trailing_price:
+                atr_trail_triggered = True
+                action = "exit"
+                exit_level = "P2"
+                exit_class = "SELL_TRAILING"
+                reason_list.append("ATR Trailing Stop触发")
+                if h.ma20 and current < h.ma20:
+                    reason_list.append("且跌破MA20")
+                if (
+                    h.prev_close is not None
+                    and h.current_price is not None
+                    and h.prev_close < (h.stop_loss_price or h.entry_price)
+                    and current <= h.prev_close * (1 + recapture_allowance)
+                ):
+                    recapture_triggered = True
+                    reason_list.append("且次日无法站回")
+            # 兼容旧字段 atr_trailing_stop，避免数据缺失时失效
             elif h.atr_trailing_stop is not None and h.atr_trailing_stop > 0 and current < h.atr_trailing_stop:
                 atr_trail_triggered = True
                 action = "exit"
-                reason_list.append("ATR Trailing Stop触发")
-            # 趋势严重衰减
-            elif decay >= severe_th:
-                action = "exit"
-                reason_list.append("趋势严重衰减")
+                exit_level = "P2"
+                exit_class = "SELL_TRAILING"
+                reason_list.append("ATR Trailing Stop触发(兼容旧字段)")
+            elif decay_hit:
+                action = "reduce"
+                exit_level = "P3"
+                exit_class = "REDUCE"
+                reduce_pct = reduce_pct_advice
+                reason_list.append(f"趋势衰减(REDUCE {reduce_pct_advice:.0f}%)")
+                decay_signals_hit = [name for name, hit in decay_signals if hit]
             elif h.holding_days >= max_days:
                 action = "exit"
-                reason_list.append("超期退出")
-            # MA20 双轨：Close<MA20 且次日无法站回（轨道 A 结构止损）
+                exit_level = "P4"
+                exit_class = "SELL_CONFIRM"
+                reason_list.append(f"超期{max_days}交易日退出")
             elif h.ma20 and current < h.ma20 * (1 - recapture_allowance):
-                action = "exit"
-                reason_list.append("跌破MA20且未站回")
-            # S5 recapture 近似（旧语义保留兼容）
+                # 第一日跌破：WARNING，不立即 SELL（等待第二日确认）
+                action = "hold"
+                ma20_warning = True
+                exit_level = "P4"
+                exit_class = "HOLD"
+                reason_list.append("跌破MA20 WARNING，需次日确认")
             elif (
                 h.prev_close is not None
                 and h.current_price is not None
@@ -1798,13 +1887,21 @@ class MainTrendEngine:
             ):
                 recapture_triggered = True
                 action = "exit"
+                exit_level = "P2"
+                exit_class = "SELL_TRAILING"
                 reason_list.append("跌破关键线且次日无法站回")
-            elif decay >= reduce_th:
+            elif decay >= float(cfg.get("reduce_decay_threshold", 45) or 45):
                 action = "reduce"
+                exit_level = "P3"
+                exit_class = "REDUCE"
+                reduce_pct = reduce_pct_advice
                 reason_list.append("趋势衰减减仓")
             elif add_allowed and decay < 30:
                 action = "add_hint"
                 reason_list.append("盈利趋势再确认可加仓")
+            else:
+                action = "hold"
+                reason_list.append("继续持有")
 
             if action == "add_hint":
                 pos.state = "ADD"
@@ -1816,7 +1913,11 @@ class MainTrendEngine:
                 pos.state = "EXIT"
                 pos.action = "exit" if action == "exit" else "sell"
                 pos.reasons = reason_list[:]
-            elif decay >= reduce_th:
+            elif ma20_warning:
+                pos.state = "HOLD"
+                pos.action = "hold"
+                pos.reasons = reason_list[:]
+            elif decay >= 5:
                 pos.state = "DECAY"
                 pos.action = "decay"
                 pos.reasons = reason_list[:]
@@ -1832,7 +1933,7 @@ class MainTrendEngine:
                 urgency="high" if pos.action == "exit" or pos.action == "sell" else "normal",
                 exit_score=round(100 - decay, 2),
                 current_return_pct=round(ret_pct, 2),
-                stop_loss_triggered=bool(use_fixed_stop and ret_pct <= stop_pct),
+                stop_loss_triggered=bool(action == "sell" and exit_class == "SELL_NOW"),
                 take_profit_triggered=False,
                 reduce_triggered=bool(pos.action == "reduce"),
                 add_allowed=pos.add_allowed,
@@ -1841,9 +1942,30 @@ class MainTrendEngine:
                 decay_score=round(decay, 2),
                 atr_trailing_stop_triggered=atr_trail_triggered,
                 recapture_triggered=recapture_triggered,
+                exit_level=exit_level,
+                exit_class=exit_class,
+                reduce_pct=reduce_pct,
+                ma20_confirm_days=ma20_days,
+                highest_close=_num(h.highest_close) or highest,
+                trailing_stop_price=trailing_price,
+                decay_signals=[name for name, hit in decay_signals if hit],
                 reasons=pos.reasons,
             ))
         return out
+
+    def _atr_pct_from_holding(self, holding: Holding) -> Optional[float]:
+        """从 Holding/trade_plan/realtime 中提取 ATR%；用于 trailing stop = max(6%, 2×ATR%)。"""
+        realtime = holding.realtime_quote or {}
+        atr_pct = _num(realtime.get("atr_pct"))
+        if atr_pct is not None:
+            return atr_pct
+        if holding.trade_plan:
+            atr_pct = _num((holding.trade_plan or {}).get("atr_pct"))
+        if atr_pct is not None:
+            return atr_pct
+        # 最后兜底：从 current/ma20/entry 距离一个粗略 ATR 估计，不做精确 K 线拉取
+        # 避免 CLI 必须联网。真实实现由持仓构建时填入 atr_pct。
+        return 4.0
 
     def _trend_decay_score(self, current_price: float, highest_price: float, holding: Holding, cfg: Dict[str, Any]) -> float:
         """Trend Decay Score = 离开高点深度 + ATR trailing 接近 + 持仓时长 + 实时盘口弱化 + 市场恶化。
@@ -1874,6 +1996,52 @@ class MainTrendEngine:
         if regime == "D":
             score += 20
         return round(_clamp(score), 2)
+
+    def _extreme_event_flag(self, holding: Holding) -> bool:
+        """P0：极端事件/利空快照。Catalyst=EXTREME、Severity=EXTREME 直接 SELL。"""
+        ec = holding.event_catalyst or {}
+        if not ec:
+            return False
+        sev = str(ec.get("severity") or "").upper()
+        cat = str(ec.get("catalyst") or "").upper()
+        flag = str(ec.get("extreme_event") or ec.get("sell_now") or "").upper()
+        return bool(sev == "EXTREME" or cat == "EXTREME" or flag in ("TRUE", "1", "YES"))
+
+    def _decay_signal_list(self, current_price: float, highest_price: float, holding: Holding, cfg: Dict[str, Any]) -> List[Tuple[str, bool]]:
+        """C级趋势衰减信号（REDUCE≥2条触发，不预测顶）。
+
+        ① 5日不创新高
+        ② Volume > 1.5 × MA5 Volume
+        ③ ATR快速扩大
+        ④ RS连续下降
+        ⑤ Sector Strength下降
+        ⑥ 高位长上影（量价配合不足）
+        """
+        rt = holding.realtime_quote or {}
+        tp = holding.trade_plan or {}
+        ret5 = _num(tp.get("ret_5d_pct"))
+        ret20 = _num(tp.get("ret_20d_pct"))
+        vol_ratio = _num(tp.get("volume_ratio")) or _num(rt.get("volume_ratio"))
+        atr_pct = _num(tp.get("atr_pct")) or _num(rt.get("atr_pct"))
+        atr_prev = _num(tp.get("atr_prev_pct")) or _num(rt.get("atr_prev_pct"))
+        rs20 = _num(tp.get("relative_strength_20d_pct")) or _num(rt.get("relative_strength_20d_pct"))
+        rs60 = _num(tp.get("relative_strength_60d_pct")) or _num(rt.get("relative_strength_60d_pct"))
+        sector_1d = _num(tp.get("sector_1d_return")) or _num(rt.get("sector_1d_return"))
+        close = _num(tp.get("close")) or current_price
+        recent_high = _num(tp.get("close_vs_20d_high_pct"))
+        out = []
+        no_new_high = recent_high is not None and recent_high < -0.5
+        if no_new_high is not None:
+            out.append(("no_new_high_5d", bool(no_new_high)))
+        out.append(("volume_ratio_gt_1.5", bool(vol_ratio is not None and vol_ratio > 1.5)))
+        out.append(("atr_expansion", bool(atr_pct is not None and atr_prev is not None and atr_pct > atr_prev * 1.05)))
+        out.append(("rs_declining", bool(rs20 is not None and rs60 is not None and rs20 < rs60)))
+        out.append(("sector_strength_declining", bool(sector_1d is not None and sector_1d < -1.0)))
+        # 高位长上影：用 5日涨幅/20日涨幅判断"高位"，用 close 与 VWAP 关系近似长上影
+        high_ret = ret5 is not None and ret5 > 8.0
+        rejected = (rt.get("vwap_state") or "") == "Below" or _num(rt.get("intraday_structure_score")) is not None and _num(rt.get("intraday_structure_score")) < 40
+        out.append(("high_volume_rejection", bool(high_ret and (rejected or vol_ratio is not None and vol_ratio > 1.5))))
+        return out
 
     # ================= 工具 =================
     def _write_result(self, result: Dict[str, Any], output_dir: str) -> None:

@@ -594,3 +594,248 @@ async def calibrate_thresholds():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+# ===== Main Trend Dashboard APIs =====
+
+@app.get("/api/main_trend/dashboard")
+async def main_trend_dashboard(date: str = ""):
+    """主升浪 Dashboard：T日候选 / T+1执行 / 持仓 / 退出状态 汇总。"""
+    from config.config import PROJECT_ROOT
+    from strategies.main_trend.dashboard import build_dashboard
+
+    base = PROJECT_ROOT / "agents_workspace_main_trend"
+    return build_dashboard(base, date=date)
+
+
+@app.get("/api/main_trend/dates")
+async def main_trend_dates():
+    """主升浪可用日期列表。"""
+    from config.config import PROJECT_ROOT
+    from strategies.main_trend.dashboard import list_day_dirs
+
+    base = PROJECT_ROOT / "agents_workspace_main_trend"
+    return {"ok": True, "dates": list_day_dirs(base)}
+
+
+@app.get("/api/main_trend/holdings")
+async def main_trend_holdings(date: str = ""):
+    from config.config import PROJECT_ROOT
+    from strategies.main_trend.dashboard import latest_holdings_payload
+
+    base = PROJECT_ROOT / "agents_workspace_main_trend"
+    if date:
+        key = str(date).replace("-", "").replace("/", "")
+        hp = base / key / "holdings.json"
+        if hp.exists():
+            import json as json_mod
+            return json_mod.loads(hp.read_text(encoding="utf-8"))
+        return {"present": False, "error": f"No holdings for {key}"}
+    return latest_holdings_payload(base)
+
+
+@app.get("/api/main_trend/exit_decisions")
+async def main_trend_exit(date: str = ""):
+    from config.config import PROJECT_ROOT
+    from strategies.main_trend.dashboard import latest_exit_payload
+
+    base = PROJECT_ROOT / "agents_workspace_main_trend"
+    if date:
+        key = str(date).replace("-", "").replace("/", "")
+        ep = base / key / "exit_decisions.json"
+        if ep.exists():
+            import json as json_mod
+            return json_mod.loads(ep.read_text(encoding="utf-8"))
+        return {"present": False, "error": f"No exit decisions for {key}"}
+    return latest_exit_payload(base)
+
+
+@app.get("/api/main_trend/candidates")
+async def main_trend_candidates(date: str = ""):
+    from config.config import PROJECT_ROOT
+    from strategies.main_trend.dashboard import latest_tday_payload
+
+    base = PROJECT_ROOT / "agents_workspace_main_trend"
+    if date:
+        key = str(date).replace("-", "").replace("/", "")
+        cp = base / key / "tday_pool.json"
+        if cp.exists():
+            import json as json_mod
+            return json_mod.loads(cp.read_text(encoding="utf-8"))
+        return {"present": False, "error": f"No tday candidates for {key}"}
+    return latest_tday_payload(base)
+
+
+@app.post("/api/main_trend/holdings/init")
+async def main_trend_holdings_init(body: dict = {}):
+    """根据已有 t1_execution 初始化持仓文件。POST JSON {date, tday, t1}。"""
+    from config.config import PROJECT_ROOT
+    import json as json_mod
+    from pathlib import Path as _Path
+    from strategies.main_trend.holdings import build_from_t1
+
+    base = PROJECT_ROOT / "agents_workspace_main_trend"
+    date = str(body.get("date") or "").replace("-", "").replace("/", "")
+    if not date:
+        return {"error": "date required", "ok": False}
+    tday_arg = str(body.get("tday") or "")
+    t1_arg = str(body.get("t1") or "")
+
+    tday_path = _Path(tday_arg).expanduser() if tday_arg else base / date / "tday_pool.json"
+    t1_path = _Path(t1_arg).expanduser() if t1_arg else base / date / "t1_execution.json"
+    if not tday_path.is_absolute():
+        tday_path = PROJECT_ROOT / tday_path
+    if not t1_path.is_absolute():
+        t1_path = PROJECT_ROOT / t1_path
+    # 兜底：在 date dir 找不到就在所有日期里找
+    if not tday_path.exists():
+        from strategies.main_trend.dashboard import latest_tday_payload, latest_t1_payload
+        latest = latest_tday_payload(base)
+        if latest.get("present"):
+            tday_path = _Path(latest["path"])
+    if not t1_path.exists():
+        from strategies.main_trend.dashboard import latest_tday_payload, latest_t1_payload
+        latest_t1 = latest_t1_payload(base)
+        if latest_t1.get("present"):
+            t1_path = _Path(latest_t1["path"])
+    if not tday_path.exists() or not t1_path.exists():
+        return {"ok": False, "error": f"tday/t1 not found: {tday_path} / {t1_path}", "tday": str(tday_path), "t1": str(t1_path)}
+
+    tday = json_mod.loads(tday_path.read_text(encoding="utf-8"))
+    t1 = json_mod.loads(t1_path.read_text(encoding="utf-8"))
+    payload = build_from_t1(tday, t1, date=date)
+    out_dir = base / date
+    out_dir.mkdir(parents=True, exist_ok=True)
+    hp = out_dir / "holdings.json"
+    hp.write_text(json_mod.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {"ok": True, "date": date, "count": payload["count"], "path": str(hp), "holdings": payload["holdings"]}
+
+
+
+@app.get("/api/main_trend/realtime")
+async def main_trend_realtime(date: str = ""):
+    """实时拉取当日行情计算持仓收益，并跑状态机但不持久化。"""
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor
+    from config.config import PROJECT_ROOT
+    from strategies.main_trend.dashboard import latest_holdings_payload, _payload_for_date
+    from strategies.main_trend.engine import MainTrendConfig, MainTrendEngine
+    from strategies.main_trend.schemas import Holding
+    from utils.tencent_realtime import fetch_realtime_quote
+
+    base = PROJECT_ROOT / "agents_workspace_main_trend"
+    if date:
+        key = str(date).replace("-", "").replace("/", "")
+        payload = _payload_for_date(base, key, "holdings.json", "holdings") or {}
+    else:
+        payload = latest_holdings_payload(base) or {}
+    if not payload.get("present"):
+        return {"ok": False, "error": "no holdings", "holdings_present": False}
+    rows = [dict(r) for r in (payload.get("rows") or []) if r.get("symbol_code")]
+    if not rows:
+        return {"ok": False, "error": "no holdings rows"}
+
+    engine = MainTrendEngine(MainTrendConfig.from_yaml())
+
+    def _one(r: dict) -> dict:
+        code = str(r.get("symbol_code") or "")
+        q = fetch_realtime_quote(code, prefer="tencent", timeout=3.0)
+        out = dict(r)
+        if q and q.price:
+            out["realtime_price"] = q.price
+            out["current_price"] = q.price
+            out["realtime_source"] = q.source
+            out["realtime_timestamp"] = q.timestamp
+            rt = dict(out.get("realtime_quote") or {})
+            rt["vwap_state"] = "Above" if (q.vwap and q.price >= q.vwap) else rt.get("vwap_state", "")
+            rt["atr"] = q.detail.get("atr") if q.detail.get("atr") else rt.get("atr")
+            rt["order_flow_score"] = rt.get("order_flow_score") or 50.0
+            out["realtime_quote"] = rt
+        return out
+
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        new_rows = list(pool.map(_one, rows))
+
+    def _float(v):
+        try:
+            return float(v)
+        except Exception:
+            return None
+
+    holdings = []
+    for r in new_rows:
+        try:
+            holdings.append(Holding(
+                symbol_code=str(r.get("symbol_code") or ""),
+                symbol_name=str(r.get("symbol_name") or ""),
+                entry_date=str(r.get("entry_date") or ""),
+                entry_price=float(r.get("entry_price") or 0),
+                quantity=int(r.get("quantity") or 0),
+                holding_days=int(r.get("holding_days") or 0),
+                highest_price=_float(r.get("highest_price")) or _float(r.get("entry_price")) or 0.0,
+                highest_close=_float(r.get("highest_close")),
+                current_price=_float(r.get("current_price")),
+                buy_score=float(r.get("buy_score") or 0),
+                signal_tier=str(r.get("signal_tier") or "A"),
+                trade_plan=r.get("trade_plan") or {},
+                stop_loss_price=_float(r.get("stop_loss_price")),
+                atr_trailing_stop=_float(r.get("atr_trailing_stop")),
+                prev_close=_float(r.get("prev_close")),
+                ma20=_float(r.get("ma20")),
+                prev_ma20=_float(r.get("prev_ma20")),
+                event_catalyst=r.get("event_catalyst") or {},
+                realtime_quote=r.get("realtime_quote") or {},
+                order_flow_score=float(r.get("order_flow_score") or 50),
+            ))
+        except Exception:
+            continue
+
+    if not holdings:
+        return {"ok": False, "error": "no parseable holdings"}
+
+    decisions = [d.to_dict() for d in engine.evaluate_exits(holdings)]
+    rows_by_code = {str(r.get("symbol_code") or ""): r for r in new_rows}
+    # 返回收益统计
+    total = 0.0
+    count = 0
+    for h in holdings:
+        if h.current_price:
+            total += (h.current_price / h.entry_price - 1.0) * 100.0
+            count += 1
+    avg_return = total / count if count else 0.0
+    sells = [d for d in decisions if d.get("action") in ("sell", "exit")]
+    reduces = [d for d in decisions if d.get("action") == "reduce"]
+    # 构建完整持仓行：原始字段 + 实时价 + 实时收益 + 退出状态
+    full_holdings = []
+    for h, d in zip(holdings, decisions):
+        row = dict(h.__dict__)  # Holding dataclass 字段
+        orig = rows_by_code.get(h.symbol_code) or {}
+        row["suggested_position_pct"] = orig.get("suggested_position_pct")
+        row["raw_position_pct"] = orig.get("raw_position_pct")
+        if row.get("realtime_quote") is None:
+            row["realtime_quote"] = {}
+        row["symbol_code"] = h.symbol_code
+        row["symbol_name"] = h.symbol_name
+        row["current_price"] = h.current_price
+        row["return_pct"] = round((h.current_price / h.entry_price - 1.0) * 100.0, 2) if h.entry_price and h.current_price else 0.0
+        row["current_return_pct"] = row["return_pct"]
+        row["entry_price"] = h.entry_price
+        row["exit_class"] = d.get("exit_class")
+        row["exit_action"] = d.get("action")
+        row["exit_level"] = d.get("exit_level")
+        row["exit_reason"] = d.get("reason")
+        row["exit_reasons"] = d.get("reasons") or []
+        row["trailing_stop_price"] = d.get("trailing_stop_price")
+        row["reason"] = d.get("reason")
+        row["realtime_source"] = h.realtime_quote.get("source") if isinstance(h.realtime_quote, dict) else None
+        full_holdings.append(row)
+    return {
+        "ok": True,
+        "as_of_date": payload.get("trade_date") or "",
+        "positions_count": len(decisions),
+        "avg_return_pct": round(avg_return, 2),
+        "realtime_at": __import__("datetime").datetime.now().isoformat(timespec="seconds"),
+        "sell_count": len(sells),
+        "reduce_count": len(reduces),
+        "holdings": full_holdings,
+    }

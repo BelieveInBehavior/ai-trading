@@ -43,6 +43,15 @@ def main() -> None:
                 "execution_grade": "?",
                 "action": "WAIT",
                 "reason": "未输入T+1字段",
+                "entry_price": None,
+                "initial_stop": item.get("initial_stop"),
+                "initial_stop_pct": item.get("initial_stop_pct"),
+                "trailing_stop": item.get("trailing_stop"),
+                "current_stop": item.get("current_stop"),
+                "ma20": item.get("ma20"),
+                "atr": item.get("atr"),
+                "take_profit_price": None,
+                "suggested_position_pct": 0.0,
             })
             continue
         graded = grade_execution(
@@ -57,6 +66,9 @@ def main() -> None:
         )
         final = compute_final_score(float(item.get("pre_score") or 0), graded["execution_score"])
         sized = item.get("suggested_position_pct") if graded["action"] == "BUY" else 0.0
+        # 买入价：T+1 执行输入有 price_0935 优先，否则用 open；都没有则不算完整 BUY。
+        entry_price = raw.get("price_0935") if raw.get("price_0935") is not None else raw.get("open")
+        # main_trend 默认 no fixed take-profit：只用动态止损/ATR/MA20/10日超期作为退出参考。
         rows.append({
             "symbol_code": code,
             "symbol_name": item.get("symbol_name"),
@@ -70,6 +82,16 @@ def main() -> None:
             "bid_support": graded["bid_support"],
             "execution_grade": graded["execution_grade"],
             "action": graded["action"],
+            "entry_price": entry_price,
+            "entry_time": raw.get("snapshot_time") or raw.get("pulled_at") or manual.get("pulled_at"),
+            "initial_stop": item.get("initial_stop"),
+            "initial_stop_pct": item.get("initial_stop_pct"),
+            "trailing_stop": item.get("trailing_stop"),
+            "current_stop": item.get("current_stop"),
+            "ma20": item.get("ma20"),
+            "atr": item.get("atr"),
+            "take_profit_price": None,
+            "stop_method": "MA20/ATR trailing/time-max",  # main_trend 不使用固定止盈
             "suggested_position_pct": sized,
             "reasons": graded["reasons"],
         })

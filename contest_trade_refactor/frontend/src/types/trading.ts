@@ -135,3 +135,130 @@ export interface SystemStatus {
   timestamp: string;
   active_sessions: number;
 }
+
+// ===== Main Trend following =====
+export interface MtnCandidate {
+  symbol_code?: string;
+  symbol_name?: string;
+  trade_date?: string;
+  trend_state?: string;
+  trend_grade?: string;
+  trend_score?: number;
+  sector_name?: string;
+  sector_grade?: string;
+  sector_score?: number;
+  catalyst_grade?: string;
+  catalyst_score?: number;
+  pre_score?: number;
+  theme?: string;
+  reference_price?: number;
+  entry_price?: number | null;
+  initial_stop?: number;
+  initial_stop_pct?: number;
+  trailing_stop?: number;
+  current_stop?: number;
+  ma20?: number | null;
+  atr?: number;
+  raw_position_pct?: number;
+  t1_state?: string;
+  action?: string;
+  suggested_position_pct?: number;
+  portfolio_state?: string;
+}
+
+export interface MtfT1Row extends MtnCandidate {
+  final_score?: number;
+  execution_grade?: string;
+  gap_pct?: number;
+  vwap_state?: string;
+  bid_support?: string;
+  reasons?: string[];
+}
+
+export interface MtfHolding {
+  symbol_code?: string;
+  symbol_name?: string;
+  entry_date?: string;
+  entry_price?: number;
+  quantity?: number;
+  holding_days?: number;
+  highest_price?: number;
+  highest_close?: number;
+  current_price?: number | null;
+  buy_score?: number;
+  signal_tier?: string;
+  stop_loss_price?: number | null;
+  atr_trailing_stop?: number | null;
+  ma20?: number | null;
+  prev_ma20?: number | null;
+  prev_close?: number | null;
+  current_return_pct?: number;
+  return_pct?: number | null;
+  suggested_position_pct?: number;
+  raw_position_pct?: number;
+  exit_action?: string;
+  exit_class?: string;
+  exit_level?: string;
+  exit_reason?: string;
+  exit_reasons?: string[];
+  trailing_stop_price?: number | null;
+  reduce_pct?: number;
+  position_state?: string;
+  [key: string]: unknown;
+}
+
+export interface MtfExitDecision {
+  symbol_code?: string;
+  symbol_name?: string;
+  action?: string;
+  reason?: string;
+  exit_level?: string;
+  exit_class?: string;
+  state?: string;
+  position_state?: string;
+  current_return_pct?: number;
+  stop_loss_triggered?: boolean;
+  reduce_triggered?: boolean;
+  add_allowed?: boolean;
+  reduce_pct?: number;
+  trailing_stop_price?: number | null;
+  [key: string]: unknown;
+}
+
+export interface MtfDashboard {
+  as_of_date?: string;
+  generated_at?: string;
+  tday_candidates?: {
+    present?: boolean;
+    trade_date?: string;
+    count?: number;
+    rows?: MtnCandidate[];
+    themes?: Array<{ theme?: string; names?: number; gross_pct?: number; kept_pct?: number }>;
+    path?: string;
+  };
+  t1_execution?: {
+    present?: boolean;
+    trade_date?: string;
+    rows?: MtfT1Row[];
+    index_change_pct?: number | null;
+    path?: string;
+  };
+  holdings?: {
+    present?: boolean;
+    trade_date?: string;
+    rows?: MtfHolding[];
+    count?: number;
+    last_run?: string;
+    path?: string;
+  };
+  exit_decisions?: {
+    present?: boolean;
+    as_of_date?: string;
+    positions_count?: number;
+    decisions?: MtfExitDecision[];
+    path?: string;
+  };
+  requested_date?: string;
+  requested_day_present?: boolean;
+  available_dates?: string[];
+}
