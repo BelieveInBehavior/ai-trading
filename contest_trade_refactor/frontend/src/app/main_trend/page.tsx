@@ -22,10 +22,17 @@ interface RealtimeSummary {
     entry_price?: number;
     current_price?: number | null;
     return_pct?: number | null;
+    current_return_pct?: number | null;
+    realtime_quote?: Record<string, unknown>;
     exit_class?: string;
     exit_action?: string;
     reason?: string;
     realtime_source?: string | null;
+    high_volume_class?: string;
+    high_volume_reason?: string;
+    add_setup_class?: string;
+    sector_source?: string;
+    rs_source?: string;
   }>;
 }
 
@@ -47,13 +54,47 @@ function pct(value: unknown, digits = 1): string {
   return `${n.toFixed(digits)}%`;
 }
 
+function factorBadge(row: MtfHolding): string {
+  const hv = row.high_volume_class || "";
+  const add = row.add_setup_class || "";
+  const sector = row.sector_source || "";
+  const rs = row.rs_source || "";
+  const parts: string[] = [];
+  if (hv) parts.push(`HV:${hv}`);
+  if (row.next_day_guard_break_vwap) parts.push("破昨VWAP");
+  const hvReason = row.high_volume_reason || "";
+  if (hvReason) parts.push(hvReason.replace(";", "|"));
+  if (add) parts.push(`Add:${add}`);
+  if (sector) parts.push(`Sec:${sector.split("_")[0]}`);
+  if (rs) parts.push(`RS:${rs.split("_")[0]}`);
+  return parts.join(" ");
+}
+
+function displayStatus(row: {
+  exit_class?: string;
+  exit_action?: string;
+  position_state?: string;
+  display_status?: string;
+  action?: string;
+  state?: string;
+}): string {
+  const a = (row.exit_action || row.action || "").toLowerCase();
+  const c = (row.exit_class || "").toUpperCase();
+  const p = (row.position_state || row.state || "").toUpperCase();
+  if (c.startsWith("SELL") || a === "sell" || a === "exit" || p === "EXIT") return "SELL";
+  if (c === "REDUCE" || a === "reduce" || p === "REDUCE") return "REDUCE";
+  if (p === "ADD" || a === "add") return "ADD";
+  if (c === "DECAY" || a === "decay" || p === "DECAY") return "DECAY";
+  if (row.display_status) return String(row.display_status).toUpperCase();
+  return "HOLD";
+}
+
 function statusColor(exitClass: string | undefined, action: string | undefined): string {
-  const a = (action || "").toLowerCase();
-  const c = (exitClass || "").toUpperCase();
-  if (c.startsWith("SELL") || a === "sell" || a === "exit") return "#dc2626";
-  if (c === "REDUCE" || a === "reduce") return "#d97706";
-  if (c === "DECAY" || a === "decay") return "#a16207";
-  if (c === "ADD" || a === "add") return "#059669";
+  const label = displayStatus({ exit_class: exitClass, exit_action: action, action });
+  if (label === "SELL") return "#dc2626";
+  if (label === "REDUCE") return "#d97706";
+  if (label === "DECAY") return "#ca8a04";
+  if (label === "ADD") return "#059669";
   return "#2563eb";
 }
 
@@ -69,6 +110,51 @@ function Card({ title, children, right }: { title: string; children: React.React
   );
 }
 
+function SummaryCards({
+  rows,
+  t1,
+  realtime,
+  tdayCount,
+}: {
+  rows: MtfHolding[];
+  t1: MtfT1Row[];
+  realtime: RealtimeSummary | null;
+  tdayCount?: number;
+}) {
+  const statuses = rows.map((r) => displayStatus(r));
+  const sell = statuses.filter((s) => s === "SELL").length;
+  const reduce = statuses.filter((s) => s === "REDUCE").length;
+  const add = statuses.filter((s) => s === "ADD").length;
+  const decay = statuses.filter((s) => s === "DECAY").length;
+  const hold = statuses.filter((s) => s === "HOLD").length;
+  const buys = t1.filter((r) => (r.action || "").toUpperCase() === "BUY").length;
+  const avg = realtime?.avg_return_pct;
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: "0.65rem" }}>
+      {rows.length > 0 ? (
+        <>
+          <MiniStat label="9:30 BUY" value={String(buys || rows.length)} color="#2563eb" />
+          <MiniStat label="持仓" value={String(rows.length)} color="#2563eb" />
+          <MiniStat label="HOLD" value={String(hold)} color="#2563eb" />
+          <MiniStat label="DECAY" value={String(decay)} color="#ca8a04" />
+          <MiniStat label="ADD" value={String(add)} color="#059669" />
+          <MiniStat label="REDUCE" value={String(reduce)} color="#d97706" />
+          <MiniStat label="SELL" value={String(sell)} color="#dc2626" />
+        </>
+      ) : (
+        <>
+          <MiniStat label="T日候选" value={String(tdayCount ?? 0)} color="#2563eb" />
+          <MiniStat label="T+1 BUY" value={String(buys)} color="#059669" />
+          <MiniStat label="状态" value="待9:30" color="#64748b" />
+        </>
+      )}
+      {avg != null && rows.length > 0 && (
+        <MiniStat label="实时平均收益" value={`${avg.toFixed(2)}%`} color={avg >= 0 ? "#dc2626" : "#059669"} />
+      )}
+    </div>
+  );
+}
+
 function MiniStat({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div style={{ background: "#f8fafc", borderRadius: "0.7rem", padding: "0.65rem 0.8rem", borderLeft: `3px solid ${color}` }}>
@@ -78,31 +164,10 @@ function MiniStat({ label, value, color }: { label: string; value: string; color
   );
 }
 
-function SummaryCards({ d }: { d: MtfDashboard }) {
-  const tday = d.tday_candidates;
-  const t1 = d.t1_execution;
-  const holdings = d.holdings?.rows || [];
-  const exits = d.exit_decisions?.decisions || [];
-  const sellCount = exits.filter((x) => x.action === "sell" || x.action === "exit" || (x.exit_class || "").toUpperCase().startsWith("SELL")).length;
-  const reduceCount = exits.filter((x) => x.action === "reduce" || (x.exit_class || "").toUpperCase() === "REDUCE").length;
-  const holdCount = holdings.length - sellCount - reduceCount;
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: "0.65rem" }}>
-      {[
-        { label: "T日候选", value: tday?.count ?? 0, color: "#2563eb" },
-        { label: "T+1 BUY", value: t1?.rows?.filter((r) => (r.action || "").toUpperCase() === "BUY").length ?? 0, color: "#059669" },
-        { label: "持仓", value: holdings.length, color: "#2563eb" },
-        { label: "HOLD", value: Math.max(0, holdCount), color: "#2563eb" },
-        { label: "REDUCE", value: reduceCount, color: "#d97706" },
-        { label: "SELL", value: sellCount, color: "#dc2626" },
-      ].map((s) => (
-        <div key={s.label} style={{ background: "#f8fafc", borderRadius: "0.7rem", padding: "0.65rem 0.8rem", borderLeft: `3px solid ${s.color}` }}>
-          <div style={{ fontSize: "0.7rem", color: "#64748b" }}>{s.label}</div>
-          <div style={{ fontWeight: 800, fontSize: "1.15rem", color: s.color }}>{s.value}</div>
-        </div>
-      ))}
-    </div>
-  );
+function formatOrderBook(value: unknown): string {
+  const n = num(value);
+  if (n == null) return "—";
+  return `${n.toFixed(1)}%`;
 }
 
 function CandidateTable({ rows }: { rows: MtfT1Row[] | MtnCandidate[] }) {
@@ -162,42 +227,89 @@ function HoldingsTable({ rows }: { rows: MtfHolding[] }) {
             <th style={{ padding: "0.35rem", borderBottom: "1px solid #e2e8f0" }}>当前价</th>
             <th style={{ padding: "0.35rem", borderBottom: "1px solid #e2e8f0" }}>买入价</th>
             <th style={{ padding: "0.35rem", borderBottom: "1px solid #e2e8f0" }}>收益</th>
+            <th style={{ padding: "0.35rem", borderBottom: "1px solid #e2e8f0" }}>盘口</th>
             <th style={{ padding: "0.35rem", borderBottom: "1px solid #e2e8f0" }}>移动止损</th>
             <th style={{ padding: "0.35rem", borderBottom: "1px solid #e2e8f0" }}>初始止损</th>
+            <th style={{ padding: "0.35rem", borderBottom: "1px solid #e2e8f0" }}>目标1/2</th>
+            <th style={{ padding: "0.35rem", borderBottom: "1px solid #e2e8f0" }}>保护价</th>
             <th style={{ padding: "0.35rem", borderBottom: "1px solid #e2e8f0" }}>理由</th>
             <th style={{ padding: "0.35rem", borderBottom: "1px solid #e2e8f0" }}>持仓%</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((h) => {
-            const status = h.exit_class || h.position_state || "HOLD";
-            const color = statusColor(h.exit_class, h.exit_action);
-            const rr = h.return_pct ?? h.current_return_pct ?? 0;
-            const up = rr > 0;
+            const hh = h as MtfHolding & RealtimeSummary["holdings"][number];
+            const status = displayStatus(hh);
+            const color = statusColor(status, hh.exit_action);
+            const rr = hh.return_pct ?? hh.current_return_pct ?? 0;
+            const hq = (hh as { realtime_quote?: Record<string, unknown> }).realtime_quote || {};
+            const qPrev = typeof hq.prev_close === "number" ? hq.prev_close : null;
+            const prev = qPrev ?? hh.prev_close;
+            const realtimePrice = typeof hh.current_price === "number" ? hh.current_price : null;
+            const dayMove = realtimePrice != null && prev != null && prev !== 0 ? ((realtimePrice / prev - 1) * 100) : null;
+            const dayUp = dayMove != null && dayMove > 0;
+            const dayDown = dayMove != null && dayMove < 0;
+            const dayArrow = dayUp ? "▲" : dayDown ? "▼" : "—";
+            const dayColor = dayUp ? "#dc2626" : dayDown ? "#059669" : "#64748b";
+            // 持仓表当前价的箭头/颜色：以“相对买入价”的持仓盈亏为准（和收益列一致）
+            const isUp = rr > 0;
+            const isDown = rr < 0;
+            const arrow = isUp ? "▲" : isDown ? "▼" : "—";
+            const arrowColor = isUp ? "#dc2626" : isDown ? "#059669" : "#64748b";
+            const rrUp = rr > 0;
+            const rrColor = rrUp ? "#dc2626" : rr < 0 ? "#059669" : "#64748b";
+            const bid = typeof hq.bid === "number" ? hq.bid : null;
+            const ask = typeof hq.ask === "number" ? hq.ask : null;
+            const activeBuy = typeof hq.active_buy_pct === "number" ? hq.active_buy_pct : null;
+            const bidAskRatio = typeof hq.bid_ask_ratio === "number" ? hq.bid_ask_ratio : null;
             return (
-              <tr key={h.symbol_code}>
+              <tr key={hh.symbol_code}>
                 <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9", fontWeight: 600 }}>
-                  {h.symbol_name}<span style={{ color: "#94a3b8", marginLeft: "0.25rem", fontSize: "0.7rem" }}>{h.symbol_code}</span>
+                  {hh.symbol_name}<span style={{ color: "#94a3b8", marginLeft: "0.25rem", fontSize: "0.7rem" }}>{hh.symbol_code}</span>
                 </td>
                 <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9" }}>
                   <span style={{ padding: "0.14rem 0.5rem", borderRadius: "0.35rem", fontWeight: 700, background: "#f1f5f9", color }}>
                     {status}
                   </span>
                 </td>
-                <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9", fontWeight: 600, color: up ? "#dc2626" : "#059669" }}>
-                  {up ? "▲" : "▼"} {fmt(h.current_price)}
+                <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9", fontWeight: 600, color: arrowColor }}>
+                  <div>{arrow} {fmt(hh.current_price)}</div>
+                  {dayMove != null ? (
+                    <div style={{ fontSize: "0.65rem", color: dayColor, fontWeight: 400 }}>
+                      今{dayArrow} {dayMove >= 0 ? "+" : ""}{dayMove.toFixed(2)}%
+                    </div>
+                  ) : null}
                 </td>
-                <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9", fontWeight: 600 }}>{fmt(h.entry_price)}</td>
-                <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9", fontWeight: 600, color: up ? "#dc2626" : "#059669" }}>
+                <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9", fontWeight: 600 }}>{fmt(hh.entry_price)}</td>
+                <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9", fontWeight: 600, color: rrColor }}>
                   {pct(rr)}
                 </td>
-                <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9" }}>{fmt(h.trailing_stop_price ?? h.atr_trailing_stop)}</td>
-                <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9" }}>{fmt(h.stop_loss_price)}</td>
-                <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9", maxWidth: 260, color: "#64748b", fontSize: "0.72rem" }}>
-                  {(typeof h.exit_reason === "string" ? h.exit_reason : (h.exit_reasons || []).join("；")) || "—"}
+                <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9", fontSize: "0.72rem", color: "#475569", maxWidth: 150 }}>
+                  {bid != null && ask != null ? `买${bid} · 卖${ask}` : <span style={{ color: "#94a3b8" }}>—</span>}
+                  {activeBuy != null || bidAskRatio != null ? (
+                    <div style={{ fontSize: "0.65rem", color: "#94a3b8" }}>
+                      {activeBuy != null ? `盘口买占比 ${formatOrderBook(activeBuy)}` : ""}
+                      {bidAskRatio != null ? ` 委比${bidAskRatio > 0 ? "+" : ""}${(bidAskRatio * 100 - 100).toFixed(0)}%` : ""}
+                    </div>
+                  ) : null}
+                </td>
+                <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9" }}>{fmt(hh.trailing_stop_price ?? hh.atr_trailing_stop)}</td>
+                <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9" }}>{fmt(hh.stop_loss_price)}</td>
+                <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9", color: "#7c3aed", fontWeight: 600 }}>
+                  {fmt(hh.target_price_1)}/{fmt(hh.target_price_2)}
+                </td>
+                <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9", color: "#b45309", fontWeight: 600 }}>
+                  <div>{fmt(hh.profit_protect_price)}</div>
+                  {hh.profit_protect_level ? <div style={{ fontSize: "0.65rem", color: "#92400e", fontWeight: 400 }}>{hh.profit_protect_level}</div> : null}
+                </td>
+                <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9", maxWidth: 300, color: "#64748b", fontSize: "0.72rem" }}>
+                  <div>{(typeof hh.exit_reason === "string" ? hh.exit_reason : (hh.exit_reasons || []).join("；")) || "—"}</div>
+                  {factorBadge(hh as MtfHolding) ? (
+                    <div style={{ marginTop: "0.2rem", color: "#7c3aed", fontWeight: 500 }}>{factorBadge(hh as MtfHolding)}</div>
+                  ) : null}
                 </td>
                 <td style={{ padding: "0.35rem", borderBottom: "1px solid #f1f5f9", fontWeight: 700, color: "#1e40af" }}>
-                  {fmt(h.suggested_position_pct ?? h.raw_position_pct, 2)}%
+                  {fmt(hh.suggested_position_pct ?? hh.raw_position_pct, 2)}%
                 </td>
               </tr>
             );
@@ -231,7 +343,12 @@ export default function MainTrendPage() {
       const res = await fetch(url, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok || !json.ok) {
-        setRealtimeMsg(`${json.error || "实时行情失败"}`);
+        if (json.error === "no holdings" || json.error?.includes("no holdings")) {
+          setRealtime(null);
+          setRealtimeMsg("");
+        } else {
+          setRealtimeMsg(`${json.error || "实时行情失败"}`);
+        }
       } else {
         setRealtime(json);
         setRealtimeMsg(`已刷新：平均 ${json.avg_return_pct}% · SELL ${json.sell_count} · REDUCE ${json.reduce_count}`);
@@ -306,10 +423,28 @@ export default function MainTrendPage() {
 
   const holdings = data?.holdings?.rows ?? [];
   const realtimeRows = realtime?.holdings ?? [];
-  const displayHoldings = realtimeRows.length > 0 ? realtimeRows : holdings;
+  const displayHoldings = useMemo(() => {
+    if (realtimeRows.length === 0) return holdings;
+    const rtByCode = new Map(realtimeRows.map((r) => [r.symbol_code, r]));
+    return holdings.map((h) => {
+      const rt = rtByCode.get(h.symbol_code);
+      if (!rt) return h;
+      return {
+        ...h,
+        current_price: rt.current_price ?? h.current_price,
+        return_pct: rt.return_pct ?? rt.current_return_pct ?? h.current_return_pct,
+        current_return_pct: rt.current_return_pct ?? rt.return_pct ?? h.current_return_pct,
+        realtime_quote: { ...(h.realtime_quote || {}), ...(rt.realtime_quote || {}) },
+        realtime_source: rt.realtime_source ?? h.realtime_source,
+      };
+    });
+  }, [holdings, realtimeRows]);
   const exits = data?.exit_decisions?.decisions ?? [];
   const t1rows = data?.t1_execution?.rows ?? [];
-  const candidates = t1rows.length ? t1rows : (data?.tday_candidates?.rows ?? []);
+  const tdayRows = data?.tday_candidates?.rows ?? [];
+  const candidates = data?.t1_execution?.present && t1rows.length > 0 ? t1rows : tdayRows;
+  const tdayCount = data?.tday_candidates?.count ?? tdayRows.length;
+  const showT1Pending = Boolean(tdayCount > 0 && !data?.t1_execution?.present);
   const sellDecisions = useMemo(() => {
     if (!exits || exits.length === 0) return [];
     return exits.filter((x) => x.action === "sell" || x.action === "exit" || (x.exit_class || "").toUpperCase().startsWith("SELL"));
@@ -368,16 +503,19 @@ export default function MainTrendPage() {
         {error && <div style={{ background: "#fee2e2", color: "#991b1b", padding: "0.6rem 0.9rem", borderRadius: "0.6rem", fontSize: "0.85rem" }}>{error}</div>}
         {initMsg && <div style={{ background: "#dbeafe", color: "#1e40af", padding: "0.6rem 0.9rem", borderRadius: "0.6rem", fontSize: "0.85rem" }}>{initMsg}</div>}
         {realtimeMsg && <div style={{ background: "#fef9c3", color: "#713f12", padding: "0.6rem 0.9rem", borderRadius: "0.6rem", fontSize: "0.85rem" }}>{realtimeMsg}</div>}
-        {realtime && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: "0.65rem" }}>
-            <MiniStat label="实时平均收益" value={`${realtime.avg_return_pct.toFixed(2)}%`} color={realtime.avg_return_pct >= 0 ? "#dc2626" : "#059669"} />
-            <MiniStat label="持仓数" value={String(realtime.positions_count)} color="#2563eb" />
-            <MiniStat label="SELL" value={String(realtime.sell_count)} color="#dc2626" />
-            <MiniStat label="REDUCE" value={String(realtime.reduce_count)} color="#d97706" />
+        {showT1Pending && (
+          <div style={{ background: "#dbeafe", color: "#1e40af", padding: "0.6rem 0.9rem", borderRadius: "0.6rem", fontSize: "0.85rem" }}>
+            明天 T+1 开盘候选：<strong>{tdayCount}</strong> 只（T日 {data?.tday_candidates?.trade_date || data?.as_of_date || "—"} 收盘扫描，全部 WAIT，待 9:30 执行打分）
           </div>
         )}
-
-        {data && <SummaryCards d={data} />}
+        {data?.t2?.present && (
+          <div style={{ background: "#ecfdf5", color: "#065f46", padding: "0.6rem 0.9rem", borderRadius: "0.6rem", fontSize: "0.85rem" }}>
+            T+2 持有第二天（{data.t2.logged_at || data.t2.wave}）：SELL {data.t2.counts?.SELL ?? 0} · REDUCE {data.t2.counts?.REDUCE ?? 0} · HOLD {data.t2.counts?.HOLD ?? 0}
+            {data.t2.avg_return_pct != null ? ` · 平均收益 ${data.t2.avg_return_pct.toFixed(2)}%` : ""}
+            。未与今日 9:30 新买入合并。
+          </div>
+        )}
+        <SummaryCards rows={displayHoldings as MtfHolding[]} t1={t1rows} realtime={realtime} tdayCount={tdayCount} />
 
         {(sellDecisions.length > 0 || reduceDecisions.length > 0) && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "0.9rem" }}>
@@ -394,7 +532,7 @@ export default function MainTrendPage() {
           </div>
         )}
 
-        <Stack title="持仓状态机 HOLD / REDUCE / SELL" count={holdings.length}>
+        <Stack title="持仓状态机 HOLD / REDUCE / SELL" count={displayHoldings.length}>
           <HoldingsTable rows={displayHoldings as MtfHolding[]} />
         </Stack>
 
@@ -428,6 +566,12 @@ function DecisionList({ decisions }: { decisions: MtfExitDecision[] }) {
         <div key={d.symbol_code} style={{ display: "flex", gap: "0.6rem", alignItems: "center", background: "#f8fafc", borderRadius: "0.6rem", padding: "0.5rem 0.7rem" }}>
           <span style={{ fontWeight: 700, minWidth: 90 }}>{d.symbol_name}<span style={{ color: "#94a3b8", fontSize: "0.7rem", marginLeft: "0.2rem" }}>{d.symbol_code}</span></span>
           <span style={{ fontSize: "0.75rem", color: "#475569" }}>{d.reason || d.exit_class || d.state}</span>
+          {d.profit_protect_price != null ? (
+            <span style={{ fontSize: "0.7rem", color: "#b45309", fontWeight: 700 }}>保护 {fmt(d.profit_protect_price)}</span>
+          ) : null}
+          {d.target_price_1 != null ? (
+            <span style={{ fontSize: "0.7rem", color: "#7c3aed", fontWeight: 700 }}>目标 {fmt(d.target_price_1)}/{fmt(d.target_price_2)}</span>
+          ) : null}
           <span style={{ marginLeft: "auto", fontSize: "0.75rem", fontWeight: 700, color: (d.current_return_pct ?? 0) >= 0 ? "#dc2626" : "#059669" }}>{pct(d.current_return_pct)}</span>
         </div>
       ))}

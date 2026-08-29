@@ -12,9 +12,10 @@ if str(PROJECT_ROOT) not in sys.path:
 from strategies.main_trend.engine import MainTrendConfig, MainTrendEngine
 from strategies.main_trend.execution_manual import grade_execution
 from strategies.main_trend.portfolio import apply_theme_caps, theme_of
-from strategies.main_trend.schemas import CatalystState, MarketRegimeState, MTFCandidate, SectorState, TrendQuality
+from strategies.main_trend.schemas import CatalystState, HotMoneyState, MarketRegimeState, MarketSentimentState, MTFCandidate, SectorState, TrendQuality
 from strategies.main_trend.scoring import compute_pre_score, compute_stops, compute_final_score
 from strategies.main_trend.tday import rebuild_from_result
+from scripts.main_trend_event_backtest import _apply_factor_overrides
 
 
 def _cand(**over):
@@ -53,11 +54,107 @@ class PreScoreTest(unittest.TestCase):
         self.assertEqual(a["catalyst_score"], 50.0)
         self.assertEqual(a["catalyst_grade"], "B")
 
+    def test_pre_score_short_sprint_uses_sentiment_and_hot_money(self):
+        scores = compute_pre_score(
+            trend_state="S2",
+            quality_score=90,
+            sector_score=70,
+            sector_grade="A",
+            market_sentiment_score=80,
+            hot_money_score=40,
+            catalyst_score=50,
+            has_event=False,
+        )
+        # trend_component(S2, 90)=93; weighted:
+        # 93*40% + 70*25% + 80*15% + 40*10% + 50*10% = 75.7
+        self.assertAlmostEqual(scores["pre_score"], 75.7, places=2)
+        self.assertEqual(scores["market_sentiment_grade"], "A")
+        self.assertEqual(scores["hot_money_grade"], "C")
+
     def test_final_score_needs_execution(self):
         pre = 80.0
         self.assertEqual(compute_final_score(pre, None), 80.0)
         self.assertGreater(compute_final_score(pre, 90), pre)
         self.assertLess(compute_final_score(pre, 40), pre)
+        self.assertEqual(compute_final_score(80, 90), 84.0)
+
+    def test_macd_is_light_quality_factor_not_gate(self):
+        eng = MainTrendEngine(MainTrendConfig.from_yaml())
+        market = MarketRegimeState(regime="B", allow_new=True, risk_multiplier=1.0, score=60)
+        base = {
+            "ma20_deviation_pct": 5.0,
+            "breakout_20d": True,
+            "ret_5d_pct": 6.0,
+            "ret_10d_pct": 9.0,
+            "relative_strength_score": 70.0,
+            "volume_ratio": 1.4,
+            "atr_pct": 4.0,
+            "hh_hl_strict": True,
+        }
+        trend = eng.assess_trend_state({
+            **base,
+            "close": 10.0,
+            "ma20_ge_ma60": True,
+            "ma5_gt_ma20": True,
+            "ma5_slope_pct": 1.0,
+            "close_above_ma5": True,
+            "close_vs_20d_high_pct": 0.0,
+        })
+        weak = eng.assess_trend_quality({**base, "macd_hist": -0.2, "macd_hist_delta": -0.05}, trend, market)
+        strong = eng.assess_trend_quality({**base, "macd_hist": 0.2, "macd_hist_delta": 0.05}, trend, market)
+        self.assertIn("macd_momentum", strong.family)
+        self.assertGreater(strong.score, weak.score)
+        self.assertLess(strong.score - weak.score, 4.0)
+
+
+class SentimentHotMoneyTest(unittest.TestCase):
+    def test_ablation_overrides_disable_weights_and_flags(self):
+        cfg = _apply_factor_overrides(
+            MainTrendConfig.from_yaml(),
+            enable_market_sentiment=False,
+            enable_hot_money=False,
+            ablation_tag="baseline_core",
+        )
+        self.assertFalse(cfg.sentiment.get("enabled"))
+        self.assertFalse(cfg.hot_money.get("enabled"))
+        self.assertEqual(float(cfg.scoring.get("market_sentiment_weight") or 0.0), 0.0)
+        self.assertEqual(float(cfg.scoring.get("hot_money_weight") or 0.0), 0.0)
+        self.assertEqual(str((cfg.backtest or {}).get("ablation_tag")), "baseline_core")
+
+    def test_market_sentiment_d_blocks_new_position_and_cuts_risk(self):
+        eng = MainTrendEngine(MainTrendConfig.from_yaml())
+        sentiment = eng.assess_market_sentiment("20260821", {
+            "limit_up_count": 12,
+            "break_count": 8,
+            "max_board": 1,
+            "one_word_limit_up_count": 8,
+        })
+        self.assertEqual(sentiment.grade, "D")
+        cand = _cand()
+        cand.market_sentiment_state = sentiment
+        cand.hot_money_state = HotMoneyState(score=50, grade="B", passed=True)
+        ok = eng.apply_hard_filter(cand, cand.market_regime_state)
+        self.assertFalse(ok)
+        self.assertIn("market_sentiment:D", cand.reasons)
+        risk = eng.compute_risk_state(cand, cand.technical_factor, None)
+        self.assertLess(risk.account_risk_pct, cand.market_regime_state.risk_multiplier)
+
+    def test_hot_money_net_sell_penalizes_entry_score(self):
+        eng = MainTrendEngine(MainTrendConfig.from_yaml())
+        weak_hot = eng.assess_hot_money_state({
+            "symbol_code": "600000",
+            "lhb_net_buy_amount": -500_000_000,
+            "institution_net_buy": -200_000_000,
+        }, "20260821")
+        self.assertEqual(weak_hot.grade, "D")
+        self.assertIn(weak_hot.risk_flag, {"lhb_net_sell", "institution_net_sell", "hot_money_weak"})
+        base = _cand()
+        base.market_sentiment_state = MarketSentimentState(score=50, grade="B", available=False)
+        base.hot_money_state = HotMoneyState(score=50, grade="B", passed=True)
+        weak = _cand()
+        weak.market_sentiment_state = base.market_sentiment_state
+        weak.hot_money_state = weak_hot
+        self.assertLess(eng._candidate_entry_score(weak), eng._candidate_entry_score(base))
 
 
 class DynamicStopTest(unittest.TestCase):
@@ -66,6 +163,9 @@ class DynamicStopTest(unittest.TestCase):
         self.assertAlmostEqual(stops["initial_stop"], 80.78 - 2.5 * 3.2, places=3)
         self.assertNotAlmostEqual(stops["initial_stop"], 80.78 * 0.94, places=2)
         self.assertIsNone(stops.get("take_profit"))
+        self.assertAlmostEqual(stops["target_price_1"], 80.78 + 1.5 * 3.2, places=3)
+        self.assertAlmostEqual(stops["target_price_2"], 80.78 + 2.5 * 3.2, places=3)
+        self.assertEqual(stops["target_method"], "atr_1.5_2.5")
         self.assertAlmostEqual(stops["trailing_stop"], 80.78 - 3.0 * 3.2, places=3)
         self.assertEqual(stops["highest_close"], 80.78)
 

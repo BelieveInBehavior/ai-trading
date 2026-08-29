@@ -120,6 +120,7 @@ MARGIN_TRADING_STORE = FactorStore("margin_trading")
 BLOCK_TRADE_STORE = FactorStore("block_trade")
 SECTOR_FLOW_STORE = FactorStore("sector_fund_flow")
 ZT_SEAL_STORE = FactorStore("zt_seal_strength")
+LHB_HOT_MONEY_STORE = FactorStore("lhb_hot_money")
 
 
 def get_all_stores() -> Dict[str, FactorStore]:
@@ -130,6 +131,7 @@ def get_all_stores() -> Dict[str, FactorStore]:
         "block_trade": BLOCK_TRADE_STORE,
         "sector_fund_flow": SECTOR_FLOW_STORE,
         "zt_seal_strength": ZT_SEAL_STORE,
+        "lhb_hot_money": LHB_HOT_MONEY_STORE,
     }
 
 

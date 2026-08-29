@@ -96,16 +96,15 @@ class TestTechnicalIndicatorsAkshare(unittest.TestCase):
             }
         )
 
-        def fake_run(func_name, func_kwargs, verbose=False):
-            if func_name == "stock_zh_a_hist":
-                return stock_df
-            if func_name == "stock_zh_index_daily":
-                return benchmark_df
-            raise AssertionError(f"unexpected func_name: {func_name}")
-
-        with patch(
-            "data_source.technical_indicators_akshare.akshare_cached.run",
-            side_effect=fake_run,
+        with (
+            patch(
+                "data_source.technical_indicators_akshare.get_stock_zh_a_hist",
+                return_value=stock_df,
+            ),
+            patch(
+                "data_source.technical_indicators_akshare.get_index_daily",
+                return_value=benchmark_df,
+            ),
         ):
             factor = compute_stock_technical_factor(
                 symbol_code="600519.SH",
@@ -113,6 +112,7 @@ class TestTechnicalIndicatorsAkshare(unittest.TestCase):
                 trade_date="20260811",
                 start_date="20250701",
                 end_date="20260811",
+                ma_mode="ema",
             )
 
         self.assertIsNotNone(factor)
@@ -137,6 +137,12 @@ class TestTechnicalIndicatorsAkshare(unittest.TestCase):
         self.assertIn("close_above_ma20", factor)
         self.assertIn("ma10_slope_pct", factor)
         self.assertIn("ma20_slope_pct", factor)
+        # 显式 EMA 路径被正确标记并输出周线/长期 EMA
+        self.assertEqual(factor["ma_mode"], "ema")
+        ema_ma10 = pd.Series(stock_close).ewm(span=10, adjust=False, min_periods=10).mean().iloc[-1]
+        self.assertAlmostEqual(factor["ma10"], ema_ma10, places=4)
+        self.assertGreater(factor["weekly_ma20"], 0)
+        self.assertGreater(factor["weinstein_ma30"], 0)
         # 金融口径 OLS 残差/alpha/beta/r2 已输出
         self.assertIsNotNone(factor.get("beta_20d_vs_index"))
         self.assertIsNotNone(factor.get("beta_60d_vs_index"))

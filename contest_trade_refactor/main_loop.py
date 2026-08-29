@@ -242,6 +242,7 @@ def _enrich_signals_with_technical_factors(
                     end_date=kline_end_date,
                     adjust="qfq",
                     relative_strength_benchmark=relative_strength_benchmark,
+                    ma_mode="ema",  # main_trend 策略默认 EMA；其它策略如不需要可显式传 sma
                 )
                 if fresh_factor:
                     factor = fresh_factor

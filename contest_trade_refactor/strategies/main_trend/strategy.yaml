@@ -10,16 +10,23 @@ description: >-
   Main Trend Following Engine（MTF）主升浪趋势跟踪系统。
   T日做全市场快照与候选资格，T+1做价格/执行确认，持仓期间用状态机管理。
   它不是一个 score，而是一台状态机。
-horizon: 中短线 1~10 交易日
-style: 主升浪 / 趋势跟踪 / MA20+ATR双轨 / 状态机
+horizon: 短冲刺 1~5 交易日
+style: 主升浪短冲刺 / 趋势惯性 / MA10+MA20复合退出 / 硬仓位上限 / 状态机
 risk_note: 单笔风险预算优先；C级市场风险预算减半，D级禁止新仓；LLM不参与决策。
-tags: [主升浪, 趋势跟踪, MarketRegime, TrendState, ExSelf, RiskBudget, MA20, ATR]
+tags: [主升浪, 趋势跟踪, MarketRegime, TrendState, ExSelf, RiskBudget, MA10, MA20]
 
 universe:
   all_a: true
   filter_st: true
   filter_new: true
   min_amount_rank: 0
+
+# V2.0 均线口径：main_trend 默认使用 EMA（金融口径指数平滑均线）。
+#   ema = ewm(span=N, adjust=False, min_periods=N) -> alpha=2/(N+1)，对 1~5 天短冲刺更敏感。
+#   影响范围：EMA5/10/20/60、周线 MA、Weinstein MA30、长期 MA50/200、指数市场环境 MA。
+#   如需做 A/B，可用 scripts/main_trend_event_backtest.py --ma-mode sma|ema 覆盖。
+technical:
+  ma_mode: ema
 
 market:
   enabled: true
@@ -59,6 +66,12 @@ trend:
   s5_break_rsi_below: 45
   s5_next_day_recapture_allowance_pct: 1.0   # 用于“次日站回”的宽容差
   min_trading_days: 120
+  # V2.0 买入硬约束（来自架构蓝图，停止矩阵搜索）：
+  #   Close > MA10 > MA20, MA10 Slope > 0, Close 距 MA10 偏离 <=12%
+  max_ma10_deviation_pct: 12.0
+  require_close_gt_ma10: true
+  require_ma10_gt_ma20: true
+  require_ma10_slope_gt_0: true
   require_close_gt_ma20: true
   require_ma20_gt_ma60: true
   require_ma60_slope_gt_0: true
@@ -75,6 +88,8 @@ quality:
   family_corr_threshold: 0.85
   family_vif_threshold: 5.0
   family_enabled: true
+  # MACD 与 EMA/斜率/突破高度同源，只做轻量动能确认，不做硬买入门槛。
+  macd_momentum_weight: 4.0
 
 sector:
   min_sector_score: 45
@@ -83,6 +98,15 @@ sector:
   # Layer 4：赔付 Ex-Self 板块强度（剔除本股）
   ex_self_return_enabled: true
   ex_self_breadth_enabled: true
+
+sentiment:
+  enabled: true
+  # 短线赚钱效应：有涨停池数据时才生效；缺数据默认中性放行，避免误杀回测/盘中。
+  min_limit_up_count: 40
+  strong_limit_up_count: 80
+  max_break_ratio: 0.35
+  min_top_board: 3
+  min_real_zt_ratio: 0.35
 
 catalyst:
   enabled: true
@@ -97,6 +121,24 @@ catalyst:
   earnings_impact_cap: 10.0
   freshness_cap: 20.0
 
+# 公司基本面是独立风险层：按公告日更新，每日读取最新可见快照。
+# 好基本面不覆盖价格破位；F4/F5 禁止新开并加速已有仓位风控。
+fundamental:
+  enabled: true
+  fetch_reports: true
+  period_count: 4
+  concurrency: 4
+  high_debt_ratio: 75
+  missing_state: FU
+  block_entry_states: [F4, F5]
+  severe_exit_state: F5
+  s0_reduce_states: [F3, F4]
+
+hot_money:
+  enabled: true
+  # 龙虎榜/涨停热钱只做确认与风险降权，不单独触发 BUY。
+  min_score: 40
+
 execution:
   min_confirm_score: 60
   allow_gap_strong_trend: true
@@ -110,12 +152,14 @@ execution:
   tday_no_buy: true              # T日只出 WAIT，不允许 BUY
 
 scoring:
-  # T日 PreScore；T+1 才有 Execution
+  # 短冲刺 1~5 天：T日 PreScore 只做候选排序；T+1 才有 Execution 决定买不买。
   trend_weight: 0.40
-  sector_weight: 0.30
-  catalyst_weight: 0.30
-  pre_weight: 0.70
-  execution_weight: 0.30
+  sector_weight: 0.25
+  market_sentiment_weight: 0.15
+  hot_money_weight: 0.10
+  catalyst_weight: 0.10
+  pre_weight: 0.60
+  execution_weight: 0.40
 
 portfolio:
   theme_cap_pct: 12.0            # 单主题总敞口上限
@@ -130,22 +174,74 @@ risk:
   liquidity_cap_pct: 30.0
 
 holding:
-  horizon_days: 10
-  # ---- 主升浪退出状态机 V1 ----
+  horizon_days: 5
+  # ---- 主升浪退出状态机 V2.0 ----
+  # 退出纪律：MA10 主导持有，MA20 硬清仓。
+  # 1) Close > MA10 坚定持有
+  # 2) Close < MA10 且仍在 MA20 之上 -> 减仓 50%（预警减仓，不清仓）
+  # 3) Close < MA20 -> 次日开盘无条件清仓，不再使用 MA20 双日确认
   exit:
-    use_ma20_confirm: true
-    ma20_confirm_days: 2
-    ma20_confirm_allow_pct: 1.0           # Close 低于 MA20 的宽容差（%）
+    # 趋势状态迟滞：单日普通 S0 只 WATCH，连续确认后才减仓；S4/S5 不等待。
+    s0_confirm_days: 2
+    s0_reduce_pct: 40.0
+    s0_exit_days: 3                       # 连续退化三日且至少两项独立弱势证据，退出
+    s0_exit_min_weak_signals: 2
+    weak_ma10_slope_pct: 0.0              # EMA10走平/下弯是动量退化证据
+    weak_ma20_slope_pct: 0.0              # EMA20下弯是中期结构退化证据
+    weak_rs_score: 40.0                   # RS不足只算一票，不单独卖出
+    key_support_break_tolerance_pct: 0.5  # 有效跌破支撑的噪音容差
+    use_ma10_reduce: true
+    ma10_reduce_pct: 50.0                 # V2.0：跌破 MA10 预警减仓比例
+    use_ma20_confirm: false               # V2.0：已废弃双日确认，仅兼容读取
+    ma20_confirm_days: 2                  # 仅报告使用
+    ma20_confirm_allow_pct: 1.0           # 仅兼容旧报告；MA20 清仓用严格 Close<MA20
     use_trailing_stop: true
     trailing_min_drawdown_pct: 6.0         # Trailing Stop = Highest_Close - max(6%, 2×ATR%)
     trailing_atr_mult: 2.0
     use_decay_reduce: true
     decay_signal_threshold: 2              # 满足 ≥2 条衰减信号 -> REDUCE
     reduce_pct: 40                         # REDUCE 建议减仓 30%~50%
+    use_macd_decay: true                    # MACD 柱转弱只作为一条衰减信号，不单独触发卖出
+    # 高位放量“有效供给”二分法（解决主升浪强势放量被误减）：
+    #   extension = 放量+收在高位 -> P3 HOLD，不让位给 REDUCE；
+    #   rejection  = 放量+弱势收盘 -> 才可作为高位滞涨衰减信号之一。
+    high_volume_min_ret5_for_check: 8      # 5日涨幅>8% 进入高位放量审查
+    high_volume_strong_ret5: 15            # 5日涨幅>15% 视为强高位
+    high_volume_ma20_dev_check_pct: 20     # MA20 偏离 >20% 视为强高位
+    high_volume_vol_ratio: 1.5             # 量比>1.5 视为放量
+    high_volume_extreme_ratio: 2.5         # 量比>2.5 视为天量
+    high_volume_upper_shadow_mult: 1.5     # 上影线 > 实体 *1.5 视为滞涨
+    high_volume_close_range_weak: 0.40      # 收盘位于振幅下40%视为弱势
+    high_volume_close_range_strong: 0.60    # 收盘位于振幅上60%视为强势
     use_extreme_event_sell: true           # P0：Catalyst=EXTREME / 极端事件 -> SELL_NOW
-  use_fixed_stop: false          # 废除固定 ±6%；改 Initial/Trailing/MA20
+    # 当日强势扩张的“次日警戒”：跌破昨日 VWAP 才记一条衰减，放量突破昨日高点可走 ADD。
+    use_next_day_guard: true
+    next_day_guard_break_vwap_tolerance_pct: 0.5   # 跌破昨日 VWAP 的容差（%），用来滤毛刺
+    next_day_guard_add_volume_ratio: 1.2            # 突破昨日高点的最低量比
+  # ---------------- 证据驱动型 ADD（三层加仓） ----------------
+  # 盈利不是加仓理由，新的 Alpha 确认才是。
+  # Setup：新的趋势/量价/重新突破/板块/RS；Confirmation：盘中 VWAP/盘口/回踩；
+  # RiskEngine：浮盈只决定本次加多少，不决定能否加。
+  add:
+    risk_budget_pct: 1.0           # 加仓单笔风险预算（总账户%）
+    profit_risk_multiplier_cap: 1.5 # 浮盈 > 20% 时用利润垫扩大风险预算最多 1.5x
+    max_total_position_pct: 50.0    # 加仓后总仓位硬上限（%）
+    sector_rank_strong_max: 20      # 板块排名前 20%（沿用 1 最强语义）
+    rs_strong_min: 80              # RS 截面百分位/强度分数 80 分以上
+    # 数据缺失默认严格拒绝：板块/RS 缺失不能作为“证据驱动型加仓”。
+    sector_lenient: false
+    rs_lenient: false
+  use_fixed_stop: false          # 废除固定 ±6%；改 Initial/ATR/Trailing
   stop_loss_pct: -6.0            # 仅当 use_fixed_stop=true 时生效
   take_profit_pct: 6.0           # 已废弃，不再作为出场
+  profit_target:
+    enabled: true
+    target_1_atr_mult: 1.5       # 展示目标1：Entry/参考价 + 1.5×ATR，不强制止盈
+    target_2_atr_mult: 2.5       # 展示目标2：Entry/参考价 + 2.5×ATR，不强制止盈
+    protect_trigger_pct: 4.0     # 浮盈 >=4% 后给盈利保护价
+    protect_lock_pct: 2.0        # 第一档保护约 entry+2%，并参考 MA10/VWAP
+    strong_trigger_pct: 8.0      # 浮盈 >=8% 后提高保护档
+    strong_lock_pct: 4.0         # 第二档保护约 entry+4%，并参考最高收盘回撤/MA10
   atr_trailing_mult: 3.0
   initial_atr_mult: 2.5
   reduce_decay_threshold: 45
@@ -156,15 +252,15 @@ holding:
 
 backtest:
   mode: replay
-  evaluator: closed_loop_horizons   # 信号 IC/收益按 1,2,3,5,10 观察；组合出场应使用 holding 状态机
+  evaluator: closed_loop_horizons   # 信号 IC/收益按 1,2,3,5 观察；组合出场应使用 holding 状态机
   default_start: "2026-06-01"
   default_end: "2026-08-18"
   symbols_limit: 0
   concurrency: 4
-  horizons: [1, 2, 3, 5, 10]
+  horizons: [1, 2, 3, 5]
   rule_pipeline: true
-  max_holding_days: 10
-  exit_rules: [ma20, atr_trail, time_10d]
+  max_holding_days: 5
+  exit_rules: [ma20, atr_trail, time_5d]
 
 # 主升浪通知（可选）
 # 支持 Generic Webhook / 钉钉群机器人 / Server酱等 JSON POST。

@@ -1,8 +1,0 @@
-factor,ic_t1,n,q1_avg_t1,q4_avg_t1,monotonic_q1_q4_up
-data_quality_score,0.9942,3,-7.4378,11.7255,True
-probability_value,0.9305,3,-6.2362,11.7255,True
-risk_reward_score,0.6903,3,-6.2362,11.7255,True
-capital_flow_score,0.5906,3,-8.6393,2.7447,True
-ma20_deviation_pct,0.4658,4,0.0,11.7255,True
-buy_score,0.3964,3,-8.6393,-6.2362,True
-prev_day_gain_pct,-0.4739,4,0.0,-6.2362,False

@@ -19,6 +19,7 @@ from loguru import logger
 
 from config.config import cfg
 from utils.akshare_utils import akshare_cached
+from utils.market_bar_store import get_market_bar_store, store_enabled
 from utils.jqdata_utils import (
     _map_adjust,
     clip_range_to_jqdata,
@@ -147,23 +148,13 @@ def _asof_end_date() -> str:
     return ""
 
 
-def get_stock_zh_a_hist(
+def _fetch_remote_stock_hist(
     symbol: str,
     start_date: str,
     end_date: str,
     adjust: str = "qfq",
     verbose: bool = False,
 ) -> pd.DataFrame:
-    start_date = dash_to_compact(start_date)
-    end_date = dash_to_compact(end_date)
-    asof = _asof_end_date()
-    if asof and (not end_date or end_date > asof):
-        # Force the K-line query to stop at the replay's trigger date so the
-        # system never sees bars after the analysis point during historical backtest.
-        end_date = asof
-    if not start_date or not end_date:
-        return pd.DataFrame(columns=AKSHARE_COLUMNS)
-
     frames: list[pd.DataFrame] = []
 
     if _should_use_jqdata():
@@ -188,6 +179,40 @@ def get_stock_zh_a_hist(
         logger.warning("JQData+AkShare merge empty for {}, falling back to AkShare only", symbol)
 
     return _fetch_akshare_hist(symbol, start_date, end_date, adjust=adjust, verbose=verbose)
+
+
+def get_stock_zh_a_hist(
+    symbol: str,
+    start_date: str,
+    end_date: str,
+    adjust: str = "qfq",
+    verbose: bool = False,
+) -> pd.DataFrame:
+    start_date = dash_to_compact(start_date)
+    end_date = dash_to_compact(end_date)
+    asof = _asof_end_date()
+    if asof and (not end_date or end_date > asof):
+        # Force the K-line query to stop at the replay's trigger date so the
+        # system never sees bars after the analysis point during historical backtest.
+        end_date = asof
+    if not start_date or not end_date:
+        return pd.DataFrame(columns=AKSHARE_COLUMNS)
+
+    if not store_enabled():
+        return _fetch_remote_stock_hist(symbol, start_date, end_date, adjust=adjust, verbose=verbose)
+
+    store = get_market_bar_store()
+    local = store.load_stock(symbol, adjust)
+    if store.covers(local, start_date, end_date, date_col="日期"):
+        sliced = store.slice(local, start_date, end_date, date_col="日期")
+        return sliced if not sliced.empty else pd.DataFrame(columns=AKSHARE_COLUMNS)
+
+    merged = local
+    for gap_start, gap_end in store.missing_ranges(local, start_date, end_date, date_col="日期"):
+        fetched = _fetch_remote_stock_hist(symbol, gap_start, gap_end, adjust=adjust, verbose=verbose)
+        if fetched is not None and not fetched.empty:
+            merged = store.upsert_stock(symbol, fetched, adjust=adjust)
+    return store.slice(merged, start_date, end_date, date_col="日期")
 
 
 def _index_frame_from_akshare(raw: pd.DataFrame, start_compact: str, end_compact: str) -> pd.DataFrame:
@@ -221,6 +246,17 @@ def get_index_daily(
 
     start_compact = dash_to_compact(start_date or "19700101")
     end_compact = dash_to_compact(end_date or datetime.now().strftime("%Y%m%d"))
+    asof = _asof_end_date()
+    if asof and (not end_compact or end_compact > asof):
+        end_compact = asof
+
+    if store_enabled():
+        store = get_market_bar_store()
+        local = store.load("indexes", ak_symbol)
+        if store.covers(local, start_compact, end_compact, date_col="date"):
+            sliced = store.slice(local, start_compact, end_compact, date_col="date")
+            if not sliced.empty:
+                return sliced
 
     if _should_use_jqdata():
         frames: list[pd.DataFrame] = []
@@ -275,6 +311,10 @@ def get_index_daily(
         if frames:
             merged = pd.concat(frames, ignore_index=True).drop_duplicates("date", keep="last").sort_values("date")
             if not merged.empty:
+                if store_enabled():
+                    store = get_market_bar_store()
+                    merged = store.upsert("indexes", ak_symbol, merged.reset_index(drop=True), date_col="date")
+                    return store.slice(merged, start_compact, end_compact, date_col="date")
                 return merged.reset_index(drop=True)
 
     raw = akshare_cached.run(
@@ -296,6 +336,11 @@ def get_index_daily(
             "close": pd.to_numeric(raw[close_col], errors="coerce"),
         }
     ).dropna(subset=["date", "close"]).sort_values("date")
+
+    if store_enabled() and not prepared.empty:
+        store = get_market_bar_store()
+        prepared = store.upsert("indexes", ak_symbol, prepared.reset_index(drop=True), date_col="date")
+        return store.slice(prepared, start_compact, end_compact, date_col="date")
 
     if start_compact:
         start_dt = datetime.strptime(start_compact, "%Y%m%d")

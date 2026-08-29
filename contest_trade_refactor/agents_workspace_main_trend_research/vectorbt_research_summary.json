@@ -1,0 +1,519 @@
+{
+  "start": "20260601",
+  "end": "20260818",
+  "symbols": [
+    {
+      "symbol_code": "300097",
+      "symbol_name": "智云股份"
+    },
+    {
+      "symbol_code": "301516",
+      "symbol_name": "中远通"
+    },
+    {
+      "symbol_code": "688037",
+      "symbol_name": "芯源微"
+    },
+    {
+      "symbol_code": "000506",
+      "symbol_name": "招金黄金"
+    },
+    {
+      "symbol_code": "300192",
+      "symbol_name": "科德教育"
+    },
+    {
+      "symbol_code": "300139",
+      "symbol_name": "晓程科技"
+    },
+    {
+      "symbol_code": "601069",
+      "symbol_name": "西部黄金"
+    },
+    {
+      "symbol_code": "600988",
+      "symbol_name": "赤峰黄金"
+    },
+    {
+      "symbol_code": "002038",
+      "symbol_name": "双鹭药业"
+    },
+    {
+      "symbol_code": "000975",
+      "symbol_name": "山金国际"
+    },
+    {
+      "symbol_code": "600489",
+      "symbol_name": "中金黄金"
+    },
+    {
+      "symbol_code": "601872",
+      "symbol_name": "招商轮船"
+    },
+    {
+      "symbol_code": "688338",
+      "symbol_name": "赛科希德"
+    },
+    {
+      "symbol_code": "301335",
+      "symbol_name": "天元宠物"
+    },
+    {
+      "symbol_code": "002237",
+      "symbol_name": "恒邦股份"
+    },
+    {
+      "symbol_code": "603277",
+      "symbol_name": "银都股份"
+    },
+    {
+      "symbol_code": "605158",
+      "symbol_name": "华达新材"
+    },
+    {
+      "symbol_code": "603565",
+      "symbol_name": "中谷物流"
+    },
+    {
+      "symbol_code": "600971",
+      "symbol_name": "恒源煤电"
+    },
+    {
+      "symbol_code": "002524",
+      "symbol_name": "光正眼科"
+    },
+    {
+      "symbol_code": "300862",
+      "symbol_name": "蓝盾光电"
+    },
+    {
+      "symbol_code": "600613",
+      "symbol_name": "神奇制药"
+    },
+    {
+      "symbol_code": "603580",
+      "symbol_name": "艾艾精工"
+    },
+    {
+      "symbol_code": "600379",
+      "symbol_name": "宝光股份"
+    },
+    {
+      "symbol_code": "688356",
+      "symbol_name": "键凯科技"
+    },
+    {
+      "symbol_code": "300093",
+      "symbol_name": "金刚光伏"
+    },
+    {
+      "symbol_code": "600227",
+      "symbol_name": "赤天化"
+    },
+    {
+      "symbol_code": "003010",
+      "symbol_name": "若羽臣"
+    },
+    {
+      "symbol_code": "600547",
+      "symbol_name": "XD山东黄"
+    },
+    {
+      "symbol_code": "600985",
+      "symbol_name": "淮北矿业"
+    },
+    {
+      "symbol_code": "002365",
+      "symbol_name": "永安药业"
+    },
+    {
+      "symbol_code": "603818",
+      "symbol_name": "曲美家居"
+    },
+    {
+      "symbol_code": "688114",
+      "symbol_name": "华大智造"
+    },
+    {
+      "symbol_code": "601233",
+      "symbol_name": "桐昆股份"
+    },
+    {
+      "symbol_code": "002234",
+      "symbol_name": "民和股份"
+    },
+    {
+      "symbol_code": "300016",
+      "symbol_name": "北陆药业"
+    },
+    {
+      "symbol_code": "000983",
+      "symbol_name": "山西焦煤"
+    },
+    {
+      "symbol_code": "603648",
+      "symbol_name": "畅联股份"
+    },
+    {
+      "symbol_code": "300142",
+      "symbol_name": "沃森生物"
+    },
+    {
+      "symbol_code": "000710",
+      "symbol_name": "贝瑞基因"
+    },
+    {
+      "symbol_code": "603132",
+      "symbol_name": "XD金徽股"
+    },
+    {
+      "symbol_code": "002626",
+      "symbol_name": "金达威"
+    },
+    {
+      "symbol_code": "000931",
+      "symbol_name": "中 关 村"
+    },
+    {
+      "symbol_code": "000017",
+      "symbol_name": "深中华A"
+    },
+    {
+      "symbol_code": "603882",
+      "symbol_name": "金域医学"
+    },
+    {
+      "symbol_code": "600722",
+      "symbol_name": "金牛化工"
+    },
+    {
+      "symbol_code": "688185",
+      "symbol_name": "康希诺"
+    },
+    {
+      "symbol_code": "002539",
+      "symbol_name": "云图控股"
+    },
+    {
+      "symbol_code": "600346",
+      "symbol_name": "恒力石化"
+    },
+    {
+      "symbol_code": "601665",
+      "symbol_name": "齐鲁银行"
+    },
+    {
+      "symbol_code": "601886",
+      "symbol_name": "江河集团"
+    },
+    {
+      "symbol_code": "688793",
+      "symbol_name": "倍轻松"
+    },
+    {
+      "symbol_code": "601838",
+      "symbol_name": "成都银行"
+    },
+    {
+      "symbol_code": "601998",
+      "symbol_name": "中信银行"
+    },
+    {
+      "symbol_code": "001205",
+      "symbol_name": "盛航股份"
+    },
+    {
+      "symbol_code": "603183",
+      "symbol_name": "建研院"
+    },
+    {
+      "symbol_code": "000850",
+      "symbol_name": "华茂股份"
+    },
+    {
+      "symbol_code": "601825",
+      "symbol_name": "沪农商行"
+    },
+    {
+      "symbol_code": "300345",
+      "symbol_name": "华民股份"
+    },
+    {
+      "symbol_code": "601077",
+      "symbol_name": "渝农商行"
+    },
+    {
+      "symbol_code": "600348",
+      "symbol_name": "华阳股份"
+    },
+    {
+      "symbol_code": "600583",
+      "symbol_name": "海油工程"
+    },
+    {
+      "symbol_code": "601088",
+      "symbol_name": "中国神华"
+    },
+    {
+      "symbol_code": "601666",
+      "symbol_name": "平煤股份"
+    },
+    {
+      "symbol_code": "601083",
+      "symbol_name": "锦江航运"
+    },
+    {
+      "symbol_code": "603209",
+      "symbol_name": "兴通股份"
+    },
+    {
+      "symbol_code": "601919",
+      "symbol_name": "中远海控"
+    },
+    {
+      "symbol_code": "688137",
+      "symbol_name": "近岸蛋白"
+    },
+    {
+      "symbol_code": "301122",
+      "symbol_name": "采纳股份"
+    }
+  ],
+  "param_count": 96,
+  "engine": "pandas_event",
+  "vectorbt_installed": false,
+  "matrix_path": "/Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace_main_trend_research/vectorbt_param_matrix.csv",
+  "trades_path": "/Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace_main_trend_research/vectorbt_trades.csv",
+  "top": [
+    {
+      "ma_mode": "sma",
+      "fast_ma": 10,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": false,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": false,
+      "atr_mult": 1.5,
+      "max_holding_days": 10,
+      "max_fast_ma_deviation_pct": 12.0,
+      "param_key": "sma_f10_m20_l60_nomacd_fastreduce_midexit_noatr_h10_dev12",
+      "engine": "pandas_event",
+      "trade_count": 45,
+      "total_return_pct": 60.0714,
+      "avg_trade_return_pct": 1.566,
+      "median_trade_return_pct": -0.6955,
+      "win_rate_pct": 42.22,
+      "profit_factor": 1.699,
+      "max_drawdown_pct": -33.9438,
+      "sharpe_like": 0.6928
+    },
+    {
+      "ma_mode": "sma",
+      "fast_ma": 10,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": true,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": false,
+      "atr_mult": 1.5,
+      "max_holding_days": 10,
+      "max_fast_ma_deviation_pct": 12.0,
+      "param_key": "sma_f10_m20_l60_macd_fastreduce_midexit_noatr_h10_dev12",
+      "engine": "pandas_event",
+      "trade_count": 45,
+      "total_return_pct": 55.5816,
+      "avg_trade_return_pct": 1.498,
+      "median_trade_return_pct": -0.6955,
+      "win_rate_pct": 40.0,
+      "profit_factor": 1.6683,
+      "max_drawdown_pct": -35.2777,
+      "sharpe_like": 0.6645
+    },
+    {
+      "ma_mode": "sma",
+      "fast_ma": 10,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": false,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": false,
+      "atr_mult": 1.5,
+      "max_holding_days": 10,
+      "max_fast_ma_deviation_pct": 8.0,
+      "param_key": "sma_f10_m20_l60_nomacd_fastreduce_midexit_noatr_h10_dev8",
+      "engine": "pandas_event",
+      "trade_count": 35,
+      "total_return_pct": 38.6474,
+      "avg_trade_return_pct": 1.3187,
+      "median_trade_return_pct": 0.0,
+      "win_rate_pct": 48.57,
+      "profit_factor": 1.7063,
+      "max_drawdown_pct": -18.1807,
+      "sharpe_like": 0.6777
+    },
+    {
+      "ma_mode": "sma",
+      "fast_ma": 10,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": false,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": true,
+      "atr_mult": 2.0,
+      "max_holding_days": 10,
+      "max_fast_ma_deviation_pct": 8.0,
+      "param_key": "sma_f10_m20_l60_nomacd_fastreduce_midexit_atr2_h10_dev8",
+      "engine": "pandas_event",
+      "trade_count": 35,
+      "total_return_pct": 38.6474,
+      "avg_trade_return_pct": 1.3187,
+      "median_trade_return_pct": 0.0,
+      "win_rate_pct": 48.57,
+      "profit_factor": 1.7063,
+      "max_drawdown_pct": -18.1807,
+      "sharpe_like": 0.6777
+    },
+    {
+      "ma_mode": "sma",
+      "fast_ma": 10,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": true,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": false,
+      "atr_mult": 1.5,
+      "max_holding_days": 10,
+      "max_fast_ma_deviation_pct": 8.0,
+      "param_key": "sma_f10_m20_l60_macd_fastreduce_midexit_noatr_h10_dev8",
+      "engine": "pandas_event",
+      "trade_count": 35,
+      "total_return_pct": 35.5173,
+      "avg_trade_return_pct": 1.2488,
+      "median_trade_return_pct": 0.0,
+      "win_rate_pct": 45.71,
+      "profit_factor": 1.6747,
+      "max_drawdown_pct": -16.6989,
+      "sharpe_like": 0.6443
+    },
+    {
+      "ma_mode": "sma",
+      "fast_ma": 10,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": true,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": true,
+      "atr_mult": 2.0,
+      "max_holding_days": 10,
+      "max_fast_ma_deviation_pct": 8.0,
+      "param_key": "sma_f10_m20_l60_macd_fastreduce_midexit_atr2_h10_dev8",
+      "engine": "pandas_event",
+      "trade_count": 35,
+      "total_return_pct": 35.5173,
+      "avg_trade_return_pct": 1.2488,
+      "median_trade_return_pct": 0.0,
+      "win_rate_pct": 45.71,
+      "profit_factor": 1.6747,
+      "max_drawdown_pct": -16.6989,
+      "sharpe_like": 0.6443
+    },
+    {
+      "ma_mode": "sma",
+      "fast_ma": 8,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": false,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": false,
+      "atr_mult": 1.5,
+      "max_holding_days": 10,
+      "max_fast_ma_deviation_pct": 8.0,
+      "param_key": "sma_f8_m20_l60_nomacd_fastreduce_midexit_noatr_h10_dev8",
+      "engine": "pandas_event",
+      "trade_count": 41,
+      "total_return_pct": 40.2724,
+      "avg_trade_return_pct": 1.155,
+      "median_trade_return_pct": 0.0,
+      "win_rate_pct": 41.46,
+      "profit_factor": 1.6986,
+      "max_drawdown_pct": -22.6674,
+      "sharpe_like": 0.6417
+    },
+    {
+      "ma_mode": "sma",
+      "fast_ma": 8,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": false,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": true,
+      "atr_mult": 2.0,
+      "max_holding_days": 10,
+      "max_fast_ma_deviation_pct": 8.0,
+      "param_key": "sma_f8_m20_l60_nomacd_fastreduce_midexit_atr2_h10_dev8",
+      "engine": "pandas_event",
+      "trade_count": 41,
+      "total_return_pct": 40.2724,
+      "avg_trade_return_pct": 1.155,
+      "median_trade_return_pct": 0.0,
+      "win_rate_pct": 41.46,
+      "profit_factor": 1.6986,
+      "max_drawdown_pct": -22.6674,
+      "sharpe_like": 0.6417
+    },
+    {
+      "ma_mode": "sma",
+      "fast_ma": 8,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": true,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": false,
+      "atr_mult": 1.5,
+      "max_holding_days": 5,
+      "max_fast_ma_deviation_pct": 8.0,
+      "param_key": "sma_f8_m20_l60_macd_fastreduce_midexit_noatr_h5_dev8",
+      "engine": "pandas_event",
+      "trade_count": 45,
+      "total_return_pct": 44.6075,
+      "avg_trade_return_pct": 1.1308,
+      "median_trade_return_pct": 0.0,
+      "win_rate_pct": 42.22,
+      "profit_factor": 1.6815,
+      "max_drawdown_pct": -25.6601,
+      "sharpe_like": 0.9185
+    },
+    {
+      "ma_mode": "sma",
+      "fast_ma": 8,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": true,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": true,
+      "atr_mult": 1.5,
+      "max_holding_days": 5,
+      "max_fast_ma_deviation_pct": 8.0,
+      "param_key": "sma_f8_m20_l60_macd_fastreduce_midexit_atr1.5_h5_dev8",
+      "engine": "pandas_event",
+      "trade_count": 45,
+      "total_return_pct": 44.6075,
+      "avg_trade_return_pct": 1.1308,
+      "median_trade_return_pct": 0.0,
+      "win_rate_pct": 42.22,
+      "profit_factor": 1.6815,
+      "max_drawdown_pct": -25.6601,
+      "sharpe_like": 0.9185
+    }
+  ]
+}

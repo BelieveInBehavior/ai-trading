@@ -1,0 +1,280 @@
+{
+  "phase": "t2",
+  "trade_date": "20260825",
+  "wave": "1430",
+  "logged_at": "2026-08-25T14:30:37",
+  "source_holdings": "/Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace_main_trend/20260824/holdings.json",
+  "count": 22,
+  "avg_return_pct": -1.42,
+  "counts": {
+    "SELL": 1,
+    "REDUCE": 1,
+    "HOLD": 20
+  },
+  "indices": {
+    "上证指数": {
+      "code": "sh000001",
+      "name": "上证指数",
+      "price": 3891.78,
+      "prev_close": 3882.01,
+      "open": 3863.37,
+      "change_pct": 0.25
+    },
+    "深证成指": {
+      "code": "sz399001",
+      "name": "深证成指",
+      "price": 13762.83,
+      "prev_close": 13794.29,
+      "open": 13683.91,
+      "change_pct": -0.23
+    },
+    "创业板指": {
+      "code": "sz399006",
+      "name": "创业板指",
+      "price": 3402.97,
+      "prev_close": 3431.89,
+      "open": 3403.2,
+      "change_pct": -0.84
+    },
+    "沪深300": {
+      "code": "sh000300",
+      "name": "沪深300",
+      "price": 4554.51,
+      "prev_close": 4563.13,
+      "open": 4542.24,
+      "change_pct": -0.19
+    },
+    "上证50": {
+      "code": "sh000016",
+      "name": "上证50",
+      "price": 2875.25,
+      "prev_close": 2870.8,
+      "open": 2864.46,
+      "change_pct": 0.16
+    },
+    "中证500": {
+      "code": "sh000905",
+      "name": "中证500",
+      "price": 7721.57,
+      "prev_close": 7717.09,
+      "open": 7644.2,
+      "change_pct": 0.06
+    },
+    "中证1000": {
+      "code": "sh000852",
+      "name": "中证1000",
+      "price": 7540.41,
+      "prev_close": 7491.49,
+      "open": 7420.77,
+      "change_pct": 0.65
+    },
+    "科创50": {
+      "code": "sh000688",
+      "name": "科创50",
+      "price": 1607.28,
+      "prev_close": 1602.34,
+      "open": 1584.52,
+      "change_pct": 0.31
+    }
+  },
+  "rows": [
+    {
+      "symbol_code": "603565",
+      "symbol_name": "中谷物流",
+      "status": "SELL",
+      "exit_class": "SELL_TRAILING",
+      "current_return_pct": -5.86,
+      "current_price": 12.53,
+      "reason": "ATR Trailing Stop触发"
+    },
+    {
+      "symbol_code": "688185",
+      "symbol_name": "康希诺",
+      "status": "REDUCE",
+      "exit_class": "REDUCE",
+      "current_return_pct": -8.53,
+      "current_price": 71.99,
+      "reason": "趋势衰减(REDUCE 40%)"
+    },
+    {
+      "symbol_code": "605158",
+      "symbol_name": "华达新材",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": 3.54,
+      "current_price": 7.9,
+      "reason": "继续持有；未命中AddSetup；sector_rank_strong/rs_score"
+    },
+    {
+      "symbol_code": "601665",
+      "symbol_name": "齐鲁银行",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": 0.0,
+      "current_price": 6.54,
+      "reason": "继续持有；未命中AddSetup；sector_rank_strong/rs_score"
+    },
+    {
+      "symbol_code": "601838",
+      "symbol_name": "成都银行",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": -0.32,
+      "current_price": 18.72,
+      "reason": "继续持有；未命中AddSetup；sector_rank_strong/rs_score"
+    },
+    {
+      "symbol_code": "001205",
+      "symbol_name": "盛航股份",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": 0.62,
+      "current_price": 14.62,
+      "reason": "继续持有；未命中AddSetup；sector_rank_strong/rs_score"
+    },
+    {
+      "symbol_code": "600583",
+      "symbol_name": "海油工程",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": 0.0,
+      "current_price": 6.06,
+      "reason": "继续持有；未命中AddSetup；sector_rank_strong/rs_score"
+    },
+    {
+      "symbol_code": "601088",
+      "symbol_name": "中国神华",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": 0.47,
+      "current_price": 47.14,
+      "reason": "继续持有；未命中AddSetup；sector_rank_strong/rs_score"
+    },
+    {
+      "symbol_code": "601886",
+      "symbol_name": "江河集团",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": -0.96,
+      "current_price": 13.38,
+      "reason": "继续持有；未命中AddSetup；sector_rank_25.0_weak/rs_score"
+    },
+    {
+      "symbol_code": "601077",
+      "symbol_name": "渝农商行",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": -0.72,
+      "current_price": 6.88,
+      "reason": "继续持有；未命中AddSetup；sector_rank_strong/rs_score"
+    },
+    {
+      "symbol_code": "600348",
+      "symbol_name": "华阳股份",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": -0.77,
+      "current_price": 8.97,
+      "reason": "继续持有；未命中AddSetup；sector_rank_strong/rs_score"
+    },
+    {
+      "symbol_code": "601083",
+      "symbol_name": "锦江航运",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": 4.98,
+      "current_price": 13.07,
+      "reason": "继续持有；未命中AddSetup；sector_rank_strong/rs_score"
+    },
+    {
+      "symbol_code": "603209",
+      "symbol_name": "兴通股份",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": -0.9,
+      "current_price": 14.38,
+      "reason": "继续持有；缺有效盘中确认(价格< VWAP或数据缺失)；sector_rank_strong/rs_score"
+    },
+    {
+      "symbol_code": "601919",
+      "symbol_name": "中远海控",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": -1.1,
+      "current_price": 17.09,
+      "reason": "继续持有；未命中AddSetup"
+    },
+    {
+      "symbol_code": "301516",
+      "symbol_name": "中远通",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": -3.17,
+      "current_price": 23.24,
+      "reason": "继续持有；未命中AddSetup；sector_rank_60.0_weak/rs_score"
+    },
+    {
+      "symbol_code": "000506",
+      "symbol_name": "招金黄金",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": -2.82,
+      "current_price": 21.0,
+      "reason": "继续持有；未命中AddSetup"
+    },
+    {
+      "symbol_code": "300139",
+      "symbol_name": "晓程科技",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": -1.31,
+      "current_price": 56.55,
+      "reason": "放量强势扩张(HOLD，非滞涨不减仓)"
+    },
+    {
+      "symbol_code": "601069",
+      "symbol_name": "西部黄金",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": 0.28,
+      "current_price": 31.98,
+      "reason": "放量强势扩张(HOLD，非滞涨不减仓)"
+    },
+    {
+      "symbol_code": "600988",
+      "symbol_name": "赤峰黄金",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": -5.13,
+      "current_price": 47.56,
+      "reason": "放量强势扩张(HOLD，非滞涨不减仓)"
+    },
+    {
+      "symbol_code": "000975",
+      "symbol_name": "山金国际",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": -2.38,
+      "current_price": 27.92,
+      "reason": "继续持有；未命中AddSetup"
+    },
+    {
+      "symbol_code": "600489",
+      "symbol_name": "中金黄金",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": -3.23,
+      "current_price": 26.38,
+      "reason": "放量强势扩张(HOLD，非滞涨不减仓)"
+    },
+    {
+      "symbol_code": "600985",
+      "symbol_name": "淮北矿业",
+      "status": "HOLD",
+      "exit_class": "HOLD",
+      "current_return_pct": -3.95,
+      "current_price": 17.5,
+      "reason": "继续持有；未命中AddSetup"
+    }
+  ]
+}

@@ -1,3 +1,0 @@
-trigger_time,symbol,signal_group,signal_tier,entry_date,entry_price,shares,buy_cost,position_weight_pct,exit_date,exit_price,days_held,gross_return_pct,pnl,fees,return_after_cost_pct,max_gain_pct,max_loss_pct
-2026-07-22 18:00:00,688072,buy_passed,B,20260723,791.08,100,79147.55,7.915,20260724,728.0,3,-7.9739,-6420.35,112.35,-8.1119,2.2653,-8.9852
-2026-08-10 18:00:00,600183,buy_passed,B,20260811,135.8,500,67933.95,6.793,20260813,146.664,3,8.0,5324.72,107.28,7.8381,11.8557,-1.5758

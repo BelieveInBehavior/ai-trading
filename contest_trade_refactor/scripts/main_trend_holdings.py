@@ -70,11 +70,20 @@ def to_holding_dict(h: Holding) -> Dict[str, Any]:
         "stop_loss_price": h.stop_loss_price,
         "atr_trailing_stop": h.atr_trailing_stop,
         "prev_close": h.prev_close,
+        "ma10": h.ma10,
         "ma20": h.ma20,
         "prev_ma20": h.prev_ma20,
         "event_catalyst": h.event_catalyst or {},
         "realtime_quote": h.realtime_quote or {},
         "order_flow_score": h.order_flow_score,
+        "trend_state": h.trend_state,
+        "trend_state_info": h.trend_state_info or {},
+        "previous_trend_state": h.previous_trend_state,
+        "trend_state_streak": h.trend_state_streak,
+        "trend_state_as_of": h.trend_state_as_of,
+        "trend_state_changed_at": h.trend_state_changed_at,
+        "trend_reason_code": h.trend_reason_code,
+        "trend_confidence": h.trend_confidence,
     }
     return d
 
@@ -103,11 +112,20 @@ def resolve_holdings_from_rows(rows: List[Dict[str, Any]], date: str) -> List[Ho
             stop_loss_price=_num(r.get("stop_loss_price")),
             atr_trailing_stop=_num(r.get("atr_trailing_stop")),
             prev_close=_num(r.get("prev_close")),
+            ma10=_num(r.get("ma10")) or _num((r.get("trade_plan") or {}).get("ma10")),
             ma20=_num(r.get("ma20")),
             prev_ma20=_num(r.get("prev_ma20")),
             event_catalyst=r.get("event_catalyst") or {},
             realtime_quote=r.get("realtime_quote") or {},
             order_flow_score=_num(r.get("order_flow_score"), 50.0) or 50.0,
+            trend_state=str(r.get("trend_state") or (r.get("trade_plan") or {}).get("trend_state") or ""),
+            trend_state_info=r.get("trend_state_info") or {},
+            previous_trend_state=str(r.get("previous_trend_state") or ""),
+            trend_state_streak=int(r.get("trend_state_streak") or 0),
+            trend_state_as_of=str(r.get("trend_state_as_of") or ""),
+            trend_state_changed_at=str(r.get("trend_state_changed_at") or ""),
+            trend_reason_code=str(r.get("trend_reason_code") or ""),
+            trend_confidence=_num(r.get("trend_confidence"), 0.0) or 0.0,
         ))
     return out
 
@@ -128,6 +146,8 @@ def apply_prices_to_rows(rows: List[Dict[str, Any]], prices: Dict[str, Any]) -> 
             r["prev_close"] = float(raw["prev_close"])
         if r.get("ma20") is None and raw.get("ma20") is not None:
             r["ma20"] = float(raw["ma20"])
+        if r.get("ma10") is None and raw.get("ma10") is not None:
+            r["ma10"] = float(raw["ma10"])
         if r.get("prev_ma20") is None and raw.get("prev_ma20") is not None:
             r["prev_ma20"] = float(raw["prev_ma20"])
         if r.get("highest_price") is None:
@@ -209,10 +229,12 @@ def main() -> None:
             fallback = latest_t1_payload(out_base)
             if fallback.get("present"):
                 t1_path = Path(fallback["path"])
-        # 优先从 result.json 的 candidate_pool_t1 / buy_signals 直接构建持仓
+        # 显式传了 --t1 时，用 T+1 执行结果初始化，不再被同目录 result.json 覆盖
         result_path = Path(args.result).expanduser() if args.result else component_dir / date / "result.json"
+        if args.result and not result_path.is_absolute():
+            result_path = PROJECT_ROOT / result_path
         result_payload_used = False
-        if result_path.exists():
+        if result_path.exists() and not args.t1:
             result_payload = load_json(result_path)
             rows = result_payload.get("candidate_pool_t1") or result_payload.get("buy_signals") or []
             if rows:
@@ -271,7 +293,7 @@ def main() -> None:
         sys.exit(1)
 
     engine = MainTrendEngine(MainTrendConfig.from_yaml())
-    decisions = [d.to_dict() for d in engine.evaluate_exits(holdings_list)]
+    decisions = [d.to_dict() for d in engine.evaluate_exits(holdings_list, refresh_factors=True, trade_date=date)]
     decisions.sort(key=lambda x: (x.get("action") in ("sell", "exit", "reduce"), x.get("exit_score") or 0), reverse=True)
     exit_payload = {"as_of_date": date or holdings_payload.get("as_of_date") or "", "positions_count": len(holdings_list), "decisions": decisions}
 

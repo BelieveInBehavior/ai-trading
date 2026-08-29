@@ -5,3 +5,12 @@
 {"event": "holdings_update", "date": "20260823", "count": 45, "logged_at": "2026-08-24T13:41:33"}
 {"event": "holdings_update", "date": "20260824", "count": 45, "logged_at": "2026-08-24T13:41:50"}
 {"event": "holdings_init", "date": "20260823", "count": 45, "logged_at": "2026-08-24T14:53:03"}
+{"event": "t1_execution", "trade_date": "20260821", "count": 69, "logged_at": "2026-08-24T16:16:46"}
+{"event": "holdings_init", "date": "20260823", "count": 22, "logged_at": "2026-08-24T16:16:54"}
+{"event": "holdings_update", "date": "20260823", "count": 22, "logged_at": "2026-08-24T16:16:54"}
+{"event": "holdings_update", "date": "20260823", "count": 22, "logged_at": "2026-08-24T16:17:18"}
+{"event": "holdings_recalc_0930", "date": "20260823", "counts": {"REDUCE": 4, "ADD": 1, "HOLD": 17}, "logged_at": "2026-08-24T17:14:35"}
+{"event": "holdings_recalc_0930", "date": "20260823", "counts": {"REDUCE": 4, "ADD": 1, "HOLD": 17}, "logged_at": "2026-08-24T17:17:47"}
+{"event": "holdings_recalc_0930", "date": "20260823", "counts": {"ADD": 1, "REDUCE": 1, "HOLD": 20}, "logged_at": "2026-08-24T17:52:20"}
+{"event": "holdings_recalc_0930", "date": "20260823", "counts": {"REDUCE": 1, "SELL": 2, "HOLD": 19}, "logged_at": "2026-08-24T18:20:53"}
+{"event": "holdings_recalc_0930", "date": "20260823", "counts": {"REDUCE": 1, "SELL": 2, "HOLD": 19}, "logged_at": "2026-08-24T18:23:26"}

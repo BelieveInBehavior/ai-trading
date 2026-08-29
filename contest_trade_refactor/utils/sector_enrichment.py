@@ -18,8 +18,9 @@ from typing import Dict, Optional
 
 import pandas as pd
 from loguru import logger
+from utils.market_data_paths import legacy_market_manager_dir, market_manager_dir, preferred_existing_dir
 
-CACHE_DIR = Path(__file__).parent / "cache" / "market_manager"
+CACHE_DIR = preferred_existing_dir(market_manager_dir(), legacy_market_manager_dir())
 INDUSTRY_MAP_CACHE = CACHE_DIR / "industry_map.json"
 
 

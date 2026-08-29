@@ -33,6 +33,29 @@ T日负责发现机会（Hard Filter / Trend / Sector / Catalyst → Candidate P
 T+1 Execution 负责确认机会；Risk / Portfolio / Position 负责买多少；Exit 负责何时不再相信。
 T日价格是 Reference Price，不是买入价。默认废除固定 ±6%，改 Initial Stop + Trailing Stop + MA20。
 
+## 均线口径：EMA（V2.0 默认）与 A/B
+
+`main_trend` 策略默认使用 **EMA**（`strategies/main_trend/strategy.yaml` 内 `technical.ma_mode: ema`）。
+
+- 计算公式：`EMA_N = ewm(span=N, adjust=False, min_periods=N)`，金融等价于
+  `alpha = 2/(N+1)` 的指数平滑，不偷工减料。
+- 作用范围（全部一致切到 EMA）：
+  - 个股因子：EMA5 / EMA10 / EMA20 / EMA60 及其斜率、偏离、多头结构（`close_above_ma5/10/20`、`ma10_gt_ma20`、`ma20_ge_ma60` 等）；
+  - 周线因子：weekly MA10 / MA20；
+  - Weinstein：weekly MA30；
+  - 长期结构：MA50 / MA200 偏离与斜率；
+  - 市场环境：指数 Close vs MA5 / MA20。
+- 如需保留 SMA，在 `strategy.yaml` 中改回 `technical.ma_mode: sma`，或 A/B 回测用：
+  ```bash
+  .venv/bin/python scripts/main_trend_event_backtest.py --start ... --end ... --ma-mode sma --exit-mode forward
+  .venv/bin/python scripts/main_trend_event_backtest.py --start ... --end ... --ma-mode ema --exit-mode forward
+  ```
+
+A/B 结论（Top 200 / 2026-06-01 ~ 08-15 / `pre_score>=70` 前向收益）：
+- EMA 在 3/5/10 日平均收益、胜率、盈亏比均明显优于 SMA；
+- 两者当前样本选择 Alpha 仍然偏负，选股/过热过滤仍需要后续迭代；
+- EMA5 偏离 6~10% 区间为过热/高位区，10%+ 样本少但更差；0~3% 样本少是当前硬过滤拧紧后的低频口。
+
 ## Layer 1 Market Regime（A/B/C/D 七维输入）
 
 指数趋势 / 指数动量 / 市场广度 / 新高-新低 / 市场成交额 / 板块广度 / 市场波动
@@ -50,6 +73,12 @@ T日价格是 Reference Price，不是买入价。默认废除固定 ±6%，改 
 - S2 Acceleration：创新高 + RS强 + 量价健康 + MA多头（MA5>MA20>MA60），允许正常建仓和加仓。
 - S3 Continuation / Consolidation：涨后盘整、缩量、MA20继续上行、重新突破；不因未创新高判死。
 - S4 Exhaustion：主升末端，不预测顶部，只记录趋势质量下降维度（创新高减速 / RS 回调 / ATR 异常 / 量异常 / 板块转弱）风险预警，不新增。
+
+持仓期间每日用最新收盘因子重算状态，并持久化
+`previous_trend_state / trend_state / trend_state_streak / trend_state_as_of / trend_reason_code / trend_confidence`。
+单日普通 S0 进入 WATCH 且禁止加仓；连续两日 S0 减仓；连续三日 S0 且至少两项独立持仓证据恶化则退出。持仓证据包含 EMA10/20 斜率、RS、VWAP、量价拒绝和关键低点；S4 单日减仓，S5、Close<EMA20 或有效跌破关键低点直接退出。EMA20 是最后结构防线，不再是唯一持有理由。
+S0 原因区分为 `NORMAL_PULLBACK`、`MOMENTUM_LOSS`、`STRUCTURE_WEAKENING`、`NO_VALID_SETUP` 和
+`DATA_INCOMPLETE`，其中数据不完整只预警，不触发交易。
 - S5 Trend Breakdown：趋势破坏硬退出，Close<MA20+RSI 弱；ATR Trailing Stop / 次日无法站回在持仓状态机处理。
 
 对应实现：`engine.assess_trend_state()`。
@@ -174,8 +203,15 @@ Position = AccountRiskBudget / StopDistance * QualityMultiplier
 ```
 ENTRY -> HOLD -> ADD / HOLD / DECAY / REDUCE -> EXIT
 ```
-- **ADD**：只允许“盈利 + 回踩健康 + 重新突破 + 板块/RS 强”的 Pyramiding，不允许亏损补仓。
+- **ADD**：证据驱动式 Pyramiding —— **盈利不是加仓理由，新的 Alpha 确认才是**。
+  三层分离：Setup（新的趋势/量价/重新突破/板块/RS，不把 `ret_pct>0` 当开关）
+  → Confirmation（盘中 VWAP/盘口/回踩企稳二次确认）
+  → Risk Engine（浮盈与账户风险只决定本次加多少，不决定能否加）。
 - **Trend Decay**：创新高频率下降、RS 下降、Sector 转弱、量价背离、ATR 异常放大、VWAP 弱化、市场恶化。
+- **高位放量双分法（成本/上影线核心分水岭）**：`extension`＝放量＋收在高位/阳线短上影（收在振幅上60%或 VWAP 上方，P3 HOLD，不给 REDUCE 一票否决权）；
+  `rejection`＝放量＋弱势收盘/阴线长上影（收在振幅下40%、破 VWAP、上影>实体1.5倍、天量、冲高收阴量比、板块转弱）才算“有效供给”，才可计入 REDUCE。
+- **状态更新必须用新因子**：每次跑状态机默认重新拉取 MA20/板块/RS/K线 VWAP 并写回 `trade_plan / realtime_quote`，不再用 T 日缓存判断 ADD/REDUCE/EXIT。
+- **次日警戒（Next-Day Guard）**：今天是 `extension` 后，系统把当日 VWAP/最高点固化为 `next_day_guard_vwap/high`；明天收盘跌破昨日 VWAP（0.5% 容差）记一条 `next_day_guard_break_vwap` 衰减信号，放量突破昨日高点则 C 类加速更可信、可触发 ADD。
 - **双轨退出**：MA20 结构止损（Close<MA20 且次日无法站回）或 ATR trailing stop，任一出即 EXIT。
 - **S4 是风险预警**（触发 REDUCE 阈值），只有 S5 / 硬止损 / 严重衰减才 EXIT。
 
@@ -237,4 +273,3 @@ ENTRY -> HOLD -> ADD / HOLD / DECAY / REDUCE -> EXIT
 ### 兼容旧输出
 - 新结构化 schema：`event_level / credibility / source_quality / earnings_impact / price_reaction / expected_return_pct ...`
 - 旧字段 `catalyst_certainty / catalyst_market_impact` 依然会被 `validate_research_signal()` 自动映射到新字段，保证已训练/已有 LLM 输出不丢失。
-

@@ -1,0 +1,801 @@
+{
+  "start": "20260601",
+  "end": "20260818",
+  "symbols": [
+    {
+      "symbol_code": "300433",
+      "symbol_name": "蓝思科技"
+    },
+    {
+      "symbol_code": "301511",
+      "symbol_name": "德福科技"
+    },
+    {
+      "symbol_code": "600367",
+      "symbol_name": "红星发展"
+    },
+    {
+      "symbol_code": "300394",
+      "symbol_name": "天孚通信"
+    },
+    {
+      "symbol_code": "300285",
+      "symbol_name": "国瓷材料"
+    },
+    {
+      "symbol_code": "600667",
+      "symbol_name": "太极实业"
+    },
+    {
+      "symbol_code": "002851",
+      "symbol_name": "麦格米特"
+    },
+    {
+      "symbol_code": "600900",
+      "symbol_name": "长江电力"
+    },
+    {
+      "symbol_code": "000333",
+      "symbol_name": "美的集团"
+    },
+    {
+      "symbol_code": "688498",
+      "symbol_name": "源杰科技"
+    },
+    {
+      "symbol_code": "601208",
+      "symbol_name": "东材科技"
+    },
+    {
+      "symbol_code": "000725",
+      "symbol_name": "京东方Ａ"
+    },
+    {
+      "symbol_code": "600353",
+      "symbol_name": "旭光电子"
+    },
+    {
+      "symbol_code": "600378",
+      "symbol_name": "昊华科技"
+    },
+    {
+      "symbol_code": "301526",
+      "symbol_name": "国际复材"
+    },
+    {
+      "symbol_code": "301217",
+      "symbol_name": "铜冠铜箔"
+    },
+    {
+      "symbol_code": "000657",
+      "symbol_name": "中钨高新"
+    },
+    {
+      "symbol_code": "601398",
+      "symbol_name": "工商银行"
+    },
+    {
+      "symbol_code": "600110",
+      "symbol_name": "诺德股份"
+    },
+    {
+      "symbol_code": "600176",
+      "symbol_name": "中国巨石"
+    },
+    {
+      "symbol_code": "688167",
+      "symbol_name": "炬光科技"
+    },
+    {
+      "symbol_code": "002428",
+      "symbol_name": "云南锗业"
+    },
+    {
+      "symbol_code": "600549",
+      "symbol_name": "厦门钨业"
+    },
+    {
+      "symbol_code": "601958",
+      "symbol_name": "金钼股份"
+    },
+    {
+      "symbol_code": "600186",
+      "symbol_name": "莲花控股"
+    },
+    {
+      "symbol_code": "300308",
+      "symbol_name": "中际旭创"
+    },
+    {
+      "symbol_code": "300502",
+      "symbol_name": "新易盛"
+    },
+    {
+      "symbol_code": "603986",
+      "symbol_name": "兆易创新"
+    },
+    {
+      "symbol_code": "600487",
+      "symbol_name": "亨通光电"
+    },
+    {
+      "symbol_code": "600183",
+      "symbol_name": "生益科技"
+    },
+    {
+      "symbol_code": "002491",
+      "symbol_name": "通鼎互联"
+    },
+    {
+      "symbol_code": "688766",
+      "symbol_name": "普冉股份"
+    },
+    {
+      "symbol_code": "300408",
+      "symbol_name": "三环集团"
+    },
+    {
+      "symbol_code": "000636",
+      "symbol_name": "风华高科"
+    },
+    {
+      "symbol_code": "002371",
+      "symbol_name": "北方华创"
+    },
+    {
+      "symbol_code": "300570",
+      "symbol_name": "太辰光"
+    },
+    {
+      "symbol_code": "600522",
+      "symbol_name": "中天科技"
+    },
+    {
+      "symbol_code": "600206",
+      "symbol_name": "有研新材"
+    },
+    {
+      "symbol_code": "002463",
+      "symbol_name": "沪电股份"
+    },
+    {
+      "symbol_code": "300666",
+      "symbol_name": "江丰电子"
+    },
+    {
+      "symbol_code": "600105",
+      "symbol_name": "永鼎股份"
+    },
+    {
+      "symbol_code": "002436",
+      "symbol_name": "兴森科技"
+    },
+    {
+      "symbol_code": "600498",
+      "symbol_name": "烽火通信"
+    },
+    {
+      "symbol_code": "002409",
+      "symbol_name": "雅克科技"
+    },
+    {
+      "symbol_code": "002080",
+      "symbol_name": "中材科技"
+    },
+    {
+      "symbol_code": "002484",
+      "symbol_name": "江海股份"
+    },
+    {
+      "symbol_code": "603186",
+      "symbol_name": "华正新材"
+    },
+    {
+      "symbol_code": "688347",
+      "symbol_name": "华虹宏力"
+    },
+    {
+      "symbol_code": "600030",
+      "symbol_name": "中信证券"
+    },
+    {
+      "symbol_code": "300620",
+      "symbol_name": "光库科技"
+    },
+    {
+      "symbol_code": "002916",
+      "symbol_name": "深南电路"
+    },
+    {
+      "symbol_code": "688143",
+      "symbol_name": "长盈通"
+    },
+    {
+      "symbol_code": "300489",
+      "symbol_name": "光智科技"
+    },
+    {
+      "symbol_code": "300373",
+      "symbol_name": "扬杰科技"
+    },
+    {
+      "symbol_code": "002552",
+      "symbol_name": "宝鼎科技"
+    },
+    {
+      "symbol_code": "000811",
+      "symbol_name": "冰轮环境"
+    },
+    {
+      "symbol_code": "603773",
+      "symbol_name": "沃格光电"
+    },
+    {
+      "symbol_code": "600641",
+      "symbol_name": "先导基电"
+    },
+    {
+      "symbol_code": "688549",
+      "symbol_name": "中巨芯-U"
+    },
+    {
+      "symbol_code": "002384",
+      "symbol_name": "东山精密"
+    },
+    {
+      "symbol_code": "688012",
+      "symbol_name": "中微公司"
+    },
+    {
+      "symbol_code": "002281",
+      "symbol_name": "光迅科技"
+    },
+    {
+      "symbol_code": "300604",
+      "symbol_name": "长川科技"
+    },
+    {
+      "symbol_code": "300223",
+      "symbol_name": "君正股份"
+    },
+    {
+      "symbol_code": "688146",
+      "symbol_name": "中船特气"
+    },
+    {
+      "symbol_code": "603083",
+      "symbol_name": "剑桥科技"
+    },
+    {
+      "symbol_code": "300475",
+      "symbol_name": "香农芯创"
+    },
+    {
+      "symbol_code": "600601",
+      "symbol_name": "方正科技"
+    },
+    {
+      "symbol_code": "002353",
+      "symbol_name": "杰瑞股份"
+    },
+    {
+      "symbol_code": "301205",
+      "symbol_name": "联特科技"
+    },
+    {
+      "symbol_code": "688630",
+      "symbol_name": "芯碁微装"
+    },
+    {
+      "symbol_code": "002636",
+      "symbol_name": "金安国纪"
+    },
+    {
+      "symbol_code": "688120",
+      "symbol_name": "华海清科"
+    },
+    {
+      "symbol_code": "600397",
+      "symbol_name": "江钨装备"
+    },
+    {
+      "symbol_code": "300054",
+      "symbol_name": "鼎龙股份"
+    },
+    {
+      "symbol_code": "688627",
+      "symbol_name": "精智达"
+    },
+    {
+      "symbol_code": "600703",
+      "symbol_name": "三安光电"
+    },
+    {
+      "symbol_code": "603061",
+      "symbol_name": "金海通"
+    },
+    {
+      "symbol_code": "002655",
+      "symbol_name": "共达电声"
+    },
+    {
+      "symbol_code": "600460",
+      "symbol_name": "士兰微"
+    },
+    {
+      "symbol_code": "600584",
+      "symbol_name": "长电科技"
+    },
+    {
+      "symbol_code": "688525",
+      "symbol_name": "佰维存储"
+    },
+    {
+      "symbol_code": "002407",
+      "symbol_name": "多氟多"
+    },
+    {
+      "symbol_code": "688072",
+      "symbol_name": "拓荆科技"
+    },
+    {
+      "symbol_code": "600869",
+      "symbol_name": "远东股份"
+    },
+    {
+      "symbol_code": "688361",
+      "symbol_name": "中科飞测"
+    },
+    {
+      "symbol_code": "003031",
+      "symbol_name": "中瓷电子"
+    },
+    {
+      "symbol_code": "000960",
+      "symbol_name": "锡业股份"
+    },
+    {
+      "symbol_code": "600961",
+      "symbol_name": "株冶集团"
+    },
+    {
+      "symbol_code": "688110",
+      "symbol_name": "东芯股份"
+    },
+    {
+      "symbol_code": "601869",
+      "symbol_name": "长飞光纤"
+    },
+    {
+      "symbol_code": "301308",
+      "symbol_name": "江波龙"
+    },
+    {
+      "symbol_code": "688313",
+      "symbol_name": "仕佳光子"
+    },
+    {
+      "symbol_code": "300857",
+      "symbol_name": "协创数据"
+    },
+    {
+      "symbol_code": "688048",
+      "symbol_name": "长光华芯"
+    },
+    {
+      "symbol_code": "001267",
+      "symbol_name": "汇绿生态"
+    },
+    {
+      "symbol_code": "001309",
+      "symbol_name": "德明利"
+    },
+    {
+      "symbol_code": "688432",
+      "symbol_name": "有研硅"
+    },
+    {
+      "symbol_code": "688521",
+      "symbol_name": "芯原股份"
+    },
+    {
+      "symbol_code": "002821",
+      "symbol_name": "凯莱英"
+    },
+    {
+      "symbol_code": "688041",
+      "symbol_name": "海光信息"
+    },
+    {
+      "symbol_code": "688981",
+      "symbol_name": "中芯国际"
+    },
+    {
+      "symbol_code": "301396",
+      "symbol_name": "宏景科技"
+    },
+    {
+      "symbol_code": "688702",
+      "symbol_name": "盛科通信-U"
+    },
+    {
+      "symbol_code": "000021",
+      "symbol_name": "深科技"
+    },
+    {
+      "symbol_code": "300136",
+      "symbol_name": "信维通信"
+    },
+    {
+      "symbol_code": "688596",
+      "symbol_name": "正帆科技"
+    },
+    {
+      "symbol_code": "000100",
+      "symbol_name": "TCL科技"
+    },
+    {
+      "symbol_code": "688008",
+      "symbol_name": "澜起科技"
+    },
+    {
+      "symbol_code": "002747",
+      "symbol_name": "埃斯顿"
+    },
+    {
+      "symbol_code": "301165",
+      "symbol_name": "锐捷网络"
+    },
+    {
+      "symbol_code": "688017",
+      "symbol_name": "绿的谐波"
+    },
+    {
+      "symbol_code": "002536",
+      "symbol_name": "飞龙股份"
+    },
+    {
+      "symbol_code": "002185",
+      "symbol_name": "华天科技"
+    },
+    {
+      "symbol_code": "300759",
+      "symbol_name": "康龙化成"
+    },
+    {
+      "symbol_code": "000938",
+      "symbol_name": "紫光股份"
+    },
+    {
+      "symbol_code": "002396",
+      "symbol_name": "星网锐捷"
+    },
+    {
+      "symbol_code": "603259",
+      "symbol_name": "药明康德"
+    },
+    {
+      "symbol_code": "002156",
+      "symbol_name": "通富微电"
+    },
+    {
+      "symbol_code": "300765",
+      "symbol_name": "石药创新"
+    },
+    {
+      "symbol_code": "300142",
+      "symbol_name": "沃森生物"
+    },
+    {
+      "symbol_code": "600664",
+      "symbol_name": "哈药股份"
+    },
+    {
+      "symbol_code": "000977",
+      "symbol_name": "浪潮信息"
+    },
+    {
+      "symbol_code": "002415",
+      "symbol_name": "海康威视"
+    },
+    {
+      "symbol_code": "601919",
+      "symbol_name": "中远海控"
+    },
+    {
+      "symbol_code": "600036",
+      "symbol_name": "招商银行"
+    },
+    {
+      "symbol_code": "000703",
+      "symbol_name": "恒逸石化"
+    },
+    {
+      "symbol_code": "601168",
+      "symbol_name": "西部矿业"
+    },
+    {
+      "symbol_code": "601166",
+      "symbol_name": "兴业银行"
+    },
+    {
+      "symbol_code": "000651",
+      "symbol_name": "格力电器"
+    },
+    {
+      "symbol_code": "600519",
+      "symbol_name": "贵州茅台"
+    },
+    {
+      "symbol_code": "600028",
+      "symbol_name": "中国石化"
+    },
+    {
+      "symbol_code": "300209",
+      "symbol_name": "行云科技"
+    },
+    {
+      "symbol_code": "601899",
+      "symbol_name": "紫金矿业"
+    },
+    {
+      "symbol_code": "603993",
+      "symbol_name": "洛阳钼业"
+    },
+    {
+      "symbol_code": "603228",
+      "symbol_name": "景旺电子"
+    },
+    {
+      "symbol_code": "600988",
+      "symbol_name": "赤峰黄金"
+    },
+    {
+      "symbol_code": "000506",
+      "symbol_name": "招金黄金"
+    },
+    {
+      "symbol_code": "002437",
+      "symbol_name": "誉衡药业"
+    }
+  ],
+  "event_days": 55,
+  "event_count": 553,
+  "param_count": 96,
+  "engine": "pandas_event",
+  "vectorbt_installed": false,
+  "matrix_path": "/Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace_main_trend_research/daily_event_20260601_20260818/vectorbt_param_matrix.csv",
+  "trades_path": "/Users/ruby/Desktop/ai-trading/contest_trade_refactor/agents_workspace_main_trend_research/daily_event_20260601_20260818/vectorbt_trades.csv",
+  "top": [
+    {
+      "ma_mode": "ema",
+      "fast_ma": 8,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": true,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": true,
+      "atr_mult": 1.5,
+      "max_holding_days": 10,
+      "max_fast_ma_deviation_pct": 12.0,
+      "param_key": "ema_f8_m20_l60_macd_fastreduce_midexit_atr1.5_h10_dev12",
+      "engine": "pandas_event",
+      "trade_count": 127,
+      "total_return_pct": 292.9177,
+      "avg_trade_return_pct": 2.4986,
+      "median_trade_return_pct": -1.788,
+      "win_rate_pct": 40.94,
+      "profit_factor": 1.5215,
+      "max_drawdown_pct": -90.6343,
+      "sharpe_like": 0.6658
+    },
+    {
+      "ma_mode": "ema",
+      "fast_ma": 10,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": false,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": false,
+      "atr_mult": 1.5,
+      "max_holding_days": 5,
+      "max_fast_ma_deviation_pct": 12.0,
+      "param_key": "ema_f10_m20_l60_nomacd_fastreduce_midexit_noatr_h5_dev12",
+      "engine": "pandas_event",
+      "trade_count": 103,
+      "total_return_pct": 364.7236,
+      "avg_trade_return_pct": 2.4975,
+      "median_trade_return_pct": 0.0669,
+      "win_rate_pct": 50.49,
+      "profit_factor": 1.5796,
+      "max_drawdown_pct": -80.5724,
+      "sharpe_like": 1.1935
+    },
+    {
+      "ma_mode": "ema",
+      "fast_ma": 8,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": true,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": true,
+      "atr_mult": 2.0,
+      "max_holding_days": 10,
+      "max_fast_ma_deviation_pct": 12.0,
+      "param_key": "ema_f8_m20_l60_macd_fastreduce_midexit_atr2_h10_dev12",
+      "engine": "pandas_event",
+      "trade_count": 127,
+      "total_return_pct": 238.7698,
+      "avg_trade_return_pct": 2.4763,
+      "median_trade_return_pct": -2.0274,
+      "win_rate_pct": 38.58,
+      "profit_factor": 1.4903,
+      "max_drawdown_pct": -91.9204,
+      "sharpe_like": 0.6383
+    },
+    {
+      "ma_mode": "ema",
+      "fast_ma": 8,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": true,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": false,
+      "atr_mult": 1.5,
+      "max_holding_days": 10,
+      "max_fast_ma_deviation_pct": 12.0,
+      "param_key": "ema_f8_m20_l60_macd_fastreduce_midexit_noatr_h10_dev12",
+      "engine": "pandas_event",
+      "trade_count": 127,
+      "total_return_pct": 235.2178,
+      "avg_trade_return_pct": 2.4639,
+      "median_trade_return_pct": -2.0274,
+      "win_rate_pct": 38.58,
+      "profit_factor": 1.4879,
+      "max_drawdown_pct": -91.932,
+      "sharpe_like": 0.6359
+    },
+    {
+      "ma_mode": "ema",
+      "fast_ma": 10,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": false,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": true,
+      "atr_mult": 2.0,
+      "max_holding_days": 5,
+      "max_fast_ma_deviation_pct": 12.0,
+      "param_key": "ema_f10_m20_l60_nomacd_fastreduce_midexit_atr2_h5_dev12",
+      "engine": "pandas_event",
+      "trade_count": 103,
+      "total_return_pct": 343.4305,
+      "avg_trade_return_pct": 2.4579,
+      "median_trade_return_pct": 0.0669,
+      "win_rate_pct": 50.49,
+      "profit_factor": 1.5653,
+      "max_drawdown_pct": -81.5625,
+      "sharpe_like": 1.1713
+    },
+    {
+      "ma_mode": "ema",
+      "fast_ma": 8,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": false,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": true,
+      "atr_mult": 1.5,
+      "max_holding_days": 10,
+      "max_fast_ma_deviation_pct": 12.0,
+      "param_key": "ema_f8_m20_l60_nomacd_fastreduce_midexit_atr1.5_h10_dev12",
+      "engine": "pandas_event",
+      "trade_count": 125,
+      "total_return_pct": 257.0207,
+      "avg_trade_return_pct": 2.4553,
+      "median_trade_return_pct": -2.0539,
+      "win_rate_pct": 41.6,
+      "profit_factor": 1.4789,
+      "max_drawdown_pct": -91.7179,
+      "sharpe_like": 0.6617
+    },
+    {
+      "ma_mode": "ema",
+      "fast_ma": 10,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": false,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": true,
+      "atr_mult": 1.5,
+      "max_holding_days": 5,
+      "max_fast_ma_deviation_pct": 12.0,
+      "param_key": "ema_f10_m20_l60_nomacd_fastreduce_midexit_atr1.5_h5_dev12",
+      "engine": "pandas_event",
+      "trade_count": 103,
+      "total_return_pct": 341.8217,
+      "avg_trade_return_pct": 2.4477,
+      "median_trade_return_pct": 0.2545,
+      "win_rate_pct": 51.46,
+      "profit_factor": 1.5671,
+      "max_drawdown_pct": -82.0471,
+      "sharpe_like": 1.1697
+    },
+    {
+      "ma_mode": "ema",
+      "fast_ma": 8,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": false,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": true,
+      "atr_mult": 2.0,
+      "max_holding_days": 10,
+      "max_fast_ma_deviation_pct": 12.0,
+      "param_key": "ema_f8_m20_l60_nomacd_fastreduce_midexit_atr2_h10_dev12",
+      "engine": "pandas_event",
+      "trade_count": 125,
+      "total_return_pct": 124.9556,
+      "avg_trade_return_pct": 2.2056,
+      "median_trade_return_pct": -2.8925,
+      "win_rate_pct": 39.2,
+      "profit_factor": 1.3931,
+      "max_drawdown_pct": -94.2746,
+      "sharpe_like": 0.5703
+    },
+    {
+      "ma_mode": "ema",
+      "fast_ma": 8,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": false,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": false,
+      "atr_mult": 1.5,
+      "max_holding_days": 10,
+      "max_fast_ma_deviation_pct": 12.0,
+      "param_key": "ema_f8_m20_l60_nomacd_fastreduce_midexit_noatr_h10_dev12",
+      "engine": "pandas_event",
+      "trade_count": 125,
+      "total_return_pct": 57.7806,
+      "avg_trade_return_pct": 1.8979,
+      "median_trade_return_pct": -2.8925,
+      "win_rate_pct": 39.2,
+      "profit_factor": 1.3331,
+      "max_drawdown_pct": -94.6578,
+      "sharpe_like": 0.494
+    },
+    {
+      "ma_mode": "ema",
+      "fast_ma": 10,
+      "mid_ma": 20,
+      "long_ma": 60,
+      "use_macd": true,
+      "use_fast_ma_reduce": true,
+      "use_mid_ma_exit": true,
+      "use_atr_trailing": false,
+      "atr_mult": 1.5,
+      "max_holding_days": 5,
+      "max_fast_ma_deviation_pct": 12.0,
+      "param_key": "ema_f10_m20_l60_macd_fastreduce_midexit_noatr_h5_dev12",
+      "engine": "pandas_event",
+      "trade_count": 100,
+      "total_return_pct": 134.2346,
+      "avg_trade_return_pct": 1.7658,
+      "median_trade_return_pct": -0.2848,
+      "win_rate_pct": 48.0,
+      "profit_factor": 1.4012,
+      "max_drawdown_pct": -81.7712,
+      "sharpe_like": 0.8802
+    }
+  ]
+}

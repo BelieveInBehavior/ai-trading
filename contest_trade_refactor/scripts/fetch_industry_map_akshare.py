@@ -25,9 +25,10 @@ from typing import Dict, Optional
 
 import pandas as pd
 from loguru import logger
+from utils.market_data_paths import market_manager_dir
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUT = ROOT / "utils" / "cache" / "market_manager" / "industry_map.json"
+DEFAULT_OUT = market_manager_dir() / "industry_map.json"
 
 import sys
 if str(ROOT) not in sys.path:
@@ -157,4 +158,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

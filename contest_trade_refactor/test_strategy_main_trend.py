@@ -32,6 +32,9 @@ def _base_cand(**overrides):
             "median_amount_20d": 10000000,
             "close": 10.0,
             "ma60": 9.0,
+            "ma10": 9.5,
+            "ma10_gt_ma20": True,
+            "ma10_slope_pct": 0.2,
         }),
     )
     return cand
@@ -65,6 +68,27 @@ class MainTrendPackageTest(unittest.TestCase):
         eng = MainTrendEngine(MainTrendConfig.from_yaml())
         cand = _base_cand()
         cand.technical_factor["ma20_deviation_pct"] = -2.0
+        ok = eng.apply_hard_filter(cand, cand.market_regime_state, liquidity_p20=1_000_000)
+        self.assertFalse(ok)
+
+    def test_hard_filter_rejects_close_below_ma10(self):
+        eng = MainTrendEngine(MainTrendConfig.from_yaml())
+        cand = _base_cand()
+        cand.technical_factor["close"] = 9.0
+        cand.technical_factor["ma10"] = 9.5
+        cand.technical_factor["ma20_deviation_pct"] = 5.0
+        ok = eng.apply_hard_filter(cand, cand.market_regime_state, liquidity_p20=1_000_000)
+        self.assertFalse(ok)
+        self.assertIn("close<=ma10或ma10<=ma20", " ".join(cand.reasons))
+
+    def test_hard_filter_rejects_ma10_deviation_over_12(self):
+        eng = MainTrendEngine(MainTrendConfig.from_yaml())
+        cand = _base_cand()
+        cand.technical_factor["close"] = 11.0
+        cand.technical_factor["ma10"] = 9.0
+        cand.technical_factor["ma20_deviation_pct"] = 10.0
+        cand.technical_factor["ma10_gt_ma20"] = True
+        cand.technical_factor["ma10_slope_pct"] = 0.5
         ok = eng.apply_hard_filter(cand, cand.market_regime_state, liquidity_p20=1_000_000)
         self.assertFalse(ok)
 
@@ -104,12 +128,25 @@ class MainTrendPackageTest(unittest.TestCase):
         self.assertAlmostEqual(mr.risk_multiplier, 0.0, places=5)
 
     def test_exit_stop_loss_and_add(self):
-        eng = MainTrendEngine(MainTrendConfig.from_yaml())
+        eng2 = MainTrendEngine(MainTrendConfig.from_yaml())
         # 默认废除固定 ±6%；用 MA20 生命线触发 EXIT
         h = Holding("600001.SH", "测试", "20260818", 10.0, current_price=9.1, highest_price=10.5, holding_days=3, ma20=9.8)
-        self.assertEqual(eng.evaluate_exits([h])[0].action, "exit")
-        h2 = Holding("600001.SH", "测试", "20260818", 10.0, current_price=11.0, highest_price=11.2, holding_days=2)
-        self.assertEqual(eng.evaluate_exits([h2])[0].state, "ADD")
+        self.assertEqual(eng2.evaluate_exits([h])[0].action, "exit")
+        # 证据驱动型加仓：盈利 + 板块/RS 强 + VWAP 确认
+        h2 = Holding(
+            "600001.SH", "测试", "20260818", 10.0, current_price=11.0, highest_price=11.2, holding_days=2,
+            stop_loss_price=9.0,
+            trade_plan={"sector_rank": 5, "relative_strength_cross_section_pct": 90, "relative_strength_20d_pct": 14, "relative_strength_60d_pct": 10,
+                       "close_vs_20d_high_pct": 0.5, "volume_ratio": 1.8, "close": 11.0},
+            realtime_quote={"vwap_state":"Above", "vwap":10.9, "open":10.7, "high":11.2, "low":10.7},
+        )
+        d2 = eng2.evaluate_exits([h2])[0]
+        self.assertEqual(d2.state, "ADD")
+        self.assertTrue(d2.add_setup)
+        self.assertTrue(d2.add_confirmation)
+        # 没有板块/RS 证据时不允许 ADD（核心哲学回归）
+        h_no_evidence = Holding("600001.SH", "测试", "20260818", 10.0, current_price=11.0, highest_price=11.2, holding_days=2, realtime_quote={"vwap_state":"Above"})
+        self.assertNotEqual(eng2.evaluate_exits([h_no_evidence])[0].state, "ADD")
 
     def test_enrich_residual_rs_fields(self):
         factor = {

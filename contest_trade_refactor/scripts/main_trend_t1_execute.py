@@ -13,7 +13,18 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from strategies.main_trend.event_logger import log_event
 from strategies.main_trend.execution_manual import grade_execution
-from strategies.main_trend.scoring import compute_final_score
+from strategies.main_trend.engine import MainTrendConfig
+from strategies.main_trend.scoring import compute_final_score, compute_stops
+
+
+def _num(value, default=None):
+    try:
+        if value is None or value == "":
+            return default
+        v = float(value)
+        return v if v == v else default
+    except (TypeError, ValueError):
+        return default
 
 
 def main() -> None:
@@ -33,6 +44,9 @@ def main() -> None:
     manual = json.loads(manual_path.read_text(encoding="utf-8"))
     names = manual.get("names") or {}
     index_pct = manual.get("index_change_pct")
+    scoring_cfg = MainTrendConfig.from_yaml().scoring
+    pre_weight = float(scoring_cfg.get("pre_weight", 0.60) or 0.60)
+    exec_weight = float(scoring_cfg.get("execution_weight", 0.40) or 0.40)
     rows = []
     for item in tday.get("pool") or []:
         code = str(item.get("symbol_code") or "")
@@ -48,6 +62,9 @@ def main() -> None:
                 "initial_stop_pct": item.get("initial_stop_pct"),
                 "trailing_stop": item.get("trailing_stop"),
                 "current_stop": item.get("current_stop"),
+                "target_price_1": item.get("target_price_1"),
+                "target_price_2": item.get("target_price_2"),
+                "target_method": item.get("target_method"),
                 "ma20": item.get("ma20"),
                 "atr": item.get("atr"),
                 "take_profit_price": None,
@@ -64,11 +81,22 @@ def main() -> None:
             bid_support=str(raw.get("bid_support") or ""),
             vwap=raw.get("vwap"),
         )
-        final = compute_final_score(float(item.get("pre_score") or 0), graded["execution_score"])
+        final = compute_final_score(
+            float(item.get("pre_score") or 0),
+            graded["execution_score"],
+            pre_weight=pre_weight,
+            exec_weight=exec_weight,
+        )
         sized = item.get("suggested_position_pct") if graded["action"] == "BUY" else 0.0
         # 买入价：T+1 执行输入有 price_0935 优先，否则用 open；都没有则不算完整 BUY。
         entry_price = raw.get("price_0935") if raw.get("price_0935") is not None else raw.get("open")
-        # main_trend 默认 no fixed take-profit：只用动态止损/ATR/MA20/10日超期作为退出参考。
+        execution_stops = compute_stops(
+            entry_price,
+            atr=_num(item.get("atr")),
+            atr_pct=_num(item.get("atr_pct")),
+            ma20=_num(item.get("ma20")),
+        ) if entry_price is not None else {}
+        # main_trend 短冲刺默认 no fixed take-profit：只用动态止损/ATR/MA20/5日超期作为退出参考。
         rows.append({
             "symbol_code": code,
             "symbol_name": item.get("symbol_name"),
@@ -84,14 +112,17 @@ def main() -> None:
             "action": graded["action"],
             "entry_price": entry_price,
             "entry_time": raw.get("snapshot_time") or raw.get("pulled_at") or manual.get("pulled_at"),
-            "initial_stop": item.get("initial_stop"),
-            "initial_stop_pct": item.get("initial_stop_pct"),
-            "trailing_stop": item.get("trailing_stop"),
-            "current_stop": item.get("current_stop"),
+            "initial_stop": execution_stops.get("initial_stop") or item.get("initial_stop"),
+            "initial_stop_pct": execution_stops.get("initial_stop_pct") or item.get("initial_stop_pct"),
+            "trailing_stop": execution_stops.get("trailing_stop") or item.get("trailing_stop"),
+            "current_stop": execution_stops.get("current_stop") or item.get("current_stop"),
+            "target_price_1": execution_stops.get("target_price_1") or item.get("target_price_1"),
+            "target_price_2": execution_stops.get("target_price_2") or item.get("target_price_2"),
+            "target_method": execution_stops.get("target_method") or item.get("target_method"),
             "ma20": item.get("ma20"),
             "atr": item.get("atr"),
             "take_profit_price": None,
-            "stop_method": "MA20/ATR trailing/time-max",  # main_trend 不使用固定止盈
+            "stop_method": "MA20/ATR trailing/time-5d",  # main_trend 不使用固定止盈
             "suggested_position_pct": sized,
             "reasons": graded["reasons"],
         })

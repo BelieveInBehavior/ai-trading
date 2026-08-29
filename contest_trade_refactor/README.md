@@ -60,7 +60,36 @@ cp .env.example .env
 
 `config.yaml` 只保留 Agent 列表、信号门控阈值等非敏感业务配置；**不含任何 API Key 或模型凭证**（全部由 `config/config.py` 从 `.env` 注入）。
 
-首次运行或缺少股票映射缓存时，会自动从 AkShare 生成 `utils/cache/market_manager/stock_basic_cache.json` 与 `namechange_data.json`。
+市场数据建议采用“本地目录为主，远端对象存储做备份/共享”的方式。默认本地根目录为 `/Users/ruby/Desktop/real-market-data`。日常策略运行只读写本地 `CN_MARKET_BAR_STORE_DIR`，**每次 push 前必须先同步到 OSS**（见 `AGENTS.md`），避免把生产级行情文件放进 Git。
+
+完整约定见 [docs/MARKET_DATA_ARCHITECTURE.md](/Users/ruby/Desktop/ai-trading/contest_trade_refactor/docs/MARKET_DATA_ARCHITECTURE.md)。
+
+推荐本地配置示例：
+
+```bash
+CN_MARKET_BAR_STORE=1
+MARKET_DATA_ROOT=/Users/ruby/Desktop/real-market-data
+CN_MARKET_BAR_STORE_DIR=/Users/ruby/Desktop/real-market-data/bar_store
+MARKET_MANAGER_CACHE_DIR=/Users/ruby/Desktop/real-market-data/market_manager
+OSS_BUCKET=your-bucket
+OSS_ENDPOINT=oss-cn-beijing.aliyuncs.com
+OSS_PREFIX=market-bars
+```
+
+同步脚本：
+
+```bash
+# 先看会传哪些文件
+.venv/bin/python scripts/sync_market_bars_to_oss.py --dry-run
+
+# 实际上传本地行情缓存到 OSS
+.venv/bin/python scripts/sync_market_bars_to_oss.py
+
+# 强制全量重传
+.venv/bin/python scripts/sync_market_bars_to_oss.py --force
+```
+
+首次运行或缺少股票映射缓存时，会自动在 `MARKET_MANAGER_CACHE_DIR` 下生成 `stock_basic_cache.json` 与 `namechange_data.json`。如果新目录不存在，会兼容回退到旧的 `utils/cache/market_manager/`。
 
 **JQData（正式会员）**：`.env` 填入手机号、聚宽登录密码，并确认：
 
@@ -507,6 +536,7 @@ FAIL: 建议只观察，不构成 buy
 ## Main Trend（主升浪趋势跟踪系统 / MTF）
 
 - 位置：`strategies/main_trend/`。
+- 当前定位：**主升浪短冲刺 1~5 个交易日**，T日候选、T+1执行确认，持仓期用 MA10/MA20/ATR/5日超期状态机管理。
 - **完全独立**：有自己的规则引擎 `engine.py`，不依赖旧 `main_loop` / Research Agent 链路。
 - Layer 6/7：T+1 两阶段执行（腾讯实时→手动输入兜底）+ RiskBudget 仓位 + HOLD/ADD/DECAY/REDUCE/EXIT 状态机。
 - 对齐最终架构：DataQuality / MarketRegime / TrendState / TrendQuality / SectorState / CatalystState / T+1 Execution / RiskBudget / PositionStateMachine。
@@ -520,3 +550,29 @@ FAIL: 建议只观察，不构成 buy
   .venv/bin/python scripts/strategy_backtest.py --strategy main_trend --run-replay
   ```
 
+- **事件驱动回测（严格时序）**：新增 `scripts/main_trend_event_backtest.py`，按真实交易时序模拟：
+  T日收盘发现 → T+1开盘买入（V1用T+1 open代理，无盘口历史）→ 持仓期每日收盘状态机 HOLD/REDUCE/SELL → SELL信号次日开盘卖出。
+  ```bash
+  # V1（无9:25/9:35盘口历史）：T+1 open 买入 + MA20/ATR/Trailing 状态机退出
+  .venv/bin/python scripts/main_trend_event_backtest.py \
+      --start 2026-06-01 --end 2026-08-18 \
+      --symbols-limit 200 \
+      --output-dir agents_workspace_main_trend_event
+
+  # 使用已有 t1_execution.json（真实盘口/手工 T+1）
+  .venv/bin/python scripts/main_trend_event_backtest.py \
+      --start 2026-06-01 --end 2026-08-18 \
+      --use-t1-files --workspace-dir agents_workspace_main_trend
+
+  # 纯候选 Alpha（T+1 open 买入，持有 N 个交易日）
+  .venv/bin/python scripts/main_trend_event_backtest.py \
+      --start 2026-06-01 --end 2026-08-18 \
+      --exit-mode hold --hold-days 5
+
+  # 网络慢/快速验证时可加 --skip-sector-daily：跳过逐板块日线历史预抓取（只保留板块名称/等级快照）
+  .venv/bin/python scripts/main_trend_event_backtest.py \
+      --start 2026-08-17 --end 2026-08-18 \
+      --symbols-limit 50 --skip-sector-daily
+  ```
+  每个交易日会输出 `result_summary.json`、`candidates.json`、`trade_records.json`、`portfolio.json`；
+  根目录输出 `summary.json`、`all_trades.json`、`events.json`。

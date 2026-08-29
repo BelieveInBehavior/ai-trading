@@ -12,6 +12,7 @@ questionary
 prompt_toolkit<3.0.30
 PyYAML
 pandas
+oss2
 langgraph
 rich
 tabulate

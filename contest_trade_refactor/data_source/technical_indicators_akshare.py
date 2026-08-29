@@ -44,19 +44,42 @@ def _compute_rsi(closes: pd.Series, period: int = 14) -> float:
         return float('nan')
 
 
-def _compute_macd(closes: pd.Series) -> tuple[float, float, float]:
-    """计算MACD指标 (DIF, DEA, MACD柱)"""
+def _compute_macd_detail(closes: pd.Series) -> dict[str, float | bool]:
+    """计算 MACD 明细（DIF、DEA、柱、柱变化）。
+
+    A股常见看盘软件里 MACD 柱通常使用 2 * (DIF - DEA)。这里保持原有口径，
+    额外输出前一日柱值和短期是否连续收缩，用于主升浪的轻量动能确认/衰减。
+    """
     try:
         if len(closes) < 26:
-            return (float('nan'), float('nan'), float('nan'))
+            nan = float("nan")
+            return {"dif": nan, "dea": nan, "hist": nan, "hist_prev": nan, "hist_delta": nan, "hist_declining_3d": False}
         ema12 = closes.ewm(span=12, adjust=False).mean()
         ema26 = closes.ewm(span=26, adjust=False).mean()
         dif = ema12 - ema26
         dea = dif.ewm(span=9, adjust=False).mean()
         macd_hist = 2 * (dif - dea)
-        return (float(dif.iloc[-1]), float(dea.iloc[-1]), float(macd_hist.iloc[-1]))
+        hist_tail = macd_hist.dropna().tail(3)
+        hist_declining_3d = bool(len(hist_tail) >= 3 and hist_tail.iloc[-1] < hist_tail.iloc[-2] < hist_tail.iloc[-3])
+        hist_prev = float(macd_hist.iloc[-2]) if len(macd_hist) >= 2 else float("nan")
+        hist = float(macd_hist.iloc[-1])
+        return {
+            "dif": float(dif.iloc[-1]),
+            "dea": float(dea.iloc[-1]),
+            "hist": hist,
+            "hist_prev": hist_prev,
+            "hist_delta": hist - hist_prev if not np.isnan(hist_prev) else float("nan"),
+            "hist_declining_3d": hist_declining_3d,
+        }
     except Exception:
-        return (float('nan'), float('nan'), float('nan'))
+        nan = float("nan")
+        return {"dif": nan, "dea": nan, "hist": nan, "hist_prev": nan, "hist_delta": nan, "hist_declining_3d": False}
+
+
+def _compute_macd(closes: pd.Series) -> tuple[float, float, float]:
+    """计算MACD指标 (DIF, DEA, MACD柱)，兼容旧调用。"""
+    detail = _compute_macd_detail(closes)
+    return (float(detail["dif"]), float(detail["dea"]), float(detail["hist"]))
 
 
 def _compute_bollinger(closes: pd.Series, period: int = 20) -> tuple[float, float, float]:
@@ -158,6 +181,24 @@ def _return_pct(series: pd.Series, lookback: int) -> float | None:
     return (latest / base - 1.0) * 100.0
 
 
+def _moving_average_series(
+    series: pd.Series,
+    size: int,
+    ma_mode: str = "sma",
+) -> pd.Series:
+    """SMA/EMA 统一实现。EMA 用金融口径：adjust=False，min_periods=size。
+
+    - SMA : 等权滚动平均 (rolling).
+    - EMA : 指数平滑平均。等效公式:
+        alpha = 2/(N+1); EMA_t = alpha*Close_t + (1-alpha)*EMA_{t-1}
+      也就是 pandas.ewm(span=span, adjust=False, min_periods=size).mean()。
+    """
+    mode = str(ma_mode or "sma").strip().lower()
+    if mode == "ema":
+        return series.ewm(span=size, adjust=False, min_periods=size).mean()
+    return series.rolling(size).mean()
+
+
 def _rolling_ols_residual(
     stock_ret: pd.Series,
     bench_ret: pd.Series,
@@ -204,7 +245,7 @@ def _rolling_ols_residual(
     }
 
 
-def _compute_weekly_factor(price_frame: pd.DataFrame) -> dict:
+def _compute_weekly_factor(price_frame: pd.DataFrame, ma_mode: str = "sma") -> dict:
     if price_frame.empty:
         return {
             "weekly_data_available": False,
@@ -226,8 +267,8 @@ def _compute_weekly_factor(price_frame: pd.DataFrame) -> dict:
             "weekly_observation_count": int(len(weekly_close)),
         }
 
-    weekly_ma10 = weekly_close.rolling(10).mean()
-    weekly_ma20 = weekly_close.rolling(20).mean()
+    weekly_ma10 = _moving_average_series(weekly_close, 10, ma_mode)
+    weekly_ma20 = _moving_average_series(weekly_close, 20, ma_mode)
     latest_close = float(weekly_close.iloc[-1])
     latest_ma10 = float(weekly_ma10.iloc[-1])
     latest_ma20 = float(weekly_ma20.iloc[-1])
@@ -269,7 +310,7 @@ def _compute_weekly_factor(price_frame: pd.DataFrame) -> dict:
     }
 
 
-def _compute_weinstein_phase(price_frame: pd.DataFrame) -> dict:
+def _compute_weinstein_phase(price_frame: pd.DataFrame, ma_mode: str = "sma") -> dict:
     """Approximate Weinstein stages from weekly closes and a 30-week average."""
 
     missing = {
@@ -292,7 +333,7 @@ def _compute_weinstein_phase(price_frame: pd.DataFrame) -> dict:
             "weinstein_observation_count": int(len(weekly_close)),
         }
 
-    weekly_ma30 = weekly_close.rolling(30).mean()
+    weekly_ma30 = _moving_average_series(weekly_close, 30, ma_mode)
     latest_close = float(weekly_close.iloc[-1])
     latest_ma30 = float(weekly_ma30.iloc[-1])
     slope_base = weekly_ma30.iloc[-6]
@@ -445,12 +486,12 @@ def _compute_relative_strength_factor(
 
 
 
-def _compute_long_term_factors(closes: pd.Series, latest_close: float) -> dict:
+def _compute_long_term_factors(closes: pd.Series, latest_close: float, ma_mode: str = "sma") -> dict:
     """MA50/MA200 偏离与 52 周高位距离，用于长期质量评估。"""
     ma = {}
     for period in (50, 200):
         if len(closes) >= period:
-            avg = float(closes.rolling(period).mean().iloc[-1])
+            avg = float(_moving_average_series(closes, period, ma_mode).iloc[-1])
             if avg > 0:
                 ma[f"ma{period}_deviation_pct"] = round((latest_close / avg - 1.0) * 100.0, 2)
             else:
@@ -461,8 +502,8 @@ def _compute_long_term_factors(closes: pd.Series, latest_close: float) -> dict:
     ma["distance_to_52w_high_pct"] = round((latest_close / high52 - 1.0) * 100.0, 2) if high52 > 0 else None
     ma["ma50_slope_pct"] = None
     if len(closes) >= 55:
-        base = float(closes.rolling(50).mean().iloc[-6])
-        latest50 = float(closes.rolling(50).mean().iloc[-1])
+        base = float(_moving_average_series(closes, 50, ma_mode).iloc[-6])
+        latest50 = float(_moving_average_series(closes, 50, ma_mode).iloc[-1])
         if base > 0:
             ma["ma50_slope_pct"] = round((latest50 / base - 1.0) * 100.0, 2)
     return ma
@@ -475,6 +516,7 @@ def compute_stock_technical_factor_from_history(
     trade_date: str,
     relative_strength_benchmark: str = "sh000300",
     benchmark_frame: pd.DataFrame | None = None,
+    ma_mode: str = "sma",
 ) -> dict | None:
     """Compute multi-timeframe factors from an already fetched daily history."""
     code = str(symbol_code or "").strip()
@@ -521,13 +563,20 @@ def compute_stock_technical_factor_from_history(
     else:
         change_pct = None
 
-    ma20 = float(closes.rolling(20).mean().iloc[-1])
+    mode = str(ma_mode or "sma").strip().lower()
+    if mode not in ("sma", "ema"):
+        logger.warning("未知 ma_mode={}，回退 sma", mode)
+        mode = "sma"
+    def _ma_series(size: int):
+        return _moving_average_series(closes, size, mode)
+
+    ma20 = float(_ma_series(20).iloc[-1])
     ma20_dist = (current_close - ma20) / ma20 * 100 if ma20 > 0 else float("nan")
-    ma60 = float(closes.rolling(60).mean().iloc[-1]) if len(closes) >= 60 else float("nan")
+    ma60 = float(_ma_series(60).iloc[-1]) if len(closes) >= 60 else float("nan")
     # MA60 5-day normalized LR slope
     ma60_5d_slope_pct = None
     if len(closes) >= 64 and ma60 == ma60 and ma60 > 0:
-        ma60_series = closes.rolling(60).mean().dropna().tail(5)
+        ma60_series = _ma_series(60).dropna().tail(5)
         x = [0.0, 1.0, 2.0, 3.0, 4.0]
         y = ma60_series.tolist()
         if len(y) == 5 and all(v == v for v in y):
@@ -541,7 +590,10 @@ def compute_stock_technical_factor_from_history(
                 slope = (n*xy_sum - x_sum*y_sum) / denom
                 ma60_5d_slope_pct = round((slope / ma60) * 100.0, 4)
     rsi = _compute_rsi(closes, 14)
-    dif, dea, macd_hist = _compute_macd(closes)
+    macd_detail = _compute_macd_detail(closes)
+    dif = float(macd_detail["dif"])
+    dea = float(macd_detail["dea"])
+    macd_hist = float(macd_detail["hist"])
     atr = _compute_atr(highs, lows, closes, 14)
     atr_pct = atr / current_close * 100.0 if current_close > 0 and not np.isnan(atr) else float("nan")
     daily_returns = closes.pct_change().dropna()
@@ -607,27 +659,27 @@ def compute_stock_technical_factor_from_history(
     else:
         boll_pos = "N/A"
 
-    ma5 = float(closes.rolling(5).mean().iloc[-1]) if len(closes) >= 5 else float("nan")
-    ma10 = float(closes.rolling(10).mean().iloc[-1]) if len(closes) >= 10 else float("nan")
+    ma5 = float(_ma_series(5).iloc[-1]) if len(closes) >= 5 else float("nan")
+    ma10 = float(_ma_series(10).iloc[-1]) if len(closes) >= 10 else float("nan")
     close_above_ma5 = bool(current_close > ma5) if not np.isnan(ma5) else False
     close_above_ma10 = bool(current_close > ma10) if not np.isnan(ma10) else False
     close_above_ma20 = bool(current_close > ma20) if not np.isnan(ma20) else False
     # MA5 slope: compare latest MA5 to the MA5 from 3 bars earlier (approximates初速)
-    ma5_slope_base = float(closes.rolling(5).mean().iloc[-4]) if len(closes) >= 7 else float("nan")
+    ma5_slope_base = float(_ma_series(5).iloc[-4]) if len(closes) >= 7 else float("nan")
     ma5_slope_pct = (
         (ma5 / ma5_slope_base - 1.0) * 100.0
         if not np.isnan(ma5_slope_base) and ma5_slope_base > 0
         else float("nan")
     )
     # MA10 slope: compare latest MA10 to MA10 from 3 bars earlier
-    ma10_slope_base = float(closes.rolling(10).mean().iloc[-4]) if len(closes) >= 13 else float("nan")
+    ma10_slope_base = float(_ma_series(10).iloc[-4]) if len(closes) >= 13 else float("nan")
     ma10_slope_pct = (
         (ma10 / ma10_slope_base - 1.0) * 100.0
         if not np.isnan(ma10_slope_base) and ma10_slope_base > 0
         else float("nan")
     )
     # MA20 slope: compare latest MA20 to MA20 from 3 bars earlier
-    ma20_slope_base = float(closes.rolling(20).mean().iloc[-4]) if len(closes) >= 23 else float("nan")
+    ma20_slope_base = float(_ma_series(20).iloc[-4]) if len(closes) >= 23 else float("nan")
     ma20_slope_pct = (
         (ma20 / ma20_slope_base - 1.0) * 100.0
         if not np.isnan(ma20_slope_base) and ma20_slope_base > 0
@@ -698,8 +750,8 @@ def compute_stock_technical_factor_from_history(
         and close_vs_60d_high_pct >= -0.5
     )
 
-    weekly_factor = _compute_weekly_factor(price_frame)
-    weinstein_factor = _compute_weinstein_phase(price_frame)
+    weekly_factor = _compute_weekly_factor(price_frame, mode)
+    weinstein_factor = _compute_weinstein_phase(price_frame, mode)
     relative_strength_factor = _compute_relative_strength_factor(
         price_frame,
         benchmark_symbol=relative_strength_benchmark,
@@ -756,7 +808,7 @@ def compute_stock_technical_factor_from_history(
     short_setup_score = max(0.0, min(100.0, short_setup_score))
 
     # Long-term structure factors (MA50/MA200/52w, used by long_score)
-    long_factors = _compute_long_term_factors(closes, current_close)
+    long_factors = _compute_long_term_factors(closes, current_close, mode)
 
     # 个股日收益序列（最近 30 个交易日），用于板块 OLS 残差对齐
     try:
@@ -815,6 +867,12 @@ def compute_stock_technical_factor_from_history(
         "short_setup_score": round(short_setup_score, 2),
         "rsi": None if np.isnan(rsi) else round(float(rsi), 1),
         "macd": None if np.isnan(macd_hist) else round(float(macd_hist), 3),
+        "macd_hist": None if np.isnan(macd_hist) else round(float(macd_hist), 3),
+        "macd_dif": None if np.isnan(dif) else round(float(dif), 3),
+        "macd_dea": None if np.isnan(dea) else round(float(dea), 3),
+        "macd_hist_prev": None if np.isnan(float(macd_detail["hist_prev"])) else round(float(macd_detail["hist_prev"]), 3),
+        "macd_hist_delta": None if np.isnan(float(macd_detail["hist_delta"])) else round(float(macd_detail["hist_delta"]), 3),
+        "macd_hist_declining_3d": bool(macd_detail["hist_declining_3d"]),
         "atr": None if np.isnan(atr) else round(float(atr), 4),
         "atr_pct": None if np.isnan(atr_pct) else round(float(atr_pct), 3),
         "daily_volatility_20d_pct": (
@@ -847,6 +905,7 @@ def compute_stock_technical_factor_from_history(
     factor.update(weinstein_factor)
     factor.update(relative_strength_factor)
     factor["source_line"] = format_stock_technical_factor_line(factor)
+    factor["ma_mode"] = mode
     return factor
 
 
@@ -858,6 +917,7 @@ def compute_stock_technical_factor(
     end_date: str | None = None,
     adjust: str = "qfq",
     relative_strength_benchmark: str = "sh000300",
+    ma_mode: str = "sma",
 ) -> dict | None:
     """拉取单只股票 K 线并计算与技术指标报告一致的因子。"""
     code = str(symbol_code or "").strip()
@@ -890,6 +950,7 @@ def compute_stock_technical_factor(
         symbol_name=symbol_name,
         trade_date=trade_date,
         relative_strength_benchmark=relative_strength_benchmark,
+        ma_mode=ma_mode,
     )
 
 
@@ -921,7 +982,12 @@ class TechnicalIndicatorsAkshare(DataSourceBase):
             )
 
             # 1. 计算大盘指数技术指标
-            index_report = self._compute_index_indicators(trade_date, start_date, end_date)
+            index_report = self._compute_index_indicators(
+                trade_date,
+                start_date,
+                end_date,
+                ma_mode="sma",  # 技术指标报告保持 SMA：这是通用行情报告，策略侧用 main_trend.technical.ma_mode
+            )
 
             # 2. 计算活跃个股技术指标
             stock_report = self._compute_active_stock_indicators(trade_date, start_date, end_date)
@@ -984,7 +1050,13 @@ class TechnicalIndicatorsAkshare(DataSourceBase):
             return False
         return f"cache_version:{CACHE_VERSION}" in content
 
-    def _compute_index_indicators(self, trade_date: str, start_date: str, end_date: str) -> str:
+    def _compute_index_indicators(
+        self,
+        trade_date: str,
+        start_date: str,
+        end_date: str,
+        ma_mode: str = "sma",
+    ) -> str:
         """计算三大指数的技术指标"""
         indices = {
             "sh000001": "上证指数",
@@ -1023,11 +1095,11 @@ class TechnicalIndicatorsAkshare(DataSourceBase):
 
                 current_close = float(closes.iloc[-1])
 
-                # MA
-                ma5 = float(closes.rolling(5).mean().iloc[-1])
-                ma10 = float(closes.rolling(10).mean().iloc[-1])
-                ma20 = float(closes.rolling(20).mean().iloc[-1])
-                ma60 = float(closes.rolling(60).mean().iloc[-1]) if len(closes) >= 60 else float('nan')
+                # MA/EMA
+                ma5 = float(_moving_average_series(closes, 5, ma_mode).iloc[-1])
+                ma10 = float(_moving_average_series(closes, 10, ma_mode).iloc[-1])
+                ma20 = float(_moving_average_series(closes, 20, ma_mode).iloc[-1])
+                ma60 = float(_moving_average_series(closes, 60, ma_mode).iloc[-1]) if len(closes) >= 60 else float('nan')
 
                 # MA 状态判定
                 def ma_status(current, ma_val):
@@ -1133,6 +1205,7 @@ class TechnicalIndicatorsAkshare(DataSourceBase):
                         start_date=start_date,
                         end_date=end_date,
                         adjust="qfq",
+                        ma_mode="sma",  # 技术指标展示侧保持 SMA；策略主流链路 main_trend 传 ema
                     )
                     if not factor:
                         lines.append(f"{name}({code}): 历史数据不足")

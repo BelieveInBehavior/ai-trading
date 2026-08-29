@@ -156,6 +156,9 @@ export interface MtnCandidate {
   initial_stop?: number;
   initial_stop_pct?: number;
   trailing_stop?: number;
+  target_price_1?: number | null;
+  target_price_2?: number | null;
+  target_method?: string;
   current_stop?: number;
   ma20?: number | null;
   atr?: number;
@@ -187,8 +190,22 @@ export interface MtfHolding {
   current_price?: number | null;
   buy_score?: number;
   signal_tier?: string;
+  high_volume_class?: string;
+  high_volume_reason?: string;
+  add_setup_class?: string;
+  sector_source?: string;
+  rs_source?: string;
+  next_day_guard_break_vwap?: boolean;
+  next_day_guard_vwap?: number | null;
+  next_day_guard_high?: number | null;
+  target_price_1?: number | null;
+  target_price_2?: number | null;
+  profit_protect_price?: number | null;
+  profit_protect_level?: string;
+  profit_protect_reason?: string;
   stop_loss_price?: number | null;
   atr_trailing_stop?: number | null;
+  ma10?: number | null;
   ma20?: number | null;
   prev_ma20?: number | null;
   prev_close?: number | null;
@@ -220,8 +237,21 @@ export interface MtfExitDecision {
   stop_loss_triggered?: boolean;
   reduce_triggered?: boolean;
   add_allowed?: boolean;
+  add_setup?: boolean;
+  add_confirmation?: boolean;
+  add_setup_class?: string;
+  add_signal?: string;
+  add_size_pct?: number;
+  add_reason?: string;
   reduce_pct?: number;
   trailing_stop_price?: number | null;
+  target_price_1?: number | null;
+  target_price_2?: number | null;
+  profit_protect_price?: number | null;
+  profit_protect_level?: string;
+  profit_protect_reason?: string;
+  high_volume_class?: string;
+  high_volume_reason?: string;
   [key: string]: unknown;
 }
 
@@ -249,6 +279,16 @@ export interface MtfDashboard {
     rows?: MtfHolding[];
     count?: number;
     last_run?: string;
+    path?: string;
+    phase?: string;
+    wave?: string;
+  };
+  t2?: {
+    present?: boolean;
+    wave?: string;
+    logged_at?: string;
+    avg_return_pct?: number | null;
+    counts?: Record<string, number>;
     path?: string;
   };
   exit_decisions?: {

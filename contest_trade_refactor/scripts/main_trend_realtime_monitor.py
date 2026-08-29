@@ -119,7 +119,7 @@ def main() -> None:
         print("no parseable holdings", file=sys.stderr); sys.exit(1)
 
     engine = MainTrendEngine(MainTrendConfig.from_yaml())
-    decisions = [d.to_dict() for d in engine.evaluate_exits(holdings)]
+    decisions = [d.to_dict() for d in engine.evaluate_exits(holdings, refresh_factors=True, trade_date=hp.parent.name)]
 
     # 统计
     total_return = sum((h.current_price / h.entry_price - 1.0) * 100.0 for h in holdings if h.current_price and h.entry_price)

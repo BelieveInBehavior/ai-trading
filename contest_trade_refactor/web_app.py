@@ -591,11 +591,6 @@ async def calibrate_thresholds():
     }
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
 # ===== Main Trend Dashboard APIs =====
 
 @app.get("/api/main_trend/dashboard")
@@ -626,9 +621,17 @@ async def main_trend_holdings(date: str = ""):
     base = PROJECT_ROOT / "agents_workspace_main_trend"
     if date:
         key = str(date).replace("-", "").replace("/", "")
+        import json as json_mod
+        from pathlib import Path as _Path
+        latest = {}
+        lp = base / key / "t2" / "latest.json"
+        if lp.exists():
+            latest = json_mod.loads(lp.read_text(encoding="utf-8"))
+        t2h = _Path(latest["path"]) / "holdings.json" if latest.get("path") else None
+        if t2h and t2h.exists():
+            return json_mod.loads(t2h.read_text(encoding="utf-8"))
         hp = base / key / "holdings.json"
         if hp.exists():
-            import json as json_mod
             return json_mod.loads(hp.read_text(encoding="utf-8"))
         return {"present": False, "error": f"No holdings for {key}"}
     return latest_holdings_payload(base)
@@ -642,9 +645,17 @@ async def main_trend_exit(date: str = ""):
     base = PROJECT_ROOT / "agents_workspace_main_trend"
     if date:
         key = str(date).replace("-", "").replace("/", "")
+        import json as json_mod
+        from pathlib import Path as _Path
+        latest = {}
+        lp = base / key / "t2" / "latest.json"
+        if lp.exists():
+            latest = json_mod.loads(lp.read_text(encoding="utf-8"))
+        t2e = _Path(latest["path"]) / "exit_decisions.json" if latest.get("path") else None
+        if t2e and t2e.exists():
+            return json_mod.loads(t2e.read_text(encoding="utf-8"))
         ep = base / key / "exit_decisions.json"
         if ep.exists():
-            import json as json_mod
             return json_mod.loads(ep.read_text(encoding="utf-8"))
         return {"present": False, "error": f"No exit decisions for {key}"}
     return latest_exit_payload(base)
@@ -747,14 +758,31 @@ async def main_trend_realtime(date: str = ""):
             out["realtime_source"] = q.source
             out["realtime_timestamp"] = q.timestamp
             rt = dict(out.get("realtime_quote") or {})
+            qd = q.to_dict()
             rt["vwap_state"] = "Above" if (q.vwap and q.price >= q.vwap) else rt.get("vwap_state", "")
             rt["atr"] = q.detail.get("atr") if q.detail.get("atr") else rt.get("atr")
             rt["order_flow_score"] = rt.get("order_flow_score") or 50.0
+            for k in ("bid", "ask", "bid_volume", "ask_volume", "active_buy_pct", "bid_ask_ratio", "bid_ask_imbalance", "bids", "asks", "external_volume", "internal_volume", "volume_ratio", "amount_wan"):
+                if k in ("bids", "asks") or qd.get(k) is not None:
+                    rt[k] = qd.get(k)
+            if q.prev_close is not None:
+                rt["prev_close"] = q.prev_close
             out["realtime_quote"] = rt
         return out
 
     with ThreadPoolExecutor(max_workers=12) as pool:
         new_rows = list(pool.map(_one, rows))
+    # 实时报价的 prev_close 与当前价统一，避免因原文 prev_close 与腾讯 return 口径不一致导致箭头判断错误
+    for r in new_rows:
+        rt = r.get("realtime_quote") or {}
+        q_prev = None
+        qd = rt
+        if qd.get("prev_close") is not None:
+            q_prev = qd.get("prev_close")
+        if q_prev is None:
+            q_prev = (rt.get("detail") or {}).get("prev_close")
+        if q_prev is not None:
+            r["prev_close"] = q_prev
 
     def _float(v):
         try:
@@ -781,6 +809,7 @@ async def main_trend_realtime(date: str = ""):
                 stop_loss_price=_float(r.get("stop_loss_price")),
                 atr_trailing_stop=_float(r.get("atr_trailing_stop")),
                 prev_close=_float(r.get("prev_close")),
+                ma10=_float(r.get("ma10")),
                 ma20=_float(r.get("ma20")),
                 prev_ma20=_float(r.get("prev_ma20")),
                 event_catalyst=r.get("event_catalyst") or {},
@@ -793,7 +822,7 @@ async def main_trend_realtime(date: str = ""):
     if not holdings:
         return {"ok": False, "error": "no parseable holdings"}
 
-    decisions = [d.to_dict() for d in engine.evaluate_exits(holdings)]
+    decisions = [d.to_dict() for d in engine.evaluate_exits(holdings, refresh_factors=True, trade_date=payload.get("trade_date") or date or "")]
     rows_by_code = {str(r.get("symbol_code") or ""): r for r in new_rows}
     # 返回收益统计
     total = 0.0
@@ -822,12 +851,20 @@ async def main_trend_realtime(date: str = ""):
         row["entry_price"] = h.entry_price
         row["exit_class"] = d.get("exit_class")
         row["exit_action"] = d.get("action")
+        row["position_state"] = d.get("state") or d.get("position_state") or ""
+        from strategies.main_trend.holdings import compute_display_status
+        row["display_status"] = compute_display_status(row)
         row["exit_level"] = d.get("exit_level")
         row["exit_reason"] = d.get("reason")
         row["exit_reasons"] = d.get("reasons") or []
         row["trailing_stop_price"] = d.get("trailing_stop_price")
+        row["target_price_1"] = d.get("target_price_1") or (h.trade_plan or {}).get("target_price_1")
+        row["target_price_2"] = d.get("target_price_2") or (h.trade_plan or {}).get("target_price_2")
+        row["profit_protect_price"] = d.get("profit_protect_price") or (h.trade_plan or {}).get("profit_protect_price")
+        row["profit_protect_level"] = d.get("profit_protect_level") or (h.trade_plan or {}).get("profit_protect_level")
+        row["profit_protect_reason"] = d.get("profit_protect_reason") or (h.trade_plan or {}).get("profit_protect_reason")
         row["reason"] = d.get("reason")
-        row["realtime_source"] = h.realtime_quote.get("source") if isinstance(h.realtime_quote, dict) else None
+        row["realtime_source"] = orig.get("realtime_source") if orig.get("realtime_source") else (h.realtime_quote.get("source") if isinstance(h.realtime_quote, dict) else None)
         full_holdings.append(row)
     return {
         "ok": True,
@@ -839,3 +876,8 @@ async def main_trend_realtime(date: str = ""):
         "reduce_count": len(reduces),
         "holdings": full_holdings,
     }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

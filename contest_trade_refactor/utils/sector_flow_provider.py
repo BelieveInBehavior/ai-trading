@@ -183,20 +183,45 @@ def _first_available(
     return pd.DataFrame()
 
 
+def _ensure_pct_chg(result: pd.DataFrame) -> pd.DataFrame:
+    if "close" not in result.columns:
+        return result
+    result["close"] = pd.to_numeric(result["close"], errors="coerce")
+    if "pct_chg" not in result.columns or result["pct_chg"].isna().all():
+        result["pct_chg"] = result["close"].pct_change() * 100.0
+    else:
+        result["pct_chg"] = pd.to_numeric(result["pct_chg"], errors="coerce")
+        missing = result["pct_chg"].isna() & result["close"].notna()
+        if missing.any():
+            computed = result["close"].pct_change() * 100.0
+            result.loc[missing, "pct_chg"] = computed.loc[missing]
+    return result
+
+
 def _normalize_board_history(df: pd.DataFrame, board_name: str) -> pd.DataFrame:
-    """规范化东财板块日线返回。"""
+    """规范化东财/腾讯/同花顺板块日线返回。"""
     if df is None or df.empty:
         return pd.DataFrame()
     result = df.copy()
-    rename = {"日期": "date", "开盘": "open", "收盘": "close", "最高": "high", "最低": "low",
-              "涨跌幅": "pct_chg", "成交额": "amount", "成交量": "volume"}
+    rename = {
+        "日期": "date",
+        "开盘": "open",
+        "开盘价": "open",
+        "收盘": "close",
+        "收盘价": "close",
+        "最高": "high",
+        "最高价": "high",
+        "最低": "low",
+        "最低价": "low",
+        "涨跌幅": "pct_chg",
+        "成交额": "amount",
+        "成交量": "volume",
+    }
     result = result.rename(columns={k: v for k, v in rename.items() if k in result.columns})
-    for col in ("date", "close", "pct_chg"):
-        if col not in result.columns:
-            return pd.DataFrame()
+    if "date" not in result.columns or "close" not in result.columns:
+        return pd.DataFrame()
     result["date"] = pd.to_datetime(result["date"])
-    result["close"] = pd.to_numeric(result["close"], errors="coerce")
-    result["pct_chg"] = pd.to_numeric(result["pct_chg"], errors="coerce")
+    result = _ensure_pct_chg(result)
     result["board_name"] = board_name
     return result.dropna(subset=["date", "close"]).sort_values("date").reset_index(drop=True)
 
@@ -207,10 +232,21 @@ def get_industry_daily_history(
     end_date: str,
     period: str = "日k",
 ) -> pd.DataFrame:
-    """行业板块日线多源获取：东方财富优先，失败/为空降级同花顺指数。
+    """行业板块日线：东财名 -> 腾讯 pt 代码 -> 同花顺一级名。
 
     返回：date / close / pct_chg / board_name。
     """
+    from utils.market_bar_store import get_market_bar_store, store_enabled
+
+    if store_enabled():
+        store = get_market_bar_store()
+        local = store.load("industry", board_name)
+        if store.covers(local, start_date, end_date, date_col="date"):
+            sliced = store.slice(local, start_date, end_date, date_col="date")
+            if not sliced.empty:
+                sliced["board_name"] = board_name
+                return sliced
+
     try:
         df = akshare_cached.run(
             "stock_board_industry_hist_em",
@@ -219,11 +255,38 @@ def get_industry_daily_history(
         )
         normalized = _normalize_board_history(df, board_name)
         if not normalized.empty:
-            return normalized
-        logger.warning("东财行业板块日线为空，尝试同花顺: {}", board_name)
+            return _remember_industry_history(board_name, normalized, start_date, end_date)
+        logger.warning("东财行业板块日线为空，尝试腾讯/同花顺: {}", board_name)
     except Exception as exc:
         logger.warning("东财行业板块日线失败 {}: {}", board_name, exc)
-    return _get_ths_industry_history(board_name, start_date, end_date)
+
+    resolved = _resolve_industry_board(board_name)
+    tx = _get_tencent_industry_history(board_name, resolved, start_date, end_date)
+    if not tx.empty:
+        return _remember_industry_history(board_name, tx, start_date, end_date)
+    ths = _get_ths_industry_history(board_name, start_date, end_date, resolved=resolved)
+    if not ths.empty:
+        return _remember_industry_history(board_name, ths, start_date, end_date)
+    return ths
+
+
+def _remember_industry_history(
+    board_name: str,
+    df: pd.DataFrame,
+    start_date: str,
+    end_date: str,
+) -> pd.DataFrame:
+    from utils.market_bar_store import get_market_bar_store, store_enabled
+
+    if df is None or df.empty or not store_enabled():
+        return df
+    store = get_market_bar_store()
+    merged = store.upsert("industry", board_name, df, date_col="date")
+    sliced = store.slice(merged, start_date, end_date, date_col="date")
+    if not sliced.empty:
+        sliced["board_name"] = board_name
+        return sliced
+    return df
 
 
 def get_concept_daily_history(
@@ -249,37 +312,82 @@ def get_concept_daily_history(
 
 
 def _normalize_ths_history(df: pd.DataFrame, board_name: str) -> pd.DataFrame:
-    if df is None or df.empty:
+    return _normalize_board_history(df, board_name)
+
+
+def _resolve_industry_board(board_name: str):
+    from utils.industry_board_catalog import resolve_industry_board
+
+    return resolve_industry_board(board_name)
+
+
+def _get_tencent_industry_history(
+    board_name: str,
+    resolved,
+    start_date: str,
+    end_date: str,
+) -> pd.DataFrame:
+    """腾讯财经行业指数日线：必须用 pt0180xxxx，不能把东财名称直接当代码。"""
+    if resolved is None or not getattr(resolved, "has_tencent", False):
+        logger.warning("腾讯行业代码未映射，跳过 {}: query={}", board_name, board_name)
         return pd.DataFrame()
-    result = df.copy()
-    rename = {
-        "日期": "date",
-        "开盘价": "open",
-        "收盘价": "close",
-        "最高价": "high",
-        "最低价": "low",
-        "涨跌幅": "pct_chg",
-        "成交量": "volume",
-        "成交额": "amount",
-    }
-    result = result.rename(columns={k: v for k, v in rename.items() if k in result.columns})
-    for col in ("date", "close", "pct_chg"):
-        if col not in result.columns:
-            return pd.DataFrame()
-    result["date"] = pd.to_datetime(result["date"])
-    result["close"] = pd.to_numeric(result["close"], errors="coerce")
-    result["pct_chg"] = pd.to_numeric(result["pct_chg"], errors="coerce")
-    result["board_name"] = board_name
-    return result.dropna(subset=["date", "close"]).sort_values("date").reset_index(drop=True)
-
-
-def _get_ths_industry_history(board_name: str, start_date: str, end_date: str) -> pd.DataFrame:
-    """同花顺行业板块指数日线备用源。"""
     try:
-        df = ak.stock_board_industry_index_ths(symbol=board_name, start_date=start_date, end_date=end_date)
-        return _normalize_ths_history(df, board_name)
+        df = ak.stock_zh_index_daily_tx(
+            symbol=resolved.tencent_code,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        normalized = _normalize_board_history(df, board_name)
+        if normalized.empty:
+            logger.warning(
+                "腾讯行业指数为空 {} -> {} {}",
+                board_name,
+                resolved.tencent_name,
+                resolved.tencent_code,
+            )
+            return normalized
+        logger.info(
+            "腾讯行业指数拉取成功 {} -> {} {} 共 {} 条",
+            board_name,
+            resolved.tencent_name,
+            resolved.tencent_code,
+            len(normalized),
+        )
+        return normalized
     except Exception as exc:
-        logger.warning("同花顺行业指数拉取失败 {}: {}", board_name, exc)
+        logger.warning(
+            "腾讯行业指数拉取失败 {} -> {} {}: {}",
+            board_name,
+            resolved.tencent_name,
+            resolved.tencent_code,
+            exc,
+        )
+        return pd.DataFrame()
+
+
+def _get_ths_industry_history(
+    board_name: str,
+    start_date: str,
+    end_date: str,
+    resolved=None,
+) -> pd.DataFrame:
+    """同花顺行业指数：只传对照后的一级名，避免东财名 KeyError。"""
+    if resolved is None:
+        resolved = _resolve_industry_board(board_name)
+    ths_name = getattr(resolved, "ths_name", None)
+    if not ths_name:
+        logger.warning("同花顺行业名称未映射，跳过 {}", board_name)
+        return pd.DataFrame()
+    try:
+        df = ak.stock_board_industry_index_ths(symbol=ths_name, start_date=start_date, end_date=end_date)
+        normalized = _normalize_ths_history(df, board_name)
+        if normalized.empty:
+            logger.warning("同花顺行业指数为空 {} -> {}", board_name, ths_name)
+            return normalized
+        logger.info("同花顺行业指数拉取成功 {} -> {} 共 {} 条", board_name, ths_name, len(normalized))
+        return normalized
+    except Exception as exc:
+        logger.warning("同花顺行业指数拉取失败 {} -> {}: {}", board_name, ths_name, exc)
         return pd.DataFrame()
 
 

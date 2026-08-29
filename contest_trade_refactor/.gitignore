@@ -1,1 +1,5 @@
+.env
+.env.local
+.env.*.local
 config/manual_realtime.json
+utils/cache/market_bars/

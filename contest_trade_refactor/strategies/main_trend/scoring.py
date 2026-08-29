@@ -1,9 +1,9 @@
-"""T 日 PreScore：Trend / Sector / Catalyst 分轨，避免总分顶到 100。
+"""T 日 PreScore：短冲刺 1~5 天候选排序分。
 
 T 日没有 Execution，只产生 Pre-Execution Score：
-    PreScore = Trend×40% + Sector×30% + Catalyst×30%
+    PreScore = Trend×40% + Sector×25% + MarketSentiment×15% + HotMoney×10% + Catalyst×10%
 T+1：
-    FinalScore = PreScore×70% + Execution×30%
+    FinalScore = PreScore×60% + Execution×40%
 """
 from __future__ import annotations
 
@@ -61,35 +61,50 @@ def catalyst_component(catalyst_score: Optional[float], has_event: bool = False)
     return 50.0
 
 
+def neutral_component(score: Optional[float]) -> float:
+    """市场情绪/热钱缺失时按 50 中性处理，不因数据缺失加减分。"""
+    return _clamp(_num(score, 50.0) or 50.0)
+
+
 def compute_pre_score(
     *,
     trend_state: str,
     quality_score: Optional[float],
     sector_score: Optional[float],
     sector_grade: str = "",
+    market_sentiment_score: Optional[float] = None,
+    hot_money_score: Optional[float] = None,
     catalyst_score: Optional[float] = None,
     has_event: bool = False,
     weights: Optional[Dict[str, float]] = None,
 ) -> Dict[str, Any]:
     w = weights or {}
     wt = float(w.get("trend", 0.40) or 0.40)
-    ws = float(w.get("sector", 0.30) or 0.30)
-    wc = float(w.get("catalyst", 0.30) or 0.30)
-    total = wt + ws + wc
+    ws = float(w.get("sector", 0.25) or 0.25)
+    wm = float(w.get("market_sentiment", 0.15) or 0.15)
+    wh = float(w.get("hot_money", 0.10) or 0.10)
+    wc = float(w.get("catalyst", 0.10) or 0.10)
+    total = wt + ws + wm + wh + wc
     if total <= 0:
-        wt, ws, wc = 0.40, 0.30, 0.30
+        wt, ws, wm, wh, wc = 0.40, 0.25, 0.15, 0.10, 0.10
     else:
-        wt, ws, wc = wt / total, ws / total, wc / total
+        wt, ws, wm, wh, wc = wt / total, ws / total, wm / total, wh / total, wc / total
 
     trend = trend_component(trend_state, quality_score)
     sector = sector_component(sector_score, sector_grade)
+    market_sentiment = neutral_component(market_sentiment_score)
+    hot_money = neutral_component(hot_money_score)
     catalyst = catalyst_component(catalyst_score, has_event)
-    pre = _clamp(trend * wt + sector * ws + catalyst * wc)
+    pre = _clamp(trend * wt + sector * ws + market_sentiment * wm + hot_money * wh + catalyst * wc)
     return {
         "trend_score": round(trend, 2),
         "trend_grade": grade_from_score(trend),
         "sector_score": round(sector, 2),
         "sector_grade": grade_from_score(sector) if not sector_grade else str(sector_grade).upper(),
+        "market_sentiment_score": round(market_sentiment, 2),
+        "market_sentiment_grade": grade_from_score(market_sentiment),
+        "hot_money_score": round(hot_money, 2),
+        "hot_money_grade": grade_from_score(hot_money),
         "catalyst_score": round(catalyst, 2),
         "catalyst_grade": grade_from_score(catalyst) if has_event else "B",
         "pre_score": round(pre, 2),
@@ -100,15 +115,15 @@ def compute_final_score(
     pre_score: float,
     execution_score: Optional[float],
     *,
-    pre_weight: float = 0.70,
-    exec_weight: float = 0.30,
+    pre_weight: float = 0.60,
+    exec_weight: float = 0.40,
 ) -> float:
     if execution_score is None:
         return round(_clamp(pre_score), 2)
     pw = float(pre_weight)
     ew = float(exec_weight)
     if pw + ew <= 0:
-        pw, ew = 0.70, 0.30
+        pw, ew = 0.60, 0.40
     else:
         s = pw + ew
         pw, ew = pw / s, ew / s
@@ -175,10 +190,80 @@ def compute_stops(
         "reference_price": round(ref, 4),
         "ma20": None if ma20_px is None else round(ma20_px, 4),
         "atr": None if atr_abs is None else round(atr_abs, 4),
+        "target_price_1": None if atr_abs is None or atr_abs <= 0 else round(ref + 1.5 * atr_abs, 4),
+        "target_price_2": None if atr_abs is None or atr_abs <= 0 else round(ref + 2.5 * atr_abs, 4),
+        "target_method": "atr_1.5_2.5" if atr_abs is not None and atr_abs > 0 else "none",
         "initial_stop": None if initial is None else round(initial, 4),
         "initial_stop_pct": initial_pct,
         "trailing_stop": None if trail is None else round(trail, 4),
         "highest_close": round(ref, 4),
         "current_stop": None if current is None else round(current, 4),
         "stop_method": method,
+    }
+
+
+def compute_profit_protect_price(
+    entry_price: Optional[float],
+    current_price: Optional[float],
+    *,
+    ma10: Optional[float] = None,
+    vwap: Optional[float] = None,
+    highest_close: Optional[float] = None,
+) -> Dict[str, Any]:
+    """短冲刺浮盈保护价。
+
+    不做固定止盈；当浮盈达到阈值后，给出“利润保护线”供盘中/次日执行参考：
+      - 浮盈 >= 4%：至少保护约 +2%，并参考 MA10 / VWAP。
+      - 浮盈 >= 8%：至少保护约 +4%，并参考最高收盘回撤 6% / MA10。
+    """
+    entry = _num(entry_price)
+    current = _num(current_price)
+    if entry is None or current is None or entry <= 0 or current <= 0:
+        return {
+            "profit_protect_price": None,
+            "profit_protect_level": "",
+            "profit_protect_reason": "missing_price",
+        }
+
+    ret_pct = (current / entry - 1.0) * 100.0
+    ma10_px = _num(ma10)
+    vwap_px = _num(vwap)
+    high_close = _num(highest_close)
+    candidates = []
+    level = ""
+    reason_bits = []
+
+    if ret_pct >= 8.0:
+        candidates.append(entry * 1.04)
+        reason_bits.append("entry+4%")
+        if high_close and high_close > 0:
+            candidates.append(high_close * 0.94)
+            reason_bits.append("highest_close-6%")
+        if ma10_px and ma10_px > 0:
+            candidates.append(ma10_px)
+            reason_bits.append("MA10")
+        level = "lock_4pct"
+    elif ret_pct >= 4.0:
+        candidates.append(entry * 1.02)
+        reason_bits.append("entry+2%")
+        if ma10_px and ma10_px > 0:
+            candidates.append(ma10_px)
+            reason_bits.append("MA10")
+        if vwap_px and vwap_px > 0:
+            candidates.append(vwap_px)
+            reason_bits.append("VWAP")
+        level = "lock_2pct"
+
+    if not candidates:
+        return {
+            "profit_protect_price": None,
+            "profit_protect_level": "",
+            "profit_protect_reason": "浮盈未达到4%，暂不设保护价",
+        }
+
+    protect = max(candidates)
+    return {
+        "profit_protect_price": round(protect, 4),
+        "profit_protect_level": level,
+        "profit_protect_reason": "+".join(reason_bits),
     }

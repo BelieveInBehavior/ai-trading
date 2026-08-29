@@ -6,8 +6,9 @@ import json
 from pathlib import Path
 
 import pandas as pd
+from utils.market_data_paths import legacy_market_manager_dir, market_manager_dir, preferred_existing_dir
 
-CACHE_DIR = Path(__file__).parent / "cache" / "market_manager"
+CACHE_DIR = preferred_existing_dir(market_manager_dir(), legacy_market_manager_dir())
 STOCK_BASIC_CACHE = CACHE_DIR / "stock_basic_cache.json"
 NAMECHANGE_CACHE = CACHE_DIR / "namechange_data.json"
 

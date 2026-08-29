@@ -69,6 +69,31 @@ class MarketRegimeState:
 
 
 @dataclass
+class MarketSentimentState:
+    """Layer 1b：短线赚钱效应/热度，不替代指数 Regime，只调节仓位与门槛。"""
+    score: float = 50.0
+    grade: str = "B"               # A/B/C/D：短线赚钱效应
+    risk_sentiment: str = "neutral" # risk_on / neutral / risk_off
+    passed: bool = True
+    available: bool = False
+    risk_multiplier: float = 1.0
+    reasons: List[str] = field(default_factory=list)
+    detail: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "score": round(self.score, 2),
+            "grade": self.grade,
+            "risk_sentiment": self.risk_sentiment,
+            "passed": self.passed,
+            "available": self.available,
+            "risk_multiplier": self.risk_multiplier,
+            "reasons": list(self.reasons),
+            "detail": self.detail,
+        }
+
+
+@dataclass
 class TrendState:
     """Layer 2：主升浪状态 S0~S5。"""
     state: str = "S0"
@@ -171,6 +196,60 @@ class CatalystState:
 
 
 @dataclass
+class FundamentalState:
+    """公司基本面状态。按公告日更新；每日快照读取截至当日最新可见值。"""
+    state: str = "FU"             # F1改善/F2稳定/F3分化/F4恶化/F5重大风险/FU未知
+    score: float = 50.0
+    available: bool = False
+    passed: bool = True             # F4/F5 禁止新增，但不替代价格趋势状态
+    risk_multiplier: float = 1.0
+    as_of_date: str = ""
+    report_period: str = ""
+    reasons: List[str] = field(default_factory=list)
+    risk_flags: List[str] = field(default_factory=list)
+    detail: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "state": self.state,
+            "score": round(self.score, 2),
+            "available": self.available,
+            "passed": self.passed,
+            "risk_multiplier": self.risk_multiplier,
+            "as_of_date": self.as_of_date,
+            "report_period": self.report_period,
+            "reasons": list(self.reasons),
+            "risk_flags": list(self.risk_flags),
+            "detail": self.detail,
+        }
+
+
+@dataclass
+class HotMoneyState:
+    """Layer 5b：个股热钱/龙虎榜状态。只做确认、加分或风险降权，不单独触发 BUY。"""
+    score: float = 50.0
+    grade: str = "B"
+    passed: bool = True
+    has_lhb: bool = False
+    has_limit_up: bool = False
+    risk_flag: str = ""
+    reasons: List[str] = field(default_factory=list)
+    detail: Dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "score": round(self.score, 2),
+            "grade": self.grade,
+            "passed": self.passed,
+            "has_lhb": self.has_lhb,
+            "has_limit_up": self.has_limit_up,
+            "risk_flag": self.risk_flag,
+            "reasons": list(self.reasons),
+            "detail": self.detail,
+        }
+
+
+@dataclass
 class ExecutionState:
     """Layer 6：T+1 两阶段执行确认（Gap / Auction / Index / Sector / VWAP / Flow）。
 
@@ -247,14 +326,40 @@ class RiskState:
 
 @dataclass
 class PositionState:
-    """Layer 7：持仓状态机 HOLD / ADD / DECAY / REDUCE / EXIT。"""
+    """Layer 7：持仓状态机 HOLD / ADD / DECAY / REDUCE / EXIT。
+
+    ADD 三层分离：
+      - add_setup：信号层。判断“能不能加”（重新突破 / 健康回踩 / 加速 + 板块/RS/趋势结构），
+        不把“过去盈亏”当作开关。
+      - add_confirmation：确认层。盘中执行是否安全（VWAP / 盘口 / 日内结构）。
+      - add_size_pct：风险引擎输出。浮盈只参与加多少，不参与能不能加。
+    核心哲学：盈利不是加仓理由，新的趋势确认才是。
+    """
     state: str = "HOLD"
     action: str = "hold"          # hold/add/decay/reduce/exit
     score: float = 0.0
     reasons: List[str] = field(default_factory=list)
-    add_allowed: bool = False     # 只允许盈利趋势再确认加仓，不做亏损补仓
+    add_allowed: bool = False     # 兼容旧字段；现等价于 add_setup and add_confirmation
     trend_decay_score: float = 0.0
-    entry_reentry_ok: bool = False   # 盈利状态下回踩企稳/重新突破允许加仓
+    entry_reentry_ok: bool = False   # 兼容旧字段；已由 add_setup / add_confirmation 取代
+    add_setup: bool = False          # Setup Layer：结构/量价/板块/RS 是否构成新 Alpha
+    add_confirmation: bool = False   # Confirmation Layer：盘中执行二次确认（VWAP/盘口/日内结构）
+    add_signal: str = ""
+    add_setup_class: str = ""        # A 健康回踩 / B 放量突破 / C 强势加速 / "" 无
+    add_size_pct: float = 0.0
+    add_reason: str = ""
+    sector_source: str = "missing"
+    rs_source: str = "missing"
+    high_volume_class: str = ""            # extension / rejection / neutral
+    high_volume_reason: str = ""
+    next_day_guard_break_vwap: bool = False
+    next_day_guard_vwap: Optional[float] = None
+    next_day_guard_high: Optional[float] = None
+    target_price_1: Optional[float] = None
+    target_price_2: Optional[float] = None
+    profit_protect_price: Optional[float] = None
+    profit_protect_level: str = ""
+    profit_protect_reason: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -265,6 +370,24 @@ class PositionState:
             "add_allowed": self.add_allowed,
             "entry_reentry_ok": self.entry_reentry_ok,
             "trend_decay_score": round(self.trend_decay_score, 2),
+            "add_setup": self.add_setup,
+            "add_confirmation": self.add_confirmation,
+            "add_signal": self.add_signal,
+            "add_setup_class": self.add_setup_class,
+            "add_size_pct": round(self.add_size_pct, 3),
+            "add_reason": self.add_reason,
+            "sector_source": self.sector_source,
+            "rs_source": self.rs_source,
+            "high_volume_class": self.high_volume_class,
+            "high_volume_reason": self.high_volume_reason,
+            "next_day_guard_break_vwap": self.next_day_guard_break_vwap,
+            "next_day_guard_vwap": self.next_day_guard_vwap,
+            "next_day_guard_high": self.next_day_guard_high,
+            "target_price_1": self.target_price_1,
+            "target_price_2": self.target_price_2,
+            "profit_protect_price": self.profit_protect_price,
+            "profit_protect_level": self.profit_protect_level,
+            "profit_protect_reason": self.profit_protect_reason,
         }
 
 
@@ -289,6 +412,9 @@ class MTFCandidate:
     quality_info: Optional[TrendQuality] = None
     sector_info: Optional[SectorState] = None
     catalyst_info: Optional[CatalystState] = None
+    fundamental_info: Optional[FundamentalState] = None
+    market_sentiment_state: Optional[MarketSentimentState] = None
+    hot_money_state: Optional[HotMoneyState] = None
 
     def to_dict(self) -> Dict[str, Any]:
         factor = self.technical_factor or {}
@@ -314,11 +440,15 @@ class MTFCandidate:
             "eligible": self.eligible,
             "reasons": list(self.reasons),
             "price_context": price_context,
+            "technical_factor": self.technical_factor,
             "market_regime_state": self.market_regime_state.to_dict() if self.market_regime_state else None,
             "trend_state_info": self.trend_state_info.to_dict() if self.trend_state_info else None,
             "trend_quality_info": self.quality_info.to_dict() if self.quality_info else None,
             "sector_state": self.sector_info.to_dict() if self.sector_info else None,
             "catalyst_state": self.catalyst_info.to_dict() if self.catalyst_info else None,
+            "fundamental_state": self.fundamental_info.to_dict() if self.fundamental_info else None,
+            "market_sentiment_state": self.market_sentiment_state.to_dict() if self.market_sentiment_state else None,
+            "hot_money_state": self.hot_money_state.to_dict() if self.hot_money_state else None,
         }
 
 
@@ -330,6 +460,7 @@ class MTFDiscovery:
     eligible: List[MTFCandidate] = field(default_factory=list)
     universe_count: int = 0
     market_regime: Optional[MarketRegimeState] = None
+    market_sentiment: Optional[MarketSentimentState] = None
     context_string: str = ""
     scan_errors: List[str] = field(default_factory=list)
 
@@ -340,6 +471,7 @@ class MTFDiscovery:
             "eligible": [c.to_dict() for c in self.eligible],
             "universe_count": self.universe_count,
             "market_regime": self.market_regime.to_dict() if self.market_regime else None,
+            "market_sentiment": self.market_sentiment.to_dict() if self.market_sentiment else None,
             "context_string": self.context_string,
             "scan_errors": self.scan_errors,
         }
@@ -375,6 +507,15 @@ class BuySignal:
     theme: str = ""
     pre_score: Optional[float] = None
     t1_state: str = "WAIT"
+    technical_factor: Dict[str, Any] = field(default_factory=dict)
+    sector_state: Optional[Dict[str, Any]] = None
+    trend_quality_info: Optional[Dict[str, Any]] = None
+    hot_money_state: Optional[Dict[str, Any]] = None
+    market_sentiment_state: Optional[Dict[str, Any]] = None
+    fundamental_state: Optional[Dict[str, Any]] = None
+    relative_strength_cross_section_pct: Optional[float] = None
+    relative_strength_score: Optional[float] = None
+    sector_rank: Optional[float] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -405,6 +546,15 @@ class BuySignal:
             "theme": self.theme,
             "pre_score": self.pre_score,
             "t1_state": self.t1_state,
+            "technical_factor": self.technical_factor,
+            "sector_state": self.sector_state,
+            "trend_quality_info": self.trend_quality_info,
+            "hot_money_state": self.hot_money_state,
+            "market_sentiment_state": self.market_sentiment_state,
+            "fundamental_state": self.fundamental_state,
+            "relative_strength_cross_section_pct": self.relative_strength_cross_section_pct,
+            "relative_strength_score": self.relative_strength_score,
+            "sector_rank": self.sector_rank,
         }
 
 
@@ -424,12 +574,23 @@ class Holding:
     stop_loss_price: Optional[float] = None
     atr_trailing_stop: Optional[float] = None   # ATR trailing stop（价格绝对值）
     prev_close: Optional[float] = None          # 前一日收盘，用于“次日站回”
-    ma20: Optional[float] = None                # 结构止损轨道：Close<MA20 判断
-    prev_ma20: Optional[float] = None           # 前一日 MA20，用于“连续N日无法站回”
+    ma10: Optional[float] = None                # V2.0: MA10为主导持有轨道，Close>MA10坚定持有
+    ma20: Optional[float] = None                # V2.0: MA20为强制清仓硬约束
+    prev_ma20: Optional[float] = None           # 保留兼容旧报告；V2.0不再需要双日确认
     highest_close: Optional[float] = None       # 持有期间最高收盘价，用于 trailing stop
     event_catalyst: Optional[Dict[str, Any]] = None  # 极端事件/利空快照（Catalyst=EXTREME/NEGATIVE）
     realtime_quote: Dict[str, Any] = field(default_factory=dict)
     order_flow_score: float = 50.0
+    trend_state: str = ""
+    trend_state_info: Optional[Dict[str, Any]] = None
+    previous_trend_state: str = ""
+    trend_state_streak: int = 0
+    trend_state_as_of: str = ""
+    trend_state_changed_at: str = ""
+    trend_reason_code: str = ""
+    trend_confidence: float = 0.0
+    fundamental_state: str = "FU"
+    fundamental_state_info: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -445,6 +606,14 @@ class ExitDecision:
     take_profit_triggered: bool = False
     reduce_triggered: bool = False
     add_allowed: bool = False
+    add_setup: bool = False
+    add_confirmation: bool = False
+    add_signal: str = ""
+    add_setup_class: str = ""
+    add_size_pct: float = 0.0
+    add_reason: str = ""
+    sector_source: str = ""
+    rs_source: str = ""
     state: str = "HOLD"
     position_state: str = "HOLD"
     decay_score: float = 0.0
@@ -458,6 +627,30 @@ class ExitDecision:
     trailing_stop_price: Optional[float] = None
     decay_signals: List[str] = field(default_factory=list)
     reasons: List[str] = field(default_factory=list)
+    high_volume_class: str = ""              # extension / rejection / neutral
+    high_volume_reason: str = ""
+    trend_state: str = ""
+    trend_state_reason: str = ""
+    previous_trend_state: str = ""
+    trend_state_streak: int = 0
+    trend_reason_code: str = ""
+    trend_confidence: float = 0.0
+    trend_state_as_of: str = ""
+    trend_state_changed_at: str = ""
+    trend_state_info: Optional[Dict[str, Any]] = None
+    fundamental_state: str = "FU"
+    fundamental_state_info: Optional[Dict[str, Any]] = None
+    holding_health: str = ""                 # HEALTHY / WEAKENING / BROKEN / UNKNOWN
+    holding_health_score: float = 0.0
+    holding_health_signals: List[str] = field(default_factory=list)
+    next_day_guard_break_vwap: bool = False
+    next_day_guard_vwap: Optional[float] = None
+    next_day_guard_high: Optional[float] = None
+    target_price_1: Optional[float] = None
+    target_price_2: Optional[float] = None
+    profit_protect_price: Optional[float] = None
+    profit_protect_level: str = ""
+    profit_protect_reason: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -472,6 +665,14 @@ class ExitDecision:
             "take_profit_triggered": self.take_profit_triggered,
             "reduce_triggered": self.reduce_triggered,
             "add_allowed": self.add_allowed,
+            "add_setup": self.add_setup,
+            "add_confirmation": self.add_confirmation,
+            "add_signal": self.add_signal,
+            "add_setup_class": self.add_setup_class,
+            "add_size_pct": round(self.add_size_pct, 3),
+            "add_reason": self.add_reason,
+            "sector_source": self.sector_source,
+            "rs_source": self.rs_source,
             "state": self.state,
             "position_state": self.position_state,
             "decay_score": round(self.decay_score, 2),
@@ -485,4 +686,28 @@ class ExitDecision:
             "trailing_stop_price": self.trailing_stop_price,
             "decay_signals": list(self.decay_signals),
             "reasons": list(self.reasons),
+            "high_volume_class": self.high_volume_class,
+            "high_volume_reason": self.high_volume_reason,
+            "trend_state": self.trend_state,
+            "trend_state_reason": self.trend_state_reason,
+            "previous_trend_state": self.previous_trend_state,
+            "trend_state_streak": self.trend_state_streak,
+            "trend_reason_code": self.trend_reason_code,
+            "trend_confidence": round(self.trend_confidence, 4),
+            "trend_state_as_of": self.trend_state_as_of,
+            "trend_state_changed_at": self.trend_state_changed_at,
+            "trend_state_info": self.trend_state_info or {},
+            "fundamental_state": self.fundamental_state,
+            "fundamental_state_info": self.fundamental_state_info or {},
+            "holding_health": self.holding_health,
+            "holding_health_score": round(self.holding_health_score, 2),
+            "holding_health_signals": list(self.holding_health_signals),
+            "next_day_guard_break_vwap": self.next_day_guard_break_vwap,
+            "next_day_guard_vwap": self.next_day_guard_vwap,
+            "next_day_guard_high": self.next_day_guard_high,
+            "target_price_1": self.target_price_1,
+            "target_price_2": self.target_price_2,
+            "profit_protect_price": self.profit_protect_price,
+            "profit_protect_level": self.profit_protect_level,
+            "profit_protect_reason": self.profit_protect_reason,
         }

@@ -40,8 +40,10 @@ def scoring_weights(scoring_cfg: Optional[Dict[str, Any]] = None) -> Dict[str, f
     cfg = scoring_cfg or {}
     return {
         "trend": float(cfg.get("trend_weight", 0.40) or 0.40),
-        "sector": float(cfg.get("sector_weight", 0.30) or 0.30),
-        "catalyst": float(cfg.get("catalyst_weight", 0.30) or 0.30),
+        "sector": float(cfg.get("sector_weight", 0.25) or 0.25),
+        "market_sentiment": float(cfg.get("market_sentiment_weight", 0.15) or 0.15),
+        "hot_money": float(cfg.get("hot_money_weight", 0.10) or 0.10),
+        "catalyst": float(cfg.get("catalyst_weight", 0.10) or 0.10),
     }
 
 
@@ -55,10 +57,12 @@ def build_tday_row(
     sector_score: Optional[float],
     sector_grade: str,
     sector_name: str,
-    catalyst_score: Optional[float],
-    has_event: bool,
-    factor: Optional[Dict[str, Any]],
-    raw_position_pct: float,
+    market_sentiment_score: Optional[float] = None,
+    hot_money_score: Optional[float] = None,
+    catalyst_score: Optional[float] = None,
+    has_event: bool = False,
+    factor: Optional[Dict[str, Any]] = None,
+    raw_position_pct: float = 0.0,
     scoring_cfg: Optional[Dict[str, Any]] = None,
     holding_cfg: Optional[Dict[str, Any]] = None,
     reference_price: Optional[float] = None,
@@ -72,6 +76,8 @@ def build_tday_row(
         quality_score=quality_score,
         sector_score=sector_score,
         sector_grade=sector_grade,
+        market_sentiment_score=market_sentiment_score,
+        hot_money_score=hot_money_score,
         catalyst_score=catalyst_score,
         has_event=has_event,
         weights=scoring_weights(scoring_cfg),
@@ -96,6 +102,10 @@ def build_tday_row(
         "sector_name": sector_name,
         "sector_grade": scores["sector_grade"] if scores["sector_grade"] else sector_grade,
         "sector_score": scores["sector_score"],
+        "market_sentiment_grade": scores["market_sentiment_grade"],
+        "market_sentiment_score": scores["market_sentiment_score"],
+        "hot_money_grade": scores["hot_money_grade"],
+        "hot_money_score": scores["hot_money_score"],
         "catalyst_grade": scores["catalyst_grade"],
         "catalyst_score": scores["catalyst_score"],
         "pre_score": scores["pre_score"],
@@ -105,10 +115,14 @@ def build_tday_row(
         "initial_stop": stops.get("initial_stop"),
         "initial_stop_pct": stops.get("initial_stop_pct"),
         "trailing_stop": stops.get("trailing_stop"),
+        "target_price_1": stops.get("target_price_1"),
+        "target_price_2": stops.get("target_price_2"),
+        "target_method": stops.get("target_method"),
         "highest_close": stops.get("highest_close"),
         "current_stop": stops.get("current_stop"),
         "ma20": stops.get("ma20"),
         "atr": stops.get("atr"),
+        "atr_pct": ctx.get("atr_pct"),
         "raw_position_pct": round(float(raw_position_pct or 0.0), 2),
         "t1_state": "WAIT",
         "action": "WAIT",
@@ -157,6 +171,8 @@ def rebuild_from_result(result: Dict[str, Any], *, scoring_cfg=None, holding_cfg
         sig = signals.get(code) or {}
         quality = ((cand.get("trend_quality_info") or {}) or {}).get("score")
         sector = cand.get("sector_state") or {}
+        sentiment = cand.get("market_sentiment_state") or {}
+        hot_money = cand.get("hot_money_state") or {}
         catalyst = cand.get("catalyst_state") or {}
         exec_detail = (((sig.get("gates") or {}).get("execution") or {}).get("detail") or {})
         nested = exec_detail.get("detail") or {}
@@ -182,6 +198,8 @@ def rebuild_from_result(result: Dict[str, Any], *, scoring_cfg=None, holding_cfg
                 sector_score=_num(sector.get("score")),
                 sector_grade=str(sector.get("grade") or ""),
                 sector_name=str(cand.get("sector_name") or sector.get("sector_name") or ""),
+                market_sentiment_score=_num(sentiment.get("score")),
+                hot_money_score=_num(hot_money.get("score")),
                 catalyst_score=_num(catalyst.get("score"), cand.get("catalyst_score")),
                 has_event=bool(catalyst.get("has_event")),
                 factor=factor,

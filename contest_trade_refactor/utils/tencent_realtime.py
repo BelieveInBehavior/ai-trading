@@ -159,16 +159,35 @@ def parse_tencent_quote(text: str) -> Dict[str, Any]:
     # 深挖买卖五档
     bids, asks = [], []
     for i in range(5):
-        bp = _as_float(parts[11 + i * 2] if len(parts) > 11 + i * 2 else None)
-        bv = _as_float(parts[11 + i * 2 + 1] if len(parts) > 11 + i * 2 + 1 else 0.0)
-        ap = _as_float(parts[21 + i * 2] if len(parts) > 21 + i * 2 else None)
-        av = _as_float(parts[21 + i * 2 + 1] if len(parts) > 21 + i * 2 + 1 else 0.0)
-        if bp is not None:
+        bp = _as_float(parts[9 + i * 2] if len(parts) > 9 + i * 2 else None)
+        bv = _as_float(parts[10 + i * 2] if len(parts) > 10 + i * 2 else 0.0)
+        ap = _as_float(parts[19 + i * 2] if len(parts) > 19 + i * 2 else None)
+        av = _as_float(parts[20 + i * 2] if len(parts) > 20 + i * 2 else 0.0)
+        if bp is not None and bp > 0:
             bids.append([bp, bv])
-        if ap is not None:
+        if ap is not None and ap > 0:
             asks.append([ap, av])
     out["bids"] = bids
     out["asks"] = asks
+    bid_volume = float(sum(b[1] for b in bids if len(b) > 1 and b[1] is not None))
+    ask_volume = float(sum(a[1] for a in asks if len(a) > 1 and a[1] is not None))
+    out["bid_volume"] = bid_volume
+    out["ask_volume"] = ask_volume
+    if ask_volume > 0:
+        ratio = bid_volume / ask_volume
+        out["bid_ask_ratio"] = round(ratio, 4)
+        out["bid_ask_imbalance"] = round((ratio - 1.0) * 100.0, 2)
+    else:
+        out["bid_ask_ratio"] = None
+        out["bid_ask_imbalance"] = None
+    external = _as_float(parts[7], 0.0) or 0.0
+    internal = _as_float(parts[8], 0.0) or 0.0
+    out["external_volume"] = external
+    out["internal_volume"] = internal
+    if external + internal > 0:
+        out["active_buy_pct"] = round(external / (external + internal) * 100.0, 2)
+    else:
+        out["active_buy_pct"] = None
     return out
 
 
@@ -191,6 +210,11 @@ class RealtimeQuote:
     ask_volume: float = 0.0
     active_buy_amount: Optional[float] = None
     active_sell_amount: Optional[float] = None
+    active_buy_pct: Optional[float] = None
+    bid_ask_ratio: Optional[float] = None
+    bid_ask_imbalance: Optional[float] = None
+    bids: list = field(default_factory=list)
+    asks: list = field(default_factory=list)
     timestamp: str = ""
     detail: Dict[str, Any] = field(default_factory=dict)
 
@@ -217,6 +241,11 @@ class RealtimeQuote:
             "ask_volume": self.ask_volume,
             "active_buy_amount": self.active_buy_amount,
             "active_sell_amount": self.active_sell_amount,
+            "active_buy_pct": self.active_buy_pct,
+            "bid_ask_ratio": self.bid_ask_ratio,
+            "bid_ask_imbalance": self.bid_ask_imbalance,
+            "bids": self.bids,
+            "asks": self.asks,
             "timestamp": self.timestamp,
             "detail": self.detail,
         }
@@ -350,6 +379,13 @@ def fetch_tencent_quote(symbol: Any, timeout: float = 3.0) -> RealtimeQuote:
             vwap=vwap,
             bid=raw.get("bid"),
             ask=raw.get("ask"),
+            bid_volume=raw.get("bid_volume") or 0.0,
+            ask_volume=raw.get("ask_volume") or 0.0,
+            active_buy_pct=raw.get("active_buy_pct"),
+            bid_ask_ratio=raw.get("bid_ask_ratio"),
+            bid_ask_imbalance=raw.get("bid_ask_imbalance"),
+            bids=raw.get("bids") or [],
+            asks=raw.get("asks") or [],
             timestamp=raw.get("timestamp") or "",
             detail=raw,
         )

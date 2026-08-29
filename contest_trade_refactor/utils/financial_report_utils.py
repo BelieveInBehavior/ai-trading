@@ -13,6 +13,8 @@ from typing import Any, Dict, List
 
 from loguru import logger
 
+from utils.financial_report_store import get_financial_report_store, store_enabled
+
 
 COMPANY_INCOME_TOOL = None
 
@@ -73,6 +75,17 @@ async def fetch_income_yoy(
     period: str,
     sem: asyncio.Semaphore,
 ) -> Dict[str, Any]:
+    if store_enabled():
+        cached = get_financial_report_store().load_latest(
+            market="CN-Stock",
+            statement="income_yoy",
+            symbol=symbol,
+            period=period,
+            as_of=trigger_time,
+        )
+        if cached:
+            return cached
+
     global COMPANY_INCOME_TOOL
     if COMPANY_INCOME_TOOL is None:
         try:
@@ -127,13 +140,23 @@ async def fetch_income_yoy(
                 continue
             net = pick(["净利润"])
             rev_yoy = pick(["营业总收入同比"])
-            return {
+            payload = {
                 "period": period,
                 "net_profit": net,
                 "net_profit_yoy": yoy,
                 "revenue_yoy": rev_yoy,
                 "raw_preview": _strip_future_dates(text, trigger_time)[:1200],
             }
+            if store_enabled():
+                get_financial_report_store().save(
+                    market="CN-Stock",
+                    statement="income_yoy",
+                    symbol=symbol,
+                    period=period,
+                    as_of=trigger_time,
+                    payload=payload,
+                )
+            return payload
     return {}
 
 
@@ -168,11 +191,12 @@ async def enrich_signals_with_financial_report(
                 return enriched
         return sig
 
+    results = await asyncio.gather(*[_one(sig) for sig in signals], return_exceptions=True)
     enriched = []
-    for sig in signals:
-        try:
-            enriched.append(await _one(sig))
-        except Exception as exc:
-            logger.warning("financial enrich failed {}: {}", sig.get("symbol_code"), exc)
+    for sig, result in zip(signals, results):
+        if isinstance(result, Exception):
+            logger.warning("financial enrich failed {}: {}", sig.get("symbol_code"), result)
             enriched.append(sig)
+        else:
+            enriched.append(result)
     return enriched

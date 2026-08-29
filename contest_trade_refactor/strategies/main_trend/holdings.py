@@ -17,6 +17,24 @@ def _num(value: Any, default: Optional[float] = None) -> Optional[float]:
         return default
 
 
+def compute_display_status(row: Dict[str, Any]) -> str:
+    """统一 HOLD/WATCH/DECAY/ADD/REDUCE/SELL 展示状态。"""
+    action = str(row.get("exit_action") or row.get("action") or "").lower()
+    exit_class = str(row.get("exit_class") or "").upper()
+    pos = str(row.get("position_state") or row.get("state") or "").upper()
+    if exit_class.startswith("SELL") or action in ("sell", "exit") or pos == "EXIT":
+        return "SELL"
+    if exit_class == "REDUCE" or action == "reduce" or pos == "REDUCE":
+        return "REDUCE"
+    if pos == "ADD" or action == "add":
+        return "ADD"
+    if pos == "DECAY" or action == "decay":
+        return "DECAY"
+    if pos == "WATCH":
+        return "WATCH"
+    return "HOLD"
+
+
 def build_from_t1(
     tday: Dict[str, Any],
     t1: Dict[str, Any],
@@ -48,6 +66,8 @@ def build_from_t1(
             "entry_date": date or t1.get("trade_date") or cand.get("trade_date") or "",
             "entry_price": round(entry_price, 4),
             "quantity": int(r.get("quantity") or 0),
+            "suggested_position_pct": _num(r.get("suggested_position_pct")) or _num(cand.get("suggested_position_pct")),
+            "raw_position_pct": _num(r.get("suggested_position_pct")) or _num(cand.get("raw_position_pct")),
             "holding_days": 0,
             "highest_price": round(entry_price, 4),
             "highest_close": _num(r.get("entry_price")) or _num(cand.get("highest_close")),
@@ -57,11 +77,19 @@ def build_from_t1(
             "trade_plan": {
                 "atr": _num(r.get("atr")) or _num(cand.get("atr")),
                 "atr_pct": _num(r.get("atr_pct")) or _num(cand.get("atr_pct")),
+                "target_price_1": _num(r.get("target_price_1")) or _num(cand.get("target_price_1")),
+                "target_price_2": _num(r.get("target_price_2")) or _num(cand.get("target_price_2")),
+                "target_method": r.get("target_method") or cand.get("target_method"),
+                "ma10": _num(r.get("ma10")) or _num(cand.get("ma10")),
                 "ma20": _num(r.get("ma20")) or _num(cand.get("ma20")),
                 "volume_ratio": _num(r.get("volume_ratio")),
-                "relative_strength_20d_pct": _num(r.get("rs_20d")) or _num(cand.get("rs_20d")),
-                "relative_strength_60d_pct": _num(r.get("rs_60d")) or _num(cand.get("rs_60d")),
-                "sector_1d_return": _num(r.get("sector_change_pct")) or _num(cand.get("sector_change_pct")),
+                "relative_strength_20d_pct": _num(r.get("rs_20d")) or _num(cand.get("rs_20d")) or _num(r.get("relative_strength_20d_pct")),
+                "relative_strength_60d_pct": _num(r.get("rs_60d")) or _num(cand.get("rs_60d")) or _num(r.get("relative_strength_60d_pct")),
+                "relative_strength_cross_section_pct": _num(r.get("relative_strength_cross_section_pct")) or _num(cand.get("relative_strength_cross_section_pct")),
+                "relative_strength_score": _num(r.get("relative_strength_score")) or _num(cand.get("relative_strength_score")),
+                "sector_rank": _num(r.get("sector_rank")) or _num(cand.get("sector_rank")) or _num(r.get("sector_rank_pct")),
+                "sector_1d_return": _num(r.get("sector_change_pct")) or _num(cand.get("sector_change_pct")) or _num(r.get("sector_1d_return")),
+                "sector_strength_pct": _num(r.get("sector_strength_pct")) or _num(cand.get("sector_strength_pct")),
                 "ret_5d_pct": _num(r.get("ret_5d_pct")),
                 "ret_20d_pct": _num(r.get("ret_20d_pct")),
                 "entry_grade": str(r.get("execution_grade") or ""),
@@ -69,6 +97,7 @@ def build_from_t1(
             "stop_loss_price": _num(r.get("initial_stop")) or _num(cand.get("initial_stop")),
             "atr_trailing_stop": _num(r.get("trailing_stop")) or _num(cand.get("trailing_stop")),
             "prev_close": _num(r.get("prev_close")),
+            "ma10": _num(r.get("ma10")) or _num(cand.get("ma10")),
             "ma20": _num(r.get("ma20")) or _num(cand.get("ma20")),
             "prev_ma20": _num(r.get("prev_ma20")) or _num(cand.get("prev_ma20")),
             "event_catalyst": r.get("event_catalyst") or {},
@@ -81,6 +110,11 @@ def build_from_t1(
                 "intraday_structure_score": _num(r.get("intraday_structure_score")),
             },
             "order_flow_score": _num(r.get("order_flow_score"), 50.0) or 50.0,
+            "trend_state": str(r.get("trend_state") or cand.get("trend_state") or ""),
+            "previous_trend_state": "",
+            "trend_state_streak": 1 if (r.get("trend_state") or cand.get("trend_state")) else 0,
+            "trend_state_as_of": date or t1.get("trade_date") or cand.get("trade_date") or "",
+            "trend_state_changed_at": date or t1.get("trade_date") or cand.get("trade_date") or "",
         })
     return {
         "phase": "holdings",
@@ -115,6 +149,27 @@ def update_holdings(holdings: Dict[str, Any], exits: List[Dict[str, Any]], date:
         updated["exit_reason"] = d.get("reason") or ""
         updated["exit_reasons"] = d.get("reasons") or []
         updated["trailing_stop_price"] = _num(d.get("trailing_stop_price"), updated.get("trailing_stop_price"))
+        updated["high_volume_class"] = d.get("high_volume_class") or updated.get("high_volume_class") or ""
+        updated["high_volume_reason"] = d.get("high_volume_reason") or updated.get("high_volume_reason") or ""
+        updated["trend_state"] = d.get("trend_state") or updated.get("trend_state") or ""
+        updated["trend_state_reason"] = d.get("trend_state_reason") or updated.get("trend_state_reason") or ""
+        for key in (
+            "previous_trend_state", "trend_state_streak", "trend_reason_code", "trend_confidence",
+            "trend_state_as_of", "trend_state_changed_at", "trend_state_info",
+        ):
+            if d.get(key) is not None:
+                updated[key] = d.get(key)
+        updated["add_setup"] = d.get("add_setup") or False
+        updated["add_confirmation"] = d.get("add_confirmation") or False
+        updated["add_setup_class"] = d.get("add_setup_class") or ""
+        updated["sector_source"] = d.get("sector_source") or ""
+        updated["rs_source"] = d.get("rs_source") or ""
+        updated["next_day_guard_break_vwap"] = d.get("next_day_guard_break_vwap") or False
+        if d.get("next_day_guard_vwap") is not None:
+            updated.setdefault("trade_plan", {})["next_day_guard_vwap"] = d["next_day_guard_vwap"]
+        if d.get("next_day_guard_high") is not None:
+            updated.setdefault("trade_plan", {})["next_day_guard_high"] = d["next_day_guard_high"]
+        updated["display_status"] = compute_display_status(updated)
         rows.append(updated)
     return {
         "phase": "holdings",
@@ -151,7 +206,9 @@ def build_from_result_rows(rows: List[Dict[str, Any]], *, date: str = "", only_b
         stop_price = _num(r.get("entry_price"))
         if stop_price is None and stop_distance_abs:
             stop_price = price - abs(stop_distance_abs)
-        ma20 = _num(exec_gate.get("detail", {}).get("ma20")) or _num(r.get("ma20"))
+        technical = r.get("technical_factor") or {}
+        ma10 = _num(exec_gate.get("detail", {}).get("ma10")) or _num(r.get("ma10")) or _num(technical.get("ma10"))
+        ma20 = _num(exec_gate.get("detail", {}).get("ma20")) or _num(r.get("ma20")) or _num(technical.get("ma20"))
         atr = intraday["atr"] or _num(r.get("atr"))
         atr_pct = None
         if atr and stop_distance_abs:
@@ -173,11 +230,16 @@ def build_from_result_rows(rows: List[Dict[str, Any]], *, date: str = "", only_b
             "trade_plan": {
                 "atr": atr,
                 "atr_pct": atr_pct,
+                "ma10": ma10,
                 "ma20": ma20,
                 "volume_ratio": _num(intraday.get("volume_ratio")),
                 "relative_strength_20d_pct": _num(r.get("relative_strength_20d_pct")) or _num(r.get("rs_20d")),
                 "relative_strength_60d_pct": _num(r.get("relative_strength_60d_pct")) or _num(r.get("rs_60d")),
+                "relative_strength_cross_section_pct": _num(r.get("relative_strength_cross_section_pct")),
+                "relative_strength_score": _num(r.get("relative_strength_score")),
+                "sector_rank": _num(r.get("sector_rank")) or _num(r.get("sector_rank_pct")),
                 "sector_1d_return": _num(r.get("sector_1d_return")) or _num(r.get("sector_change_pct")),
+                "sector_strength_pct": _num(r.get("sector_strength_pct")),
                 "ret_5d_pct": _num(r.get("ret_5d_pct")),
                 "ret_20d_pct": _num(r.get("ret_20d_pct")),
                 "entry_grade": str(r.get("trend_quality") or ""),
@@ -185,18 +247,27 @@ def build_from_result_rows(rows: List[Dict[str, Any]], *, date: str = "", only_b
             "stop_loss_price": stop_price,
             "atr_trailing_stop": _num(r.get("trailing_stop")) or stop_price,
             "prev_close": _num(intraday.get("prev_close")),
+            "ma10": ma10,
             "ma20": ma20,
             "prev_ma20": _num(r.get("prev_ma20")),
             "event_catalyst": r.get("event_catalyst") or {},
             "realtime_quote": {
                 "atr": atr,
                 "atr_pct": atr_pct,
+                "vwap": _num(intraday.get("vwap")),
+                "open": _num(intraday.get("open")),
+                "high": _num(intraday.get("high")),
                 "vwap_state": "Above" if intraday.get("price") and intraday.get("vwap") and intraday["price"] >= intraday["vwap"] else "Below",
                 "bid_support": str(exec_gate.get("reason") or ""),
                 "order_flow_score": _num(exec_gate.get('detail', {}).get('order_flow_score')) if isinstance(exec_gate.get('detail'), dict) else _num(exec_gate.get('order_flow_score')) or 50.0,
                 "intraday_structure_score": _num(exec_gate.get("detail", {}).get("intraday_structure_score")) if isinstance(exec_gate.get('detail'), dict) else _num(exec_gate.get('intraday_structure_score')) or 0.0,
             },
             "order_flow_score": (_num(exec_gate.get('detail', {}).get("order_flow_score")) if isinstance(exec_gate.get("detail"), dict) else None) or 50.0,
+            "trend_state": str(r.get("trend_state") or ""),
+            "previous_trend_state": "",
+            "trend_state_streak": 1 if r.get("trend_state") else 0,
+            "trend_state_as_of": r.get("trade_date") or date,
+            "trend_state_changed_at": r.get("trade_date") or date,
         })
     return {
         "phase": "holdings",

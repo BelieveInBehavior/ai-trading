@@ -153,7 +153,7 @@ def main() -> None:
         sys.exit(1)
 
     engine = MainTrendEngine(MainTrendConfig.from_yaml())
-    decisions = [d.to_dict() for d in engine.evaluate_exits(holdings)]
+    decisions = [d.to_dict() for d in engine.evaluate_exits(holdings, refresh_factors=True, trade_date=date_compact)]
     decisions.sort(key=lambda x: (x.get("action") == "exit" or x.get("action") == "sell", x.get("exit_score") or 0), reverse=True)
 
     payload = {

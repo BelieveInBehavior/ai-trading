@@ -85,17 +85,34 @@ class ExecutionRiskPositionEnhanceTest(unittest.TestCase):
         self.assertGreater(r1.suggested_position_pct or 0, r2.suggested_position_pct or 0)
         self.assertGreater(r1.quality_multiplier, r2.quality_multiplier)
 
-    def test_position_add_requires_profit_and_ma20_exit(self):
+    def test_position_add_requires_evidence_not_just_profit(self):
         eng = self._engine()
-        h_profit = Holding("600001.SH", "测试", "20260818", 10.0, current_price=10.5, highest_price=10.6, holding_days=2)
+        # Profit alone + missing sector/RS must NOT add; the new arch is evidence-driven.
+        h_profit_only = Holding("600001.SH", "测试", "20260818", 10.0, current_price=10.5, highest_price=10.6, holding_days=2, stop_loss_price=9.0, realtime_quote={"vwap_state":"Above","vwap":10.4})
+        d_no_evidence = eng.evaluate_exits([h_profit_only])[0]
+        self.assertNotEqual(d_no_evidence.state, "ADD")
+
+        # Strong evidence (sector_rank strong + RS strong + VWAP) -> ADD
+        h_profit = Holding(
+            "600001.SH", "测试", "20260818", 10.0, current_price=10.5, highest_price=10.6, holding_days=2,
+            stop_loss_price=9.0, ma20=10.2,
+            trade_plan={"sector_rank": 5, "relative_strength_cross_section_pct": 90, "relative_strength_20d_pct": 14, "relative_strength_60d_pct": 10,
+                       "volume_ratio": 0.5, "close": 10.5},
+            realtime_quote={"vwap_state":"Above", "vwap":10.4, "high":10.6, "low":10.35, "open":10.38},
+        )
         d = eng.evaluate_exits([h_profit])[0]
         self.assertEqual(d.state, "ADD")
         self.assertTrue(d.add_allowed)
-        h_loss = Holding("600001.SH", "测试", "20260818", 10.0, current_price=9.5, highest_price=11.0, holding_days=2)
-        dloss = eng.evaluate_exits([h_loss])[0]
+        self.assertTrue(d.add_setup)
+        self.assertTrue(d.add_confirmation)
+        self.assertGreater(d.add_size_pct, 0)
+
+        h_loss = Holding("600001.SH", "测试", "20260818", 10.0, current_price=9.5, highest_price=11.0, holding_days=2, trade_plan={"sector_rank": 5}, realtime_quote={"vwap_state":"Above", "open":10.8, "high":11.0, "vwap":9.4})
+        dloss = eng.evaluate_exits([h_loss])[0]  # loss now may still no setup because close below ma? fine
         self.assertFalse(dloss.add_allowed)
-        # MA20 break should be exit unless fixed stop hit first. Keep current > stop_pct so MA20 branch is hit.
-        h_ma = Holding("600001.SH", "测试", "20260818", 8.0, current_price=7.8, highest_price=11.0, holding_days=3, ma20=8.0, stop_loss_price=7.0)
+
+        # MA20 break should be exit even with evidence.
+        h_ma = Holding("600001.SH", "测试", "20260818", 8.0, current_price=7.8, highest_price=11.0, holding_days=3, ma20=8.0, stop_loss_price=7.0, trade_plan={"sector_rank": 5, "relative_strength_cross_section_pct": 90})
         dma = eng.evaluate_exits([h_ma])[0]
         self.assertEqual(dma.action, "exit")
         self.assertIn("MA20", dma.reason)
